@@ -1,0 +1,207 @@
+# SPDX-License-Identifier: GPL-2.0-only
+config DVB_USB
+	tristate "Support for various USB DVB devices"
+	depends on DVB_CORE && USB && I2C && RC_CORE
+	select CYPRESS_FIRMWARE
+	help
+	  By enabling this you will be able to choose the various supported
+	  USB1.1 and USB2.0 DVB devices.
+
+	  Almost every USB device needs a firmware, please look into
+	  <file:Documentation/driver-api/media/drivers/dvb-usb.rst>.
+
+	  For a complete list of supported USB devices see the LinuxTV DVB Wiki:
+	  <https://linuxtv.org/wiki/index.php/DVB_USB>
+
+	  Say Y if you own a USB DVB device.
+
+config DVB_USB_DEBUG
+	bool "Enable extended debug support for all DVB-USB devices"
+	depends on DVB_USB
+	help
+	  Say Y if you want to enable debugging. See modinfo dvb-usb (and the
+	  appropriate drivers) for debug levels.
+
+if DVB_USB
+
+config DVB_USB_TBSQBOX
+	tristate "TurboSight QBOX DVB-S2 USB2.0 support"
+	depends on DVB_USB
+	select DVB_PLL if MEDIA_SUBDRV_AUTOSELECT
+	select DVB_STV0299 if MEDIA_SUBDRV_AUTOSELECT
+	select DVB_STV0288 if MEDIA_SUBDRV_AUTOSELECT
+	select DVB_STB6000 if MEDIA_SUBDRV_AUTOSELECT
+	help
+	  Say Y here to support the TurboSight QBOX DVB-S USB2.0 receivers
+
+config DVB_USB_TBSQBOX2
+	tristate "TurboSight QBOX2 DVB-S2 USB2.0 support"
+	depends on DVB_USB
+	select DVB_PLL if MEDIA_SUBDRV_AUTOSELECT
+	select DVB_STV090x if MEDIA_SUBDRV_AUTOSELECT
+	select DVB_STB6100 if MEDIA_SUBDRV_AUTOSELECT
+	help
+	  Say Y here to support the TurboSight QBOX2 DVB-S USB2.0 receivers
+
+config DVB_USB_TBSQBOX22
+	tristate "TurboSight QBOX22 DVB-S2 USB2.0 support"
+	depends on DVB_USB
+	select DVB_PLL if MEDIA_SUBDRV_AUTOSELECT
+	select DVB_TAS2101 if MEDIA_SUBDRV_AUTOSELECT
+	select MEDIA_TUNER_AV201X if MEDIA_SUBDRV_AUTOSELECT
+	help
+	  Say Y here to support the TurboSight QBOX22 DVB-S USB2.0 receivers
+
+
+config DVB_USB_TBS5922SE
+        tristate "TurboSight 5922SE DVB-S2 USB2.0 support"
+        depends on DVB_USB
+        select DVB_PLL if MEDIA_SUBDRV_AUTOSELECT
+        select DVB_TAS2101 if MEDIA_SUBDRV_AUTOSELECT
+        select MEDIA_TUNER_AV201X if MEDIA_SUBDRV_AUTOSELECT
+        help
+          Say Y here to support the TurboSight 5922SE DVB-S USB2.0 receivers
+
+config DVB_USB_TBSQBOXS2
+	tristate "TurboSight QBOX2 DVB-S2 USB2.0 support"
+	depends on DVB_USB
+	select DVB_PLL if MEDIA_SUBDRV_AUTOSELECT
+	select DVB_CX24116 if MEDIA_SUBDRV_AUTOSELECT
+	help
+	  Say Y here to support the TurboSight QBOX2 DVB-S USB2.0 receivers
+
+config DVB_USB_TBSQBOX2CI
+	tristate "TurboSight QBOX2 CI DVB-S2 USB2.0 support"
+	depends on DVB_USB
+	select DVB_PLL if MEDIA_SUBDRV_AUTOSELECT
+	select DVB_STV090x if MEDIA_SUBDRV_AUTOSELECT
+	select DVB_STB6100 if MEDIA_SUBDRV_AUTOSELECT
+	help
+	  Say Y here to support the TurboSight QBOX2 CI DVB-S USB2.0 receivers
+
+config DVB_USB_TBS5925
+	tristate "TurboSight TBS5925 DVB-S2 USB2.0 support"
+	depends on DVB_USB
+	select DVB_PLL if MEDIA_SUBDRV_AUTOSELECT
+	select DVB_STV090x if MEDIA_SUBDRV_AUTOSELECT
+	select DVB_STB6100 if MEDIA_SUBDRV_AUTOSELECT
+	help
+	  Say Y here to support the TurboSight TBS5925 DVB-S USB2.0 receivers
+
+config DVB_USB_TBS5880
+	tristate "TurboSight TBS5880 DVB-T/T2/C USB2.0 support"
+	depends on DVB_USB
+	select DVB_PLL if MEDIA_SUBDRV_AUTOSELECT
+	select DVB_CXD2820R if MEDIA_SUBDRV_AUTOSELECT
+	select MEDIA_TUNER_TDA18212 if MEDIA_SUBDRV_AUTOSELECT
+	help
+	  Say Y here to support the TurboSight TBS5880 DVB-T/T2/C USB2.0 receivers
+
+config DVB_USB_TBS5220
+	tristate "TurboSight TBS5220 DVB-T/T2/C USB2.0 support"
+	depends on DVB_USB
+	select DVB_PLL if MEDIA_SUBDRV_AUTOSELECT
+	select DVB_SI2168 if MEDIA_SUBDRV_AUTOSELECT
+	select MEDIA_TUNER_SI2157 if MEDIA_SUBDRV_AUTOSELECT
+	help
+	  Say Y here to support the TurboSight TBS5220 DVB-T/T2/C USB2.0 receivers
+
+config DVB_USB_TBS5230
+	tristate "TurboSight TBS5230 DVB-T/T2/C ISDB-T ATSC1.0 USB2.0 support"
+	depends on DVB_USB
+	select DVB_PLL if MEDIA_SUBDRV_AUTOSELECT
+	select DVB_CXD2878 if MEDIA_SUBDRV_AUTOSELECT
+	help
+	  Say Y here to support the TurboSight TBS5230 DVB-T/T2/C ISDB-T ATSC1.0 USB2.0 receivers
+
+config DVB_USB_TBS5881
+	tristate "TurboSight TBS5881 DVB-T/T2/C USB2.0 support"
+	depends on DVB_USB
+	select DVB_PLL if MEDIA_SUBDRV_AUTOSELECT
+	select DVB_SI2168 if MEDIA_SUBDRV_AUTOSELECT
+	select MEDIA_TUNER_SI2157 if MEDIA_SUBDRV_AUTOSELECT
+	help
+	  Say Y here to support the TurboSight TBS5881 DVB-T/T2/C USB2.0 receivers
+
+config DVB_USB_TBS5520
+        tristate "Turbosight TBS5520 support"
+        depends on DVB_USB
+        select DVB_AVL6882 if MEDIA_SUBDRV_AUTOSELECT
+        select MEDIA_TUNER_R848 if MEDIA_SUBDRV_AUTOSELECT
+        help
+          Say Y here to support the Turbosight TBS5520 USB2 DVB-T/T2/C/S/S2 device
+
+config DVB_USB_TBS5520se
+        tristate "Turbosight TBS5520se support"
+        depends on DVB_USB
+        select DVB_SI2183 if MEDIA_SUBDRV_AUTOSELECT
+        select MEDIA_TUNER_SI2157 if MEDIA_SUBDRV_AUTOSELECT
+	select MEDIA_TUNER_AV201X if MEDIA_SUBDRV_AUTOSELECT
+        help
+          Say Y here to support the Turbosight TBS5520se USB2 DVB-T/T2/C/C2/S/S2/S2x device
+
+config DVB_USB_TBS5530
+        tristate "Turbosight TBS5530 support"
+        depends on DVB_USB
+	select DVB_PLL if MEDIA_SUBDRV_AUTOSELECT
+	select DVB_CXD2878 if MEDIA_SUBDRV_AUTOSELECT
+	select DVB_M88RS6060 if MEDIA_SUBDRV_AUTOSELECT
+        help
+          Say Y here to support the Turbosight TBS5530 USB2 DVB-T/T2/C/C2/S/S2/S2x ISDBT ATSC device        
+          
+config DVB_USB_TBS5580
+        tristate "Turbosight TBS5580 CI support"
+        depends on DVB_USB
+        select DVB_SI2183 if MEDIA_SUBDRV_AUTOSELECT
+        select MEDIA_TUNER_SI2157 if MEDIA_SUBDRV_AUTOSELECT
+	select MEDIA_TUNER_AV201X if MEDIA_SUBDRV_AUTOSELECT
+        help
+          Say Y here to support the Turbosight TBS5580 CI USB2 DVB-T/T2/C/C2/S/S2/S2x device
+
+config DVB_USB_TBS5927
+	tristate "TurboSight TBS5927 DVB-S2 USB2.0 support"
+	depends on DVB_USB
+	select DVB_PLL if MEDIA_SUBDRV_AUTOSELECT
+	select DVB_STV091X if MEDIA_SUBDRV_AUTOSELECT
+	select MEDIA_TUNER_STV6120 if MEDIA_SUBDRV_AUTOSELECT
+	help
+	  Say Y here to support the TurboSight TBS5927 DVB-S USB2.0 receivers
+
+config DVB_USB_TBS5301
+        tristate "TurboSight 5301 hdmi USB2.0 support"
+        depends on DVB_USB
+        select DVB_PLL if MEDIA_SUBDRV_AUTOSELECT
+        select DVB_TAS2971 if MEDIA_SUBDRV_AUTOSELECT
+        help
+          Say Y here to support the TurboSight 5301 hdmi USB2.0 receivers
+          
+config DVB_USB_TBS5930
+	tristate "TurboSight TBS5930 DVB-S2/S2x USB2.0 support"
+	depends on DVB_USB
+	select DVB_PLL if MEDIA_SUBDRV_AUTOSELECT
+	select DVB_M88RS6060 if MEDIA_SUBDRV_AUTOSELECT
+	help
+	  Say Y here to support the TurboSight TBS5930 DVB-S/S2/S2x USB2.0 receivers
+	  
+config DVB_USB_TBS5931
+	tristate "TurboSight TBS5930 lite DVB-S/S2 USB2.0 support"
+	depends on DVB_USB
+	select DVB_PLL if MEDIA_SUBDRV_AUTOSELECT
+	select DVB_TAS2101 if MEDIA_SUBDRV_AUTOSELECT
+	select DVB_GX1133 if MEDIA_SUBDRV_AUTOSELECT
+	select MEDIA_TUNER_AV201X if MEDIA_SUBDRV_AUTOSELECT
+	help
+	  Say Y here to support the TurboSight TBS5930 lite DVB-S/S2 USB2.0 receivers	  
+	  
+config DVB_USB_TBS5590
+       tristate "Turbosight TBS5590 usb2.0 capture support"
+        depends on DVB_USB
+        select DVB_SI2183 if MEDIA_SUBDRV_AUTOSELECT
+        select MEDIA_TUNER_SI2157 if MEDIA_SUBDRV_AUTOSELECT
+	select MEDIA_TUNER_AV201X if MEDIA_SUBDRV_AUTOSELECT
+	select DVB_TBSPRIV if MEDIA_SUBDRV_AUTOSELECT
+        help
+         say Y here to support the Turbosight 5590 capture support
+          Say Y here to support the Turbosight TBS5590 USB2.0 DVB-T/T2/C/C2/S/S2/S2x ASI-IN device
+
+endif
