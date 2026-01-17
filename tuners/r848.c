@@ -47,7 +47,7 @@ static int r848_rd(struct r848_priv *priv, u8 *buf, int len)
 static int r848_wrm(struct r848_priv *priv, u8 addr, u8 *val, int len)
 {
 	int ret;
-	u8 buf[len + 1];
+	u8 buf[R848_REG_NUM + 1];
 	struct i2c_msg msg = {
 		.addr = priv->cfg->i2c_address,
 		.flags = 0, .buf = buf, .len = len + 1 };
