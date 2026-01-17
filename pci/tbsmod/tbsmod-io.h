@@ -10,11 +10,11 @@
 #define SPI_ENABLE       	 0x1c
 
 
-#define SPI_MAX2871       	 0x2c   // spi config ad4351 
+#define SPI_MAX2871       	 0x2c   // spi config ad4351
 
 #define SPI_DEVICE       	 0x20   // spi choose: 0 is for 9789, 1 is for fpga , default is 0
 #define SPI_RESET       	 0x24   // spi config 9789 reset , default 0, 1 is valid. read for qamb is mod and control
-#define SPI_AD4351       	 0x2c   // spi config ad4351 
+#define SPI_AD4351       	 0x2c   // spi config ad4351
 #define AD9789_MODULATION	 0x28   // spi mod set
 #define AD9789B_MODULATION	 0x38   // spi mod set for tbs6008
 #define SPI_9789B_RESET       	 0x34   // spi config 9789b reset , default 0, 1 is valid. read for qamb is mod and control
@@ -44,7 +44,7 @@
 #define I2C_COMMAND    	 0x00
 #define I2C_W_DATA     	 0x04
 #define I2C_R_DATA     	 0x04
-#define I2C_SPEED        0x08  
+#define I2C_SPEED        0x08
 
 #define I2C0_BASEADDRESS  0x4000
 #define I2C1_BASEADDRESS  0x5000
@@ -76,7 +76,7 @@ enum{
 	AD9789_PARAMETER_UPDATE			= 0x24,
 	AD9789_CHANNEL_0_GAIN			= 0x25,
 	AD9789_CHANNEL_1_GAIN			= 0x26,
-	AD9789_CHANNEL_2_GAIN			= 0x27,	
+	AD9789_CHANNEL_2_GAIN			= 0x27,
 	AD9789_CHANNEL_3_GAIN			= 0x28,
 	AD9789_SPEC_SHAPING				= 0x29,
 	AD9789_Mu_DELAY_CONTROL_1		= 0x2F,
@@ -106,7 +106,6 @@ enum{
 	AD9789_BITS_SIGNATURE_1			= 0x53
 };
 
-#define DMA_STATUS	    0x00
 #define DMA_GO	        0x00
 #define DMA_SIZE		0x04
 #define DMA_SIZE_TOTAL	0x04
