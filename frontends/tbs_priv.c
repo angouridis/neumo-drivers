@@ -22,8 +22,8 @@ static int tbs_read_status(struct dvb_frontend *fe,enum fe_status*status)
 {
 	struct tbs_dev*state =fe->demodulator_priv;
 
-	*status = *status = FE_HAS_SIGNAL | FE_HAS_CARRIER |
-			FE_HAS_VITERBI | FE_HAS_SYNC | FE_HAS_LOCK; 
+	*status = FE_HAS_SIGNAL | FE_HAS_CARRIER |
+			FE_HAS_VITERBI | FE_HAS_SYNC | FE_HAS_LOCK;
 	return 0;
 
 }
@@ -34,10 +34,10 @@ static int tbs_read_ber(struct dvb_frontend*fe,u32*ber)
 }
 
 static int tbs_read_snr(struct dvb_frontend*fe,u16*snr)
-{	
+{
 	struct tbs_dev*state = fe->demodulator_priv;
 	struct dtv_frontend_properties *p = &fe->dtv_property_cache;
-	
+
 	p->cnr.len = 1;
 	p->cnr.stat[0].scale = FE_SCALE_DECIBEL;
 	p->cnr.stat[0].svalue = 40;
@@ -54,7 +54,7 @@ static int tbs_read_signal_strength(struct dvb_frontend*fe, u16*strength)
 	p->strength.len = 1;
 	p->strength.stat[0].scale = FE_SCALE_DECIBEL;
 	p->strength.stat[0].svalue = 40;
-	
+
 	*strength = 0xf188;
 
 	return 0;
@@ -73,7 +73,7 @@ static void tbs_spi_read(struct dvb_frontend *fe, struct ecp3_info *ecp3inf)
 
 	struct tbs_dev *priv = fe->demodulator_priv;
 	struct i2c_adapter *adapter = priv->i2c;
-	
+
 	if (priv->cfg->read_properties)
 		priv->cfg->read_properties(adapter,ecp3inf->reg, &(ecp3inf->data));
 
@@ -83,7 +83,7 @@ static void tbs_spi_write(struct dvb_frontend *fe,struct ecp3_info *ecp3inf)
 {
 	struct tbs_dev *priv = fe->demodulator_priv;
 	struct i2c_adapter *adapter = priv->i2c;
-	
+
 	if (priv->cfg->write_properties)
 		priv->cfg->write_properties(adapter,ecp3inf->reg, ecp3inf->data);
 
@@ -95,7 +95,7 @@ static void tbs_mcu_read(struct dvb_frontend * fe,struct mcu24cxx_info *mcu24cxx
 
 	struct tbs_dev *priv = fe->demodulator_priv;
 	struct i2c_adapter *adapter = priv->i2c;
-	
+
 	if (priv->cfg->mcuRead_properties)
 		priv->cfg->mcuRead_properties(adapter,mcu24cxxinf->bassaddr,mcu24cxxinf->reg, &(mcu24cxxinf->data));
 
@@ -105,7 +105,7 @@ static void tbs_mcu_write(struct dvb_frontend *fe,struct mcu24cxx_info *mcu24cxx
 {
 	struct tbs_dev *priv = fe->demodulator_priv;
 	struct i2c_adapter *adapter = priv->i2c;
-	
+
 	if (priv->cfg->mcuWrite_properties)
 		priv->cfg->mcuWrite_properties(adapter,mcu24cxxinf->bassaddr, mcu24cxxinf->reg, mcu24cxxinf->data);
 
@@ -116,7 +116,7 @@ static void tbs_reg_i2c_read(struct dvb_frontend *fe,struct usbi2c_access *pi2ci
 
 	struct tbs_dev *priv = fe->demodulator_priv;
 	struct i2c_adapter *adapter = priv->i2c;
-	
+
 	if (priv->cfg->i2cRead_properties)
 		priv->cfg->i2cRead_properties(adapter,pi2cinf->chip_addr,pi2cinf->reg, pi2cinf->num, pi2cinf->buf);
 
@@ -126,7 +126,7 @@ static void tbs_reg_i2c_write(struct dvb_frontend *fe,struct usbi2c_access *pi2c
 {
 	struct tbs_dev *priv = fe->demodulator_priv;
 	struct i2c_adapter *adapter = priv->i2c;
-	
+
 	if (priv->cfg->i2cwrite_properties)
 		priv->cfg->i2cwrite_properties(adapter,pi2cinf->chip_addr,pi2cinf->reg, pi2cinf->num, pi2cinf->buf);
 
@@ -166,7 +166,7 @@ static int tbs_get_frontend(struct dvb_frontend *fe,
 	c->delivery_system = 5;
 	c->inversion = 2;
 	c->symbol_rate = 30000000;
-	
+
 	return 0;
 }
 
@@ -193,7 +193,7 @@ static void tbs_release(struct dvb_frontend *fe)
 	struct tbs_dev*state = fe->demodulator_priv;
 
 	kfree(state);
-	
+
 }
 static struct dvb_frontend_ops tbs_ops = {
 	.delsys = { SYS_DVBS, SYS_DVBS2 },
@@ -241,7 +241,7 @@ struct dvb_frontend *tbs_attach(struct i2c_adapter*i2c,
 									int demod)
 {
 	struct tbs_dev*state = NULL;
-	
+
 	printk( " Attaching frontend\n");
 
 	state = kzalloc(sizeof(struct tbs_dev),GFP_KERNEL);
@@ -251,16 +251,16 @@ struct dvb_frontend *tbs_attach(struct i2c_adapter*i2c,
 	state->demod = demod;
 	state->i2c = i2c;
 	state->cfg = cfg;
-	
+
 	memcpy(&state->fe.ops, &tbs_ops,
 		sizeof(struct dvb_frontend_ops));
-	
+
 	state->fe.demodulator_priv = state;
-	
+
 	printk( "tbs priv attach finish.\n");
 
 	return &state->fe;
-	
+
 }
 EXPORT_SYMBOL_GPL(tbs_attach);
 
