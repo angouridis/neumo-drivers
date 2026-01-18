@@ -24,6 +24,7 @@
 #include <media/neumo-dvbdev.h>
 #include <linux/kobject.h>
 #include <linux/sysfs.h>
+#include <media/neumo-version.h>
 
 /* Due to enum tuner_pad_index */
 #include <media/tuner.h>
@@ -1086,12 +1087,6 @@ static char *dvb_devnode(const struct device *dev, umode_t *mode)
 static struct kobject *info_kobject;
 
 
-static void dvb_git_versions(const char ** neumo, const char ** rev, const char ** tag, const char ** branch)
-{
-	//neumo_version_string; this comment is needed to  make version_patch.pl work
-	*neumo  = "type = \"neumo\";\nversion = \"1.7\";";
-}
-
 static ssize_t version_show(struct kobject *kobj, struct kobj_attribute *attr,
                       char *buf)
 {
@@ -1099,7 +1094,7 @@ static ssize_t version_show(struct kobject *kobj, struct kobj_attribute *attr,
 	char const* rev = NULL;
 	char const* tag = NULL;
 	char const * branch = NULL;
-	dvb_git_versions(&neumo, &rev, &tag, &branch);
+	neumo_git_versions(&neumo, &rev, &tag, &branch);
 	return sprintf(buf, "%s\n%s\n%s\n%s\n", neumo, rev, tag, branch);
 	/*
 		show() must not use snprintf() when formatting the value to be
@@ -1114,7 +1109,7 @@ static void version_log(void)
 	char const* rev = NULL;
 	char const* tag = NULL;
 	char const* branch = NULL;
-	dvb_git_versions(&neumo, &rev, &tag, &branch);
+	neumo_git_versions(&neumo, &rev, &tag, &branch);
 	printk(KERN_ERR "neumodvb blindscan drivers %s; %s;%s;\n", rev, tag, branch);
 }
 

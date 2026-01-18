@@ -3,6 +3,7 @@
 # Makefile for the kernel DVB device drivers.
 #
 
+
 dvb-net-$(CONFIG_DVB_NET) := neumo-dvb-net.o
 dvb-vb2-$(CONFIG_DVB_MMAP) := dvb_vb2.o
 
@@ -22,6 +23,7 @@ dvb-core-objs := neumo-dvbdev.o     \
                  dvb_math.o \
                  neumo-dmxdev-sysfs.o \
                  neumo-scan.o \
+                 neumo-version.o \
                  $(compat-y)
 
 obj-$(CONFIG_DVB_CORE) += dvb-core.o

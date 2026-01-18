@@ -12,6 +12,7 @@ MDIR	?=
 ROOT_DIR :=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 # does not work export KBUILD_EXTMOD_OUTPUT = /tmp/build
 
+
 # --- Module Configurations ---
 MODDEFS := CONFIG_DVB_CORE=m \
 	   CONFIG_DVB_TBSECP3=m \
@@ -82,6 +83,7 @@ EXTRA_CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
 # Build modules using Kbuild M= syntax
 all:
 	$(MAKE) $(ROOT_DIR)/include/linux/dvb/neumo-frontend.h $(ROOT_DIR)/include/linux/dvb/neumo-dmx.h
+	$(MAKE) $(ROOT_DIR)/include/linux/dvb/neumo-frontend.h $(ROOT_DIR)/dvb-core/neumo-version.c
 	$(MAKE) -C $(KDIR) M=$(PWD) $(MODDEFS) NOSTDINC_FLAGS="$(EXTRA_CFLAGS)" modules
 
 $(ROOT_DIR)/include/linux/dvb/neumo-frontend.h: $(ROOT_DIR)/templates/common-frontend.h
@@ -111,3 +113,6 @@ clean:
 	              -name "*.order" -o -name "*.dwo" -o -name "modules.order" -o \
 	              -name "Module.symvers" | xargs rm -f
 	@rm -rf .tmp_versions
+
+$(ROOT_DIR)/dvb-core/neumo-version.c::
+	$(ROOT_DIR)/update_version.sh
