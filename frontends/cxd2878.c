@@ -17,6 +17,9 @@ Copyright (c) 2021 Davin zhang <Davin@tbsdtv.com> www.Turbosight.com
 #include "cxd2878.h"
 #include "cxd2878_priv.h"
 
+//there may be real errors below!!!
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wenum-compare"
 
 static LIST_HEAD(cxdlist);
 
