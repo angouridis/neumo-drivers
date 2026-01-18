@@ -86,6 +86,10 @@ struct neumo_user_data {
 	bool uses_neumo_api; //which api the opener has selected (activated by ioctl)
 };
 
+static void user_data_init(void) {
+
+};
+
 
 struct neumo_dvb_extra {
 	struct neumo_dvb_fe_events events;
@@ -99,7 +103,12 @@ static void neumo_dvb_extra_init(struct neumo_dvb_extra* extra) {
 	xa_init(&extra->users);
 }
 
-static void neumo_dvb_extra_free(struct neumo_dvb_extra* extra) {
+static void neumo_dvb_extra_free_users(struct neumo_dvb_extra* extra) {
+	unsigned long index;
+	void *entry;
+	xa_for_each(&extra->users, index, entry){
+		kfree(entry);
+	}
 	xa_destroy(&extra->users);
 }
 
@@ -107,7 +116,7 @@ static void neumo_dvb_extra_free(struct neumo_dvb_extra* extra) {
 void neumo_dvb_frontend_private_free(struct neumo_dvb_frontend_private* fepriv, struct dvb_adapter* adapter)
 {
 	adapter_dprintk(adapter, "calling kfree(fepriv)\n");
-	neumo_dvb_extra_free(fepriv->extra);
+	neumo_dvb_extra_free_users(fepriv->extra);
 	kfree(fepriv->extra);
 	kfree(fepriv);
 	adapter_dprintk(adapter, "setting frontend_priv=NULL\n");
@@ -2292,6 +2301,29 @@ static int neumo_driver_dvb_frontend_do_ioctl(struct neumo_dvb_frontend* fe,
 	return err;
 }
 
+static struct neumo_user_data* get_user_data(	struct neumo_dvb_frontend_private* fepriv,
+																							struct dvb_device *dvbdev)
+{
+	struct neumo_user_data* user_data = xa_load(&fepriv->extra->users, (intptr_t) dvbdev);
+	if(!user_data) {
+		user_data =kzalloc(sizeof(struct neumo_dvb_extra), GFP_KERNEL);;
+		user_data_init();
+	}
+	xa_store(&fepriv->extra->users, (intptr_t) dvbdev, user_data, GFP_KERNEL);
+	return user_data;
+}
+
+static void neumo_dvb_free_user_data(struct neumo_dvb_extra* extra, struct dvb_device* dvbdev) {
+	unsigned long index;
+	void *entry;
+	struct neumo_user_data* user_data = xa_load(&extra->users, (intptr_t) dvbdev);
+	if(user_data) {
+		kfree(user_data);
+		xa_erase(&extra->users, (intptr_t) dvbdev);
+	}
+	xa_destroy(&extra->users);
+}
+
 //main entry point; semaphore not held yet
 static int dvb_frontend_do_ioctl(struct file *file, unsigned int cmd, void *parg)
 {
@@ -2306,7 +2338,7 @@ static int dvb_frontend_do_ioctl(struct file *file, unsigned int cmd, void *parg
 		struct neumo_dvb_frontend* fe = fepriv->neumo_api_fe;
 		adapter = fe->dvb;
 	}
-	struct neumo_user_data* user_data = xa_load(&fepriv->extra->users, (intptr_t) dvbdev);
+	struct neumo_user_data* user_data = get_user_data(fepriv, dvbdev);
 
 	if(cmd == FE_SELECT_API) {
 		struct dvb_select_api* api = parg;
@@ -3669,7 +3701,7 @@ static int neumo_dvb_frontend_release(struct inode *inode, struct file *file)
 	void* fe_ = dvbdev->priv; //do not know type yet
 	struct neumo_dvb_frontend_private* fepriv = xa_load(&neumo_fes, (intptr_t) fe_);
 	int ret;
-
+	neumo_dvb_free_user_data(fepriv->extra, dvbdev);
 	if(fepriv->dvb_api_fe) {
 		struct dvb_adapter* adapter = dvb_driver_get_adapter(fepriv);
 		ret= neumo_dvb_frontend_release_fepriv(fepriv, adapter, inode, file);
