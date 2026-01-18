@@ -351,10 +351,16 @@ static long tbsci_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	switch (cmd)
 	{
 	case FE_SET_PROPERTY:
-		copy_from_user(&props , (const char*)arg, sizeof(struct dtv_properties ));
+		if(copy_from_user(&props , (const char*)arg, sizeof(struct dtv_properties ))) {
+			ret = -EFAULT;
+			break;
+		}
 		if (props.num == 1)
 		{
-			copy_from_user(&prop , (const char*)props.props, sizeof(struct dtv_property ));
+			if(copy_from_user(&prop , (const char*)props.props, sizeof(struct dtv_property ))) {
+				ret = -EFAULT;
+				break;
+			}
 			switch (prop.cmd)
 			{
 				case MODULATOR_INPUT_BITRATE:
