@@ -28,6 +28,7 @@ obj-$(CONFIG_DVB_STV6110x) += stv6110x.o
 obj-$(CONFIG_DVB_STV6111) += stv6111.o
 obj-$(CONFIG_DVB_MN88443X) += mn88443x.o
 obj-$(CONFIG_DVB_TAS2101) += tas2101.o
+obj-$(CONFIG_DVB_TAS2101) += tas2971.o
 obj-$(CONFIG_DVB_GX1133) += gx1133.o
 obj-$(CONFIG_DVB_STV0299) += stv0299.o
 obj-$(CONFIG_DVB_STV0288) += stv0288.o
