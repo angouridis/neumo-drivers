@@ -6,7 +6,7 @@
 #define __TDA8290_H__
 
 #include <linux/i2c.h>
-#include <media/dvb_frontend.h>
+#include <media/neumo-dvb-frontend.h>
 #include "tda18271.h"
 
 enum tda8290_lna {
@@ -29,7 +29,7 @@ struct tda829x_config {
 #if IS_REACHABLE(CONFIG_MEDIA_TUNER_TDA8290)
 extern int tda829x_probe(struct i2c_adapter *i2c_adap, u8 i2c_addr);
 
-extern struct dvb_frontend *tda829x_attach(struct dvb_frontend *fe,
+extern struct neumo_dvb_frontend *tda829x_attach(struct neumo_dvb_frontend *fe,
 					   struct i2c_adapter *i2c_adap,
 					   u8 i2c_addr,
 					   struct tda829x_config *cfg);
@@ -40,7 +40,7 @@ static inline int tda829x_probe(struct i2c_adapter *i2c_adap, u8 i2c_addr)
 	return -EINVAL;
 }
 
-static inline struct dvb_frontend *tda829x_attach(struct dvb_frontend *fe,
+static inline struct neumo_dvb_frontend *tda829x_attach(struct neumo_dvb_frontend *fe,
 						  struct i2c_adapter *i2c_adap,
 						  u8 i2c_addr,
 						  struct tda829x_config *cfg)

@@ -154,7 +154,7 @@ static u32 tbs5925_i2c_func(struct i2c_adapter *adapter)
 	return I2C_FUNC_I2C;
 }
 
-static void tbs5925_led_ctrl(struct dvb_frontend *fe, int offon)
+static void tbs5925_led_ctrl(struct neumo_dvb_frontend *fe, int offon)
 {
 	static u8 led_off[] = { 0 };
 	static u8 led_on[] = { 1 };
@@ -242,7 +242,7 @@ static int tbs5925_read_mac_address(struct dvb_usb_device *d, u8 mac[6])
 	return 0;
 };
 
-static int tbs5925_set_voltage(struct dvb_frontend *fe, 
+static int tbs5925_set_voltage(struct neumo_dvb_frontend *fe, 
 						enum fe_sec_voltage voltage)
 {
 	static u8 command_13v[1] = {0x00};

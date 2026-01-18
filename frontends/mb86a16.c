@@ -12,7 +12,7 @@
 #include <linux/moduleparam.h>
 #include <linux/slab.h>
 
-#include <media/dvb_frontend.h>
+#include <media/neumo-dvb-frontend.h>
 #include "mb86a16.h"
 #include "mb86a16_priv.h"
 
@@ -22,7 +22,7 @@ module_param(verbose, int, 0644);
 struct mb86a16_state {
 	struct i2c_adapter		*i2c_adap;
 	const struct mb86a16_config	*config;
-	struct dvb_frontend		frontend;
+	struct neumo_dvb_frontend		frontend;
 
 	/* tuning parameters */
 	int				frequency;
@@ -568,7 +568,7 @@ err:
 	return -EREMOTEIO;
 }
 
-static int mb86a16_read_status(struct dvb_frontend *fe, enum fe_status *status)
+static int mb86a16_read_status(struct neumo_dvb_frontend *fe, enum fe_status *status)
 {
 	u8 stat, stat2;
 	struct mb86a16_state *state = fe->demodulator_priv;
@@ -1494,7 +1494,7 @@ static int mb86a16_set_fe(struct mb86a16_state *state)
 	return ret;
 }
 
-static int mb86a16_send_diseqc_msg(struct dvb_frontend *fe,
+static int mb86a16_send_diseqc_msg(struct neumo_dvb_frontend *fe,
 				   struct dvb_diseqc_master_cmd *cmd)
 {
 	struct mb86a16_state *state = fe->demodulator_priv;
@@ -1538,7 +1538,7 @@ err:
 	return ret;
 }
 
-static int mb86a16_send_diseqc_burst(struct dvb_frontend *fe,
+static int mb86a16_send_diseqc_burst(struct neumo_dvb_frontend *fe,
 				     enum fe_sec_mini_cmd burst)
 {
 	struct mb86a16_state *state = fe->demodulator_priv;
@@ -1567,7 +1567,7 @@ err:
 	return -EREMOTEIO;
 }
 
-static int mb86a16_set_tone(struct dvb_frontend *fe, enum fe_sec_tone_mode tone)
+static int mb86a16_set_tone(struct neumo_dvb_frontend *fe, enum fe_sec_tone_mode tone)
 {
 	struct mb86a16_state *state = fe->demodulator_priv;
 
@@ -1600,9 +1600,9 @@ err:
 	return -EREMOTEIO;
 }
 
-static enum dvbfe_search mb86a16_search(struct dvb_frontend *fe)
+static enum neumo_dvbfe_search mb86a16_search(struct neumo_dvb_frontend *fe)
 {
-	struct dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	struct mb86a16_state *state = fe->demodulator_priv;
 
 	state->frequency = p->frequency / 1000;
@@ -1617,23 +1617,23 @@ static enum dvbfe_search mb86a16_search(struct dvb_frontend *fe)
 	return DVBFE_ALGO_SEARCH_FAILED;
 }
 
-static void mb86a16_release(struct dvb_frontend *fe)
+static void mb86a16_release(struct neumo_dvb_frontend *fe)
 {
 	struct mb86a16_state *state = fe->demodulator_priv;
 	kfree(state);
 }
 
-static int mb86a16_init(struct dvb_frontend *fe)
+static int mb86a16_init(struct neumo_dvb_frontend *fe)
 {
 	return 0;
 }
 
-static int mb86a16_sleep(struct dvb_frontend *fe)
+static int mb86a16_sleep(struct neumo_dvb_frontend *fe)
 {
 	return 0;
 }
 
-static int mb86a16_read_ber(struct dvb_frontend *fe, u32 *ber)
+static int mb86a16_read_ber(struct neumo_dvb_frontend *fe, u32 *ber)
 {
 	u8 ber_mon, ber_tab, ber_lsb, ber_mid, ber_msb, ber_tim, ber_rst;
 	u32 timer;
@@ -1700,7 +1700,7 @@ err:
 	return -EREMOTEIO;
 }
 
-static int mb86a16_read_signal_strength(struct dvb_frontend *fe, u16 *strength)
+static int mb86a16_read_signal_strength(struct neumo_dvb_frontend *fe, u16 *strength)
 {
 	u8 agcm = 0;
 	struct mb86a16_state *state = fe->demodulator_priv;
@@ -1747,7 +1747,7 @@ static const struct cnr cnr_tab[] = {
 	{ 208, 30 }
 };
 
-static int mb86a16_read_snr(struct dvb_frontend *fe, u16 *snr)
+static int mb86a16_read_snr(struct neumo_dvb_frontend *fe, u16 *snr)
 {
 	struct mb86a16_state *state = fe->demodulator_priv;
 	int i = 0;
@@ -1773,7 +1773,7 @@ static int mb86a16_read_snr(struct dvb_frontend *fe, u16 *snr)
 	return 0;
 }
 
-static int mb86a16_read_ucblocks(struct dvb_frontend *fe, u32 *ucblocks)
+static int mb86a16_read_ucblocks(struct neumo_dvb_frontend *fe, u32 *ucblocks)
 {
 	u8 dist;
 	struct mb86a16_state *state = fe->demodulator_priv;
@@ -1787,12 +1787,12 @@ static int mb86a16_read_ucblocks(struct dvb_frontend *fe, u32 *ucblocks)
 	return 0;
 }
 
-static enum dvbfe_algo mb86a16_frontend_algo(struct dvb_frontend *fe)
+static enum neumo_dvbfe_algo mb86a16_frontend_algo(struct neumo_dvb_frontend *fe)
 {
 	return DVBFE_ALGO_CUSTOM;
 }
 
-static const struct dvb_frontend_ops mb86a16_ops = {
+static const struct neumo_dvb_frontend_ops mb86a16_ops = {
 	.delsys = { SYS_DVBS },
 	.info = {
 		.name			= "Fujitsu MB86A16 DVB-S",
@@ -1825,7 +1825,7 @@ static const struct dvb_frontend_ops mb86a16_ops = {
 	.set_tone			= mb86a16_set_tone,
 };
 
-struct dvb_frontend *mb86a16_attach(const struct mb86a16_config *config,
+struct neumo_dvb_frontend *mb86a16_attach(const struct mb86a16_config *config,
 				    struct i2c_adapter *i2c_adap)
 {
 	u8 dev_id = 0;
@@ -1842,7 +1842,7 @@ struct dvb_frontend *mb86a16_attach(const struct mb86a16_config *config,
 	if (dev_id != 0xfe)
 		goto error;
 
-	memcpy(&state->frontend.ops, &mb86a16_ops, sizeof(struct dvb_frontend_ops));
+	memcpy(&state->frontend.ops, &mb86a16_ops, sizeof(struct neumo_dvb_frontend_ops));
 	state->frontend.demodulator_priv = state;
 	state->frontend.ops.set_voltage = state->config->set_voltage;
 
@@ -1855,3 +1855,6 @@ EXPORT_SYMBOL_GPL(mb86a16_attach);
 MODULE_DESCRIPTION("Fujitsu MB86A16 DVB-S demodulator driver");
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Manu Abraham");
+
+//check for incorrect include files
+#include "linux/media/neumo-check.h"

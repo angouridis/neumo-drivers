@@ -8,7 +8,7 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <asm/types.h>
-#include <linux/dvb/frontend.h>
+#include <dvb/neumo-frontend.h>
 #include <linux/videodev2.h>
 
 #include "tda827x.h"
@@ -34,7 +34,7 @@ struct tda827x_priv {
 	u32 bandwidth;
 };
 
-static void tda827x_set_std(struct dvb_frontend *fe,
+static void tda827x_set_std(struct neumo_dvb_frontend *fe,
 			    struct analog_parameters *params)
 {
 	struct tda827x_priv *priv = fe->tuner_priv;
@@ -120,7 +120,7 @@ static const struct tda827x_data tda827x_table[] = {
 	{ .lomax =         0, .spd = 0, .bs = 0, .bp = 0, .cp = 0, .gc3 = 0, .div1p5 = 0}
 };
 
-static int tuner_transfer(struct dvb_frontend *fe,
+static int tuner_transfer(struct neumo_dvb_frontend *fe,
 			  struct i2c_msg *msg,
 			  const int size)
 {
@@ -139,9 +139,9 @@ static int tuner_transfer(struct dvb_frontend *fe,
 	return rc;
 }
 
-static int tda827xo_set_params(struct dvb_frontend *fe)
+static int tda827xo_set_params(struct neumo_dvb_frontend *fe)
 {
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct tda827x_priv *priv = fe->tuner_priv;
 	u8 buf[14];
 	int rc;
@@ -216,7 +216,7 @@ err:
 	return rc;
 }
 
-static int tda827xo_sleep(struct dvb_frontend *fe)
+static int tda827xo_sleep(struct neumo_dvb_frontend *fe)
 {
 	struct tda827x_priv *priv = fe->tuner_priv;
 	static u8 buf[] = { 0x30, 0xd0 };
@@ -234,7 +234,7 @@ static int tda827xo_sleep(struct dvb_frontend *fe)
 
 /* ------------------------------------------------------------------ */
 
-static int tda827xo_set_analog_params(struct dvb_frontend *fe,
+static int tda827xo_set_analog_params(struct neumo_dvb_frontend *fe,
 				      struct analog_parameters *params)
 {
 	unsigned char tuner_reg[8];
@@ -318,7 +318,7 @@ static int tda827xo_set_analog_params(struct dvb_frontend *fe,
 	return 0;
 }
 
-static void tda827xo_agcf(struct dvb_frontend *fe)
+static void tda827xo_agcf(struct neumo_dvb_frontend *fe)
 {
 	struct tda827x_priv *priv = fe->tuner_priv;
 	unsigned char data[] = { 0x80, 0x0c };
@@ -428,7 +428,7 @@ static struct tda827xa_data tda827xa_analog[] = {
 	{ .lomax =         0, .svco = 0, .spd = 0, .scr = 0, .sbs = 0, .gc3 = 0}
 };
 
-static int tda827xa_sleep(struct dvb_frontend *fe)
+static int tda827xa_sleep(struct neumo_dvb_frontend *fe)
 {
 	struct tda827x_priv *priv = fe->tuner_priv;
 	static u8 buf[] = { 0x30, 0x90 };
@@ -445,7 +445,7 @@ static int tda827xa_sleep(struct dvb_frontend *fe)
 	return 0;
 }
 
-static void tda827xa_lna_gain(struct dvb_frontend *fe, int high,
+static void tda827xa_lna_gain(struct neumo_dvb_frontend *fe, int high,
 			      struct analog_parameters *params)
 {
 	struct tda827x_priv *priv = fe->tuner_priv;
@@ -498,9 +498,9 @@ static void tda827xa_lna_gain(struct dvb_frontend *fe, int high,
 	}
 }
 
-static int tda827xa_set_params(struct dvb_frontend *fe)
+static int tda827xa_set_params(struct neumo_dvb_frontend *fe)
 {
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct tda827x_priv *priv = fe->tuner_priv;
 	struct tda827xa_data *frequency_map = tda827xa_dvbt;
 	u8 buf[11];
@@ -645,7 +645,7 @@ err:
 }
 
 
-static int tda827xa_set_analog_params(struct dvb_frontend *fe,
+static int tda827xa_set_analog_params(struct neumo_dvb_frontend *fe,
 				      struct analog_parameters *params)
 {
 	unsigned char tuner_reg[11];
@@ -743,7 +743,7 @@ static int tda827xa_set_analog_params(struct dvb_frontend *fe,
 	return 0;
 }
 
-static void tda827xa_agcf(struct dvb_frontend *fe)
+static void tda827xa_agcf(struct neumo_dvb_frontend *fe)
 {
 	struct tda827x_priv *priv = fe->tuner_priv;
 	unsigned char data[] = {0x80, 0x2c};
@@ -754,27 +754,27 @@ static void tda827xa_agcf(struct dvb_frontend *fe)
 
 /* ------------------------------------------------------------------ */
 
-static void tda827x_release(struct dvb_frontend *fe)
+static void tda827x_release(struct neumo_dvb_frontend *fe)
 {
 	kfree(fe->tuner_priv);
 	fe->tuner_priv = NULL;
 }
 
-static int tda827x_get_frequency(struct dvb_frontend *fe, u32 *frequency)
+static int tda827x_get_frequency(struct neumo_dvb_frontend *fe, u32 *frequency)
 {
 	struct tda827x_priv *priv = fe->tuner_priv;
 	*frequency = priv->frequency;
 	return 0;
 }
 
-static int tda827x_get_bandwidth(struct dvb_frontend *fe, u32 *bandwidth)
+static int tda827x_get_bandwidth(struct neumo_dvb_frontend *fe, u32 *bandwidth)
 {
 	struct tda827x_priv *priv = fe->tuner_priv;
 	*bandwidth = priv->bandwidth;
 	return 0;
 }
 
-static int tda827x_init(struct dvb_frontend *fe)
+static int tda827x_init(struct neumo_dvb_frontend *fe)
 {
 	struct tda827x_priv *priv = fe->tuner_priv;
 	dprintk("%s:\n", __func__);
@@ -784,9 +784,9 @@ static int tda827x_init(struct dvb_frontend *fe)
 	return 0;
 }
 
-static int tda827x_probe_version(struct dvb_frontend *fe);
+static int tda827x_probe_version(struct neumo_dvb_frontend *fe);
 
-static int tda827x_initial_init(struct dvb_frontend *fe)
+static int tda827x_initial_init(struct neumo_dvb_frontend *fe)
 {
 	int ret;
 	ret = tda827x_probe_version(fe);
@@ -795,7 +795,7 @@ static int tda827x_initial_init(struct dvb_frontend *fe)
 	return fe->ops.tuner_ops.init(fe);
 }
 
-static int tda827x_initial_sleep(struct dvb_frontend *fe)
+static int tda827x_initial_sleep(struct neumo_dvb_frontend *fe)
 {
 	int ret;
 	ret = tda827x_probe_version(fe);
@@ -804,7 +804,7 @@ static int tda827x_initial_sleep(struct dvb_frontend *fe)
 	return fe->ops.tuner_ops.sleep(fe);
 }
 
-static const struct dvb_tuner_ops tda827xo_tuner_ops = {
+static const struct neumo_dvb_tuner_ops tda827xo_tuner_ops = {
 	.info = {
 		.name = "Philips TDA827X",
 		.frequency_min_hz  =  55 * MHz,
@@ -820,7 +820,7 @@ static const struct dvb_tuner_ops tda827xo_tuner_ops = {
 	.get_bandwidth = tda827x_get_bandwidth,
 };
 
-static const struct dvb_tuner_ops tda827xa_tuner_ops = {
+static const struct neumo_dvb_tuner_ops tda827xa_tuner_ops = {
 	.info = {
 		.name = "Philips TDA827XA",
 		.frequency_min_hz  =  44 * MHz,
@@ -836,7 +836,7 @@ static const struct dvb_tuner_ops tda827xa_tuner_ops = {
 	.get_bandwidth = tda827x_get_bandwidth,
 };
 
-static int tda827x_probe_version(struct dvb_frontend *fe)
+static int tda827x_probe_version(struct neumo_dvb_frontend *fe)
 {
 	u8 data;
 	int rc;
@@ -859,14 +859,14 @@ static int tda827x_probe_version(struct dvb_frontend *fe)
 			priv->cfg->agcf = tda827xo_agcf;
 	} else {
 		dprintk("tda827xa tuner found\n");
-		memcpy(&fe->ops.tuner_ops, &tda827xa_tuner_ops, sizeof(struct dvb_tuner_ops));
+		memcpy(&fe->ops.tuner_ops, &tda827xa_tuner_ops, sizeof(struct neumo_dvb_tuner_ops));
 		if (priv->cfg)
 			priv->cfg->agcf = tda827xa_agcf;
 	}
 	return 0;
 }
 
-struct dvb_frontend *tda827x_attach(struct dvb_frontend *fe, int addr,
+struct neumo_dvb_frontend *tda827x_attach(struct neumo_dvb_frontend *fe, int addr,
 				    struct i2c_adapter *i2c,
 				    struct tda827x_config *cfg)
 {
@@ -880,7 +880,7 @@ struct dvb_frontend *tda827x_attach(struct dvb_frontend *fe, int addr,
 	priv->i2c_addr = addr;
 	priv->i2c_adap = i2c;
 	priv->cfg = cfg;
-	memcpy(&fe->ops.tuner_ops, &tda827xo_tuner_ops, sizeof(struct dvb_tuner_ops));
+	memcpy(&fe->ops.tuner_ops, &tda827xo_tuner_ops, sizeof(struct neumo_dvb_tuner_ops));
 	fe->tuner_priv = priv;
 
 	dprintk("type set to %s\n", fe->ops.tuner_ops.info.name);
@@ -893,3 +893,6 @@ MODULE_DESCRIPTION("DVB TDA827x driver");
 MODULE_AUTHOR("Hartmut Hackmann <hartmut.hackmann@t-online.de>");
 MODULE_AUTHOR("Michael Krufky <mkrufky@linuxtv.org>");
 MODULE_LICENSE("GPL");
+
+//check for incorrect include files
+#include "linux/media/neumo-check.h"

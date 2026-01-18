@@ -9,7 +9,7 @@
 
 #include <linux/slab.h>
 #include <linux/module.h>
-#include <linux/dvb/frontend.h>
+#include <linux/dvb/neumo-frontend.h>
 #include <asm/types.h>
 
 #include "stb6000.h"
@@ -28,13 +28,13 @@ struct stb6000_priv {
 	u32 frequency;
 };
 
-static void stb6000_release(struct dvb_frontend *fe)
+static void stb6000_release(struct neumo_dvb_frontend *fe)
 {
 	kfree(fe->tuner_priv);
 	fe->tuner_priv = NULL;
 }
 
-static int stb6000_sleep(struct dvb_frontend *fe)
+static int stb6000_sleep(struct neumo_dvb_frontend *fe)
 {
 	struct stb6000_priv *priv = fe->tuner_priv;
 	int ret;
@@ -61,9 +61,9 @@ static int stb6000_sleep(struct dvb_frontend *fe)
 	return (ret == 1) ? 0 : ret;
 }
 
-static int stb6000_set_params(struct dvb_frontend *fe)
+static int stb6000_set_params(struct neumo_dvb_frontend *fe)
 {
-	struct dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	struct stb6000_priv *priv = fe->tuner_priv;
 	unsigned int n, m;
 	int ret;
@@ -165,14 +165,14 @@ static int stb6000_set_params(struct dvb_frontend *fe)
 	return -1;
 }
 
-static int stb6000_get_frequency(struct dvb_frontend *fe, u32 *frequency)
+static int stb6000_get_frequency(struct neumo_dvb_frontend *fe, u32 *frequency)
 {
 	struct stb6000_priv *priv = fe->tuner_priv;
 	*frequency = priv->frequency;
 	return 0;
 }
 
-static const struct dvb_tuner_ops stb6000_tuner_ops = {
+static const struct neumo_dvb_tuner_ops stb6000_tuner_ops = {
 	.info = {
 		.name = "ST STB6000",
 		.frequency_min_hz =  950 * MHz,
@@ -184,7 +184,7 @@ static const struct dvb_tuner_ops stb6000_tuner_ops = {
 	.get_frequency = stb6000_get_frequency,
 };
 
-struct dvb_frontend *stb6000_attach(struct dvb_frontend *fe, int addr,
+struct neumo_dvb_frontend *stb6000_attach(struct neumo_dvb_frontend *fe, int addr,
 						struct i2c_adapter *i2c)
 {
 	struct stb6000_priv *priv = NULL;
@@ -226,7 +226,7 @@ struct dvb_frontend *stb6000_attach(struct dvb_frontend *fe, int addr,
 	priv->i2c = i2c;
 
 	memcpy(&fe->ops.tuner_ops, &stb6000_tuner_ops,
-				sizeof(struct dvb_tuner_ops));
+				sizeof(struct neumo_dvb_tuner_ops));
 
 	fe->tuner_priv = priv;
 

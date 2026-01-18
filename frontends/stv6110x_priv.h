@@ -15,7 +15,7 @@
 #define FE_NOTICE				1
 #define FE_INFO					2
 #define FE_DEBUG				3
-#define FE_DEBUGREG				4
+#define FE_DEBUGREG			4
 
 #define dprintk(__y, __z, format, arg...) do {						\
 	if (__z) {									\
@@ -54,7 +54,7 @@
 #define REFCLOCK_MHz				(stv6110x->config->refclk / 1000000)
 
 struct stv6110x_state {
-	struct dvb_frontend		*frontend;
+	struct neumo_dvb_frontend		*frontend;
 	struct i2c_adapter		*i2c;
 	const struct stv6110x_config	*config;
 	u8				regs[8];

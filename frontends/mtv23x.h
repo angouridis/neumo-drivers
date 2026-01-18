@@ -1,6 +1,6 @@
 #ifndef MTV23X_H
 #define MTV23X_H
-#include <linux/dvb/frontend.h>
+#include <dvb/neumo-frontend.h>
 
 
 /*TS mode*/
@@ -18,7 +18,7 @@ struct mtv23x_config{
 	int clk_freq;  //32000khz , 19200khz
 	u16 i2c_wr_max;
 
-	struct dvb_frontend **fe;
+	struct neumo_dvb_frontend **fe;
 };
 
 #endif

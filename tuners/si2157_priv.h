@@ -22,7 +22,7 @@ enum si2157_pads {
 /* state struct */
 struct si2157_dev {
 	struct mutex i2c_mutex;
-	struct dvb_frontend *fe;
+	struct neumo_dvb_frontend *fe;
 	unsigned int active:1;
 	unsigned int inversion:1;
 	unsigned int dont_load_firmware:1;

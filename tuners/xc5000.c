@@ -12,10 +12,10 @@
 #include <linux/videodev2.h>
 #include <linux/delay.h>
 #include <linux/workqueue.h>
-#include <linux/dvb/frontend.h>
+#include <linux/dvb/neumo-frontend.h>
 #include <linux/i2c.h>
 
-#include <media/dvb_frontend.h>
+#include <media/neumo-dvb-frontend.h>
 
 #include "xc5000.h"
 #include "tuner-i2c.h"
@@ -55,7 +55,7 @@ struct xc5000_priv {
 	u8 init_status_supported;
 	u8 fw_checksum_supported;
 
-	struct dvb_frontend *fe;
+	struct neumo_dvb_frontend *fe;
 	struct delayed_work timer_sleep;
 
 	const struct firmware   *firmware;
@@ -236,10 +236,10 @@ static inline const struct xc5000_fw_cfg *xc5000_assign_firmware(int chip_id)
 	}
 }
 
-static int xc_load_fw_and_init_tuner(struct dvb_frontend *fe, int force);
-static int xc5000_is_firmware_loaded(struct dvb_frontend *fe);
+static int xc_load_fw_and_init_tuner(struct neumo_dvb_frontend *fe, int force);
+static int xc5000_is_firmware_loaded(struct neumo_dvb_frontend *fe);
 static int xc5000_readreg(struct xc5000_priv *priv, u16 reg, u16 *val);
-static int xc5000_tuner_reset(struct dvb_frontend *fe);
+static int xc5000_tuner_reset(struct neumo_dvb_frontend *fe);
 
 static int xc_send_i2c_data(struct xc5000_priv *priv, u8 *buf, int len)
 {
@@ -290,7 +290,7 @@ static int xc5000_readreg(struct xc5000_priv *priv, u16 reg, u16 *val)
 	return 0;
 }
 
-static int xc5000_tuner_reset(struct dvb_frontend *fe)
+static int xc5000_tuner_reset(struct neumo_dvb_frontend *fe)
 {
 	struct xc5000_priv *priv = fe->tuner_priv;
 	int ret;
@@ -346,7 +346,7 @@ static int xc_write_reg(struct xc5000_priv *priv, u16 reg_addr, u16 i2c_data)
 	return result;
 }
 
-static int xc_load_i2c_sequence(struct dvb_frontend *fe, const u8 *i2c_sequence)
+static int xc_load_i2c_sequence(struct neumo_dvb_frontend *fe, const u8 *i2c_sequence)
 {
 	struct xc5000_priv *priv = fe->tuner_priv;
 
@@ -442,7 +442,7 @@ static int xc_set_signal_source(struct xc5000_priv *priv, u16 rf_mode)
 	return xc_write_reg(priv, XREG_SIGNALSOURCE, rf_mode);
 }
 
-static const struct dvb_tuner_ops xc5000_tuner_ops;
+static const struct neumo_dvb_tuner_ops xc5000_tuner_ops;
 
 static int xc_set_rf_frequency(struct xc5000_priv *priv, u32 freq_hz)
 {
@@ -567,7 +567,7 @@ static int xc_tune_channel(struct xc5000_priv *priv, u32 freq_hz, int mode)
 	return 0;
 }
 
-static int xc_set_xtal(struct dvb_frontend *fe)
+static int xc_set_xtal(struct neumo_dvb_frontend *fe)
 {
 	struct xc5000_priv *priv = fe->tuner_priv;
 	int ret = 0;
@@ -593,7 +593,7 @@ static int xc_set_xtal(struct dvb_frontend *fe)
 	return ret;
 }
 
-static int xc5000_fwupload(struct dvb_frontend *fe,
+static int xc5000_fwupload(struct neumo_dvb_frontend *fe,
 			   const struct xc5000_fw_cfg *desired_fw,
 			   const struct firmware *fw)
 {
@@ -680,7 +680,7 @@ static void xc_debug_dump(struct xc5000_priv *priv)
 	}
 }
 
-static int xc5000_tune_digital(struct dvb_frontend *fe)
+static int xc5000_tune_digital(struct neumo_dvb_frontend *fe)
 {
 	struct xc5000_priv *priv = fe->tuner_priv;
 	int ret;
@@ -723,7 +723,7 @@ static int xc5000_tune_digital(struct dvb_frontend *fe)
 	return 0;
 }
 
-static int xc5000_set_digital_params(struct dvb_frontend *fe)
+static int xc5000_set_digital_params(struct neumo_dvb_frontend *fe)
 {
 	int b;
 	struct xc5000_priv *priv = fe->tuner_priv;
@@ -814,7 +814,7 @@ static int xc5000_set_digital_params(struct dvb_frontend *fe)
 	return xc5000_tune_digital(fe);
 }
 
-static int xc5000_is_firmware_loaded(struct dvb_frontend *fe)
+static int xc5000_is_firmware_loaded(struct neumo_dvb_frontend *fe)
 {
 	struct xc5000_priv *priv = fe->tuner_priv;
 	int ret;
@@ -834,7 +834,7 @@ static int xc5000_is_firmware_loaded(struct dvb_frontend *fe)
 	return ret;
 }
 
-static void xc5000_config_tv(struct dvb_frontend *fe,
+static void xc5000_config_tv(struct neumo_dvb_frontend *fe,
 			     struct analog_parameters *params)
 {
 	struct xc5000_priv *priv = fe->tuner_priv;
@@ -894,7 +894,7 @@ static void xc5000_config_tv(struct dvb_frontend *fe,
 	}
 }
 
-static int xc5000_set_tv_freq(struct dvb_frontend *fe)
+static int xc5000_set_tv_freq(struct neumo_dvb_frontend *fe)
 {
 	struct xc5000_priv *priv = fe->tuner_priv;
 	u16 pll_lock_status;
@@ -945,7 +945,7 @@ tune_channel:
 	return 0;
 }
 
-static int xc5000_config_radio(struct dvb_frontend *fe,
+static int xc5000_config_radio(struct neumo_dvb_frontend *fe,
 			       struct analog_parameters *params)
 
 {
@@ -965,7 +965,7 @@ static int xc5000_config_radio(struct dvb_frontend *fe,
 	return 0;
 }
 
-static int xc5000_set_radio_freq(struct dvb_frontend *fe)
+static int xc5000_set_radio_freq(struct neumo_dvb_frontend *fe)
 {
 	struct xc5000_priv *priv = fe->tuner_priv;
 	int ret;
@@ -1010,7 +1010,7 @@ static int xc5000_set_radio_freq(struct dvb_frontend *fe)
 	return 0;
 }
 
-static int xc5000_set_params(struct dvb_frontend *fe)
+static int xc5000_set_params(struct neumo_dvb_frontend *fe)
 {
 	struct xc5000_priv *priv = fe->tuner_priv;
 
@@ -1031,7 +1031,7 @@ static int xc5000_set_params(struct dvb_frontend *fe)
 	return 0;
 }
 
-static int xc5000_set_analog_params(struct dvb_frontend *fe,
+static int xc5000_set_analog_params(struct neumo_dvb_frontend *fe,
 			     struct analog_parameters *params)
 {
 	struct xc5000_priv *priv = fe->tuner_priv;
@@ -1057,7 +1057,7 @@ static int xc5000_set_analog_params(struct dvb_frontend *fe,
 	return xc5000_set_params(fe);
 }
 
-static int xc5000_get_frequency(struct dvb_frontend *fe, u32 *freq)
+static int xc5000_get_frequency(struct neumo_dvb_frontend *fe, u32 *freq)
 {
 	struct xc5000_priv *priv = fe->tuner_priv;
 	dprintk(1, "%s()\n", __func__);
@@ -1065,7 +1065,7 @@ static int xc5000_get_frequency(struct dvb_frontend *fe, u32 *freq)
 	return 0;
 }
 
-static int xc5000_get_if_frequency(struct dvb_frontend *fe, u32 *freq)
+static int xc5000_get_if_frequency(struct neumo_dvb_frontend *fe, u32 *freq)
 {
 	struct xc5000_priv *priv = fe->tuner_priv;
 	dprintk(1, "%s()\n", __func__);
@@ -1073,7 +1073,7 @@ static int xc5000_get_if_frequency(struct dvb_frontend *fe, u32 *freq)
 	return 0;
 }
 
-static int xc5000_get_bandwidth(struct dvb_frontend *fe, u32 *bw)
+static int xc5000_get_bandwidth(struct neumo_dvb_frontend *fe, u32 *bw)
 {
 	struct xc5000_priv *priv = fe->tuner_priv;
 	dprintk(1, "%s()\n", __func__);
@@ -1082,7 +1082,7 @@ static int xc5000_get_bandwidth(struct dvb_frontend *fe, u32 *bw)
 	return 0;
 }
 
-static int xc5000_get_status(struct dvb_frontend *fe, u32 *status)
+static int xc5000_get_status(struct neumo_dvb_frontend *fe, u32 *status)
 {
 	struct xc5000_priv *priv = fe->tuner_priv;
 	u16 lock_status = 0;
@@ -1096,7 +1096,7 @@ static int xc5000_get_status(struct dvb_frontend *fe, u32 *status)
 	return 0;
 }
 
-static int xc_load_fw_and_init_tuner(struct dvb_frontend *fe, int force)
+static int xc_load_fw_and_init_tuner(struct neumo_dvb_frontend *fe, int force)
 {
 	struct xc5000_priv *priv = fe->tuner_priv;
 	const struct xc5000_fw_cfg *desired_fw = xc5000_assign_firmware(priv->chip_id);
@@ -1217,7 +1217,7 @@ static void xc5000_do_timer_sleep(struct work_struct *timer_sleep)
 {
 	struct xc5000_priv *priv =container_of(timer_sleep, struct xc5000_priv,
 					       timer_sleep.work);
-	struct dvb_frontend *fe = priv->fe;
+	struct neumo_dvb_frontend *fe = priv->fe;
 	int ret;
 
 	dprintk(1, "%s()\n", __func__);
@@ -1232,7 +1232,7 @@ static void xc5000_do_timer_sleep(struct work_struct *timer_sleep)
 			__func__);
 }
 
-static int xc5000_sleep(struct dvb_frontend *fe)
+static int xc5000_sleep(struct neumo_dvb_frontend *fe)
 {
 	struct xc5000_priv *priv = fe->tuner_priv;
 
@@ -1248,7 +1248,7 @@ static int xc5000_sleep(struct dvb_frontend *fe)
 	return 0;
 }
 
-static int xc5000_suspend(struct dvb_frontend *fe)
+static int xc5000_suspend(struct neumo_dvb_frontend *fe)
 {
 	struct xc5000_priv *priv = fe->tuner_priv;
 	int ret;
@@ -1266,7 +1266,7 @@ static int xc5000_suspend(struct dvb_frontend *fe)
 	return 0;
 }
 
-static int xc5000_resume(struct dvb_frontend *fe)
+static int xc5000_resume(struct neumo_dvb_frontend *fe)
 {
 	struct xc5000_priv *priv = fe->tuner_priv;
 
@@ -1280,7 +1280,7 @@ static int xc5000_resume(struct dvb_frontend *fe)
 	return xc5000_set_params(fe);
 }
 
-static int xc5000_init(struct dvb_frontend *fe)
+static int xc5000_init(struct neumo_dvb_frontend *fe)
 {
 	struct xc5000_priv *priv = fe->tuner_priv;
 	dprintk(1, "%s()\n", __func__);
@@ -1296,7 +1296,7 @@ static int xc5000_init(struct dvb_frontend *fe)
 	return 0;
 }
 
-static void xc5000_release(struct dvb_frontend *fe)
+static void xc5000_release(struct neumo_dvb_frontend *fe)
 {
 	struct xc5000_priv *priv = fe->tuner_priv;
 
@@ -1318,7 +1318,7 @@ static void xc5000_release(struct dvb_frontend *fe)
 	fe->tuner_priv = NULL;
 }
 
-static int xc5000_set_config(struct dvb_frontend *fe, void *priv_cfg)
+static int xc5000_set_config(struct neumo_dvb_frontend *fe, void *priv_cfg)
 {
 	struct xc5000_priv *priv = fe->tuner_priv;
 	struct xc5000_config *p = priv_cfg;
@@ -1338,7 +1338,7 @@ static int xc5000_set_config(struct dvb_frontend *fe, void *priv_cfg)
 }
 
 
-static const struct dvb_tuner_ops xc5000_tuner_ops = {
+static const struct neumo_dvb_tuner_ops xc5000_tuner_ops = {
 	.info = {
 		.name              = "Xceive XC5000",
 		.frequency_min_hz  =    1 * MHz,
@@ -1361,7 +1361,7 @@ static const struct dvb_tuner_ops xc5000_tuner_ops = {
 	.get_status	   = xc5000_get_status
 };
 
-struct dvb_frontend *xc5000_attach(struct dvb_frontend *fe,
+struct neumo_dvb_frontend *xc5000_attach(struct neumo_dvb_frontend *fe,
 				   struct i2c_adapter *i2c,
 				   const struct xc5000_config *cfg)
 {
@@ -1451,7 +1451,7 @@ struct dvb_frontend *xc5000_attach(struct dvb_frontend *fe,
 	mutex_unlock(&xc5000_list_mutex);
 
 	memcpy(&fe->ops.tuner_ops, &xc5000_tuner_ops,
-		sizeof(struct dvb_tuner_ops));
+		sizeof(struct neumo_dvb_tuner_ops));
 
 	return fe;
 fail:

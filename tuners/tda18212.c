@@ -1,3 +1,4 @@
+
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * NXP TDA18212HN silicon tuner driver
@@ -16,10 +17,10 @@ struct tda18212_dev {
 	u32 if_frequency;
 };
 
-static int tda18212_set_params(struct dvb_frontend *fe)
+static int tda18212_set_params(struct neumo_dvb_frontend *fe)
 {
 	struct tda18212_dev *dev = fe->tuner_priv;
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret, i;
 	u32 if_khz;
 	u8 buf[9];
@@ -165,7 +166,7 @@ error:
 	goto exit;
 }
 
-static int tda18212_get_if_frequency(struct dvb_frontend *fe, u32 *frequency)
+static int tda18212_get_if_frequency(struct neumo_dvb_frontend *fe, u32 *frequency)
 {
 	struct tda18212_dev *dev = fe->tuner_priv;
 
@@ -174,7 +175,7 @@ static int tda18212_get_if_frequency(struct dvb_frontend *fe, u32 *frequency)
 	return 0;
 }
 
-static const struct dvb_tuner_ops tda18212_tuner_ops = {
+static const struct neumo_dvb_tuner_ops tda18212_tuner_ops = {
 	.info = {
 		.name              = "NXP TDA18212",
 
@@ -194,7 +195,7 @@ static int tda18212_probe(struct i2c_client *client)
 #endif
 {
 	struct tda18212_config *cfg = client->dev.platform_data;
-	struct dvb_frontend *fe = cfg->fe;
+	struct neumo_dvb_frontend *fe = cfg->fe;
 	struct tda18212_dev *dev;
 	int ret;
 	unsigned int chip_id;
@@ -249,7 +250,7 @@ static int tda18212_probe(struct i2c_client *client)
 
 	fe->tuner_priv = dev;
 	memcpy(&fe->ops.tuner_ops, &tda18212_tuner_ops,
-			sizeof(struct dvb_tuner_ops));
+			sizeof(struct neumo_dvb_tuner_ops));
 	i2c_set_clientdata(client, dev);
 
 	return 0;
@@ -265,11 +266,11 @@ static void tda18212_remove(struct i2c_client *client)
 #endif
 {
 	struct tda18212_dev *dev = i2c_get_clientdata(client);
-	struct dvb_frontend *fe = dev->cfg.fe;
+	struct neumo_dvb_frontend *fe = dev->cfg.fe;
 
 	dev_dbg(&client->dev, "\n");
 
-	memset(&fe->ops.tuner_ops, 0, sizeof(struct dvb_tuner_ops));
+	memset(&fe->ops.tuner_ops, 0, sizeof(struct neumo_dvb_tuner_ops));
 	fe->tuner_priv = NULL;
 	kfree(dev);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(6,1,0)
@@ -297,3 +298,6 @@ module_i2c_driver(tda18212_driver);
 MODULE_DESCRIPTION("NXP TDA18212HN silicon tuner driver");
 MODULE_AUTHOR("Antti Palosaari <crope@iki.fi>");
 MODULE_LICENSE("GPL");
+
+//check for incorrect include files
+#include "linux/media/neumo-check.h"

@@ -218,7 +218,7 @@ static struct i2c_algorithm tbs5590_i2c_algo = {
 	.functionality = tbs5590_i2c_func,
 };
 
-static int tbs5590_set_voltage(struct dvb_frontend *fe, 
+static int tbs5590_set_voltage(struct neumo_dvb_frontend *fe, 
 						enum fe_sec_voltage voltage)
 {
 	struct dvb_usb_adapter *udev_adap =
@@ -441,7 +441,7 @@ static int tbs5590_frontend_attach(struct dvb_usb_adapter *adap)
 	   we split the adapter in 2 frontends */
 
 	adap->fe_adap[0].fe2 = &adap->fe_adap[0]._fe2;
-	memcpy(adap->fe_adap[0].fe2, adap->fe_adap[0].fe, sizeof(struct dvb_frontend));
+	memcpy(adap->fe_adap[0].fe2, adap->fe_adap[0].fe, sizeof(struct neumo_dvb_frontend));
 
 	/* terrestrial tuner */
 	memset(adap->fe_adap[0].fe->ops.delsys, 0, MAX_DELSYS);

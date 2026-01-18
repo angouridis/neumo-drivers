@@ -28,7 +28,7 @@
 #include <linux/string.h>
 #include <linux/slab.h>
 
-#include <media/dvb_frontend.h>
+#include <media/neumo-dvb-frontend.h>
 #include "isl6422.h"
 
 static unsigned int verbose;
@@ -86,7 +86,7 @@ exit:
 	return err;
 }
 
-static int isl6422_set_modulation(struct dvb_frontend *fe)
+static int isl6422_set_modulation(struct neumo_dvb_frontend *fe)
 {
 	struct isl6422_dev *isl6422		= (struct isl6422_dev *) fe->sec_priv;
 	const struct isl6422_config *config	= isl6422->config;
@@ -110,7 +110,7 @@ exit:
 	return err;
 }
 
-static int isl6422_voltage_boost(struct dvb_frontend *fe, long arg)
+static int isl6422_voltage_boost(struct neumo_dvb_frontend *fe, long arg)
 {
 	struct isl6422_dev *isl6422 = (struct isl6422_dev *) fe->sec_priv;
 	const struct isl6422_config *config	= isl6422->config;
@@ -147,7 +147,7 @@ exit:
 }
 
 
-static int isl6422_set_voltage(struct dvb_frontend *fe,
+static int isl6422_set_voltage(struct neumo_dvb_frontend *fe,
 			       enum fe_sec_voltage voltage)
 {
 	struct isl6422_dev *isl6422 = (struct isl6422_dev *) fe->sec_priv;
@@ -197,7 +197,7 @@ exit:
 	return err;
 }
 
-static int isl6422_set_current(struct dvb_frontend *fe)
+static int isl6422_set_current(struct neumo_dvb_frontend *fe)
 {
 	struct isl6422_dev *isl6422		= (struct isl6422_dev *) fe->sec_priv;
 	u8 reg_3 = isl6422->reg_3;
@@ -265,7 +265,7 @@ exit:
 	return err;
 }
 
-static void isl6422_release(struct dvb_frontend *fe)
+static void isl6422_release(struct neumo_dvb_frontend *fe)
 {
 	isl6422_set_voltage(fe, SEC_VOLTAGE_OFF);
 
@@ -273,7 +273,7 @@ static void isl6422_release(struct dvb_frontend *fe)
 	fe->sec_priv = NULL;
 }
 
-struct dvb_frontend *isl6422_attach(struct dvb_frontend *fe,
+struct neumo_dvb_frontend *isl6422_attach(struct neumo_dvb_frontend *fe,
 				    struct i2c_adapter *i2c,
 				    const struct isl6422_config *config)
 {
@@ -310,8 +310,11 @@ exit:
 	fe->sec_priv = NULL;
 	return NULL;
 }
-EXPORT_SYMBOL_GPL(isl6422_attach);
+EXPORT_SYMBOL(isl6422_attach);
 
 MODULE_DESCRIPTION("ISL6422 SEC");
 MODULE_AUTHOR("Luis Alves");
 MODULE_LICENSE("GPL");
+
+//check for incorrect include files
+#include "linux/media/neumo-check.h"

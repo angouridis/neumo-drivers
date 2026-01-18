@@ -22,7 +22,7 @@
 #define R848_H
 
 #include <linux/kconfig.h>
-#include <media/dvb_frontend.h>
+#include <media/neumo-dvb-frontend.h>
 
 struct r848_config {
 	/* tuner i2c address */
@@ -42,7 +42,7 @@ struct r848_config {
 };
 
 
- struct dvb_frontend *r848_attach(struct dvb_frontend *fe,
+ struct neumo_dvb_frontend *r848_attach(struct neumo_dvb_frontend *fe,
 		struct r848_config *cfg, struct i2c_adapter *i2c);
 
 

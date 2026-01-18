@@ -12,7 +12,7 @@
 #define __DVB_STV6110_H__
 
 #include <linux/i2c.h>
-#include <media/dvb_frontend.h>
+#include <media/neumo-dvb-frontend.h>
 
 /* registers */
 #define RSTV6110_CTRL1		0
@@ -32,11 +32,11 @@ struct stv6110_config {
 };
 
 #if IS_REACHABLE(CONFIG_DVB_STV6110)
-extern struct dvb_frontend *stv6110_attach(struct dvb_frontend *fe,
+extern struct neumo_dvb_frontend *stv6110_attach(struct neumo_dvb_frontend *fe,
 					const struct stv6110_config *config,
 					struct i2c_adapter *i2c);
 #else
-static inline struct dvb_frontend *stv6110_attach(struct dvb_frontend *fe,
+static inline struct neumo_dvb_frontend *stv6110_attach(struct neumo_dvb_frontend *fe,
 					const struct stv6110_config *config,
 					struct i2c_adapter *i2c)
 {

@@ -9,7 +9,6 @@
 #ifndef __TDA18271_PRIV_H__
 #define __TDA18271_PRIV_H__
 
-#undef pr_fmt
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <linux/kernel.h>
@@ -176,44 +175,44 @@ enum tda18271_map_type {
 	IR_MEASURE,
 };
 
-extern int tda18271_lookup_pll_map(struct dvb_frontend *fe,
+extern int tda18271_lookup_pll_map(struct neumo_dvb_frontend *fe,
 				   enum tda18271_map_type map_type,
 				   u32 *freq, u8 *post_div, u8 *div);
-extern int tda18271_lookup_map(struct dvb_frontend *fe,
+extern int tda18271_lookup_map(struct neumo_dvb_frontend *fe,
 			       enum tda18271_map_type map_type,
 			       u32 *freq, u8 *val);
 
-extern int tda18271_lookup_thermometer(struct dvb_frontend *fe);
+extern int tda18271_lookup_thermometer(struct neumo_dvb_frontend *fe);
 
-extern int tda18271_lookup_rf_band(struct dvb_frontend *fe,
+extern int tda18271_lookup_rf_band(struct neumo_dvb_frontend *fe,
 				   u32 *freq, u8 *rf_band);
 
-extern int tda18271_lookup_cid_target(struct dvb_frontend *fe,
+extern int tda18271_lookup_cid_target(struct neumo_dvb_frontend *fe,
 				      u32 *freq, u8 *cid_target,
 				      u16 *count_limit);
 
-extern int tda18271_assign_map_layout(struct dvb_frontend *fe);
+extern int tda18271_assign_map_layout(struct neumo_dvb_frontend *fe);
 
 /*---------------------------------------------------------------------*/
 
-extern int tda18271_read_regs(struct dvb_frontend *fe);
-extern int tda18271_read_extended(struct dvb_frontend *fe);
-extern int tda18271_write_regs(struct dvb_frontend *fe, int idx, int len);
-extern int tda18271_init_regs(struct dvb_frontend *fe);
+extern int tda18271_read_regs(struct neumo_dvb_frontend *fe);
+extern int tda18271_read_extended(struct neumo_dvb_frontend *fe);
+extern int tda18271_write_regs(struct neumo_dvb_frontend *fe, int idx, int len);
+extern int tda18271_init_regs(struct neumo_dvb_frontend *fe);
 
-extern int tda18271_charge_pump_source(struct dvb_frontend *fe,
+extern int tda18271_charge_pump_source(struct neumo_dvb_frontend *fe,
 				       enum tda18271_pll pll, int force);
-extern int tda18271_set_standby_mode(struct dvb_frontend *fe,
+extern int tda18271_set_standby_mode(struct neumo_dvb_frontend *fe,
 				     int sm, int sm_lt, int sm_xt);
 
-extern int tda18271_calc_main_pll(struct dvb_frontend *fe, u32 freq);
-extern int tda18271_calc_cal_pll(struct dvb_frontend *fe, u32 freq);
+extern int tda18271_calc_main_pll(struct neumo_dvb_frontend *fe, u32 freq);
+extern int tda18271_calc_cal_pll(struct neumo_dvb_frontend *fe, u32 freq);
 
-extern int tda18271_calc_bp_filter(struct dvb_frontend *fe, u32 *freq);
-extern int tda18271_calc_km(struct dvb_frontend *fe, u32 *freq);
-extern int tda18271_calc_rf_band(struct dvb_frontend *fe, u32 *freq);
-extern int tda18271_calc_gain_taper(struct dvb_frontend *fe, u32 *freq);
-extern int tda18271_calc_ir_measure(struct dvb_frontend *fe, u32 *freq);
-extern int tda18271_calc_rf_cal(struct dvb_frontend *fe, u32 *freq);
+extern int tda18271_calc_bp_filter(struct neumo_dvb_frontend *fe, u32 *freq);
+extern int tda18271_calc_km(struct neumo_dvb_frontend *fe, u32 *freq);
+extern int tda18271_calc_rf_band(struct neumo_dvb_frontend *fe, u32 *freq);
+extern int tda18271_calc_gain_taper(struct neumo_dvb_frontend *fe, u32 *freq);
+extern int tda18271_calc_ir_measure(struct neumo_dvb_frontend *fe, u32 *freq);
+extern int tda18271_calc_rf_cal(struct neumo_dvb_frontend *fe, u32 *freq);
 
 #endif /* __TDA18271_PRIV_H__ */

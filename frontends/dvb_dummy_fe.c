@@ -10,16 +10,16 @@
 #include <linux/string.h>
 #include <linux/slab.h>
 
-#include <media/dvb_frontend.h>
+#include <media/neumo-dvb-frontend.h>
 #include "dvb_dummy_fe.h"
 
 
 struct dvb_dummy_fe_state {
-	struct dvb_frontend frontend;
+	struct neumo_dvb_frontend frontend;
 };
 
 
-static int dvb_dummy_fe_read_status(struct dvb_frontend *fe,
+static int dvb_dummy_fe_read_status(struct neumo_dvb_frontend *fe,
 				    enum fe_status *status)
 {
 	*status = FE_HAS_SIGNAL
@@ -31,26 +31,26 @@ static int dvb_dummy_fe_read_status(struct dvb_frontend *fe,
 	return 0;
 }
 
-static int dvb_dummy_fe_read_ber(struct dvb_frontend *fe, u32 *ber)
+static int dvb_dummy_fe_read_ber(struct neumo_dvb_frontend *fe, u32 *ber)
 {
 	*ber = 0;
 	return 0;
 }
 
-static int dvb_dummy_fe_read_signal_strength(struct dvb_frontend *fe,
+static int dvb_dummy_fe_read_signal_strength(struct neumo_dvb_frontend *fe,
 					     u16 *strength)
 {
 	*strength = 0;
 	return 0;
 }
 
-static int dvb_dummy_fe_read_snr(struct dvb_frontend *fe, u16 *snr)
+static int dvb_dummy_fe_read_snr(struct neumo_dvb_frontend *fe, u16 *snr)
 {
 	*snr = 0;
 	return 0;
 }
 
-static int dvb_dummy_fe_read_ucblocks(struct dvb_frontend *fe, u32 *ucblocks)
+static int dvb_dummy_fe_read_ucblocks(struct neumo_dvb_frontend *fe, u32 *ucblocks)
 {
 	*ucblocks = 0;
 	return 0;
@@ -61,13 +61,13 @@ static int dvb_dummy_fe_read_ucblocks(struct dvb_frontend *fe, u32 *ucblocks)
  * Also, it should check for the locks, in order to avoid report wrong data
  * to userspace.
  */
-static int dvb_dummy_fe_get_frontend(struct dvb_frontend *fe,
-				     struct dtv_frontend_properties *p)
+static int dvb_dummy_fe_get_frontend(struct neumo_dvb_frontend *fe,
+				     struct neumo_driver_dtv_frontend_properties *p)
 {
 	return 0;
 }
 
-static int dvb_dummy_fe_set_frontend(struct dvb_frontend *fe)
+static int dvb_dummy_fe_set_frontend(struct neumo_dvb_frontend *fe)
 {
 	if (fe->ops.tuner_ops.set_params) {
 		fe->ops.tuner_ops.set_params(fe);
@@ -78,38 +78,38 @@ static int dvb_dummy_fe_set_frontend(struct dvb_frontend *fe)
 	return 0;
 }
 
-static int dvb_dummy_fe_sleep(struct dvb_frontend *fe)
+static int dvb_dummy_fe_sleep(struct neumo_dvb_frontend *fe)
 {
 	return 0;
 }
 
-static int dvb_dummy_fe_init(struct dvb_frontend *fe)
+static int dvb_dummy_fe_init(struct neumo_dvb_frontend *fe)
 {
 	return 0;
 }
 
-static int dvb_dummy_fe_set_tone(struct dvb_frontend *fe,
+static int dvb_dummy_fe_set_tone(struct neumo_dvb_frontend *fe,
 				 enum fe_sec_tone_mode tone)
 {
 	return 0;
 }
 
-static int dvb_dummy_fe_set_voltage(struct dvb_frontend *fe,
+static int dvb_dummy_fe_set_voltage(struct neumo_dvb_frontend *fe,
 				    enum fe_sec_voltage voltage)
 {
 	return 0;
 }
 
-static void dvb_dummy_fe_release(struct dvb_frontend *fe)
+static void dvb_dummy_fe_release(struct neumo_dvb_frontend *fe)
 {
 	struct dvb_dummy_fe_state *state = fe->demodulator_priv;
 
 	kfree(state);
 }
 
-static const struct dvb_frontend_ops dvb_dummy_fe_ofdm_ops;
+static const struct neumo_dvb_frontend_ops dvb_dummy_fe_ofdm_ops;
 
-struct dvb_frontend *dvb_dummy_fe_ofdm_attach(void)
+struct neumo_dvb_frontend *dvb_dummy_fe_ofdm_attach(void)
 {
 	struct dvb_dummy_fe_state *state = NULL;
 
@@ -121,16 +121,16 @@ struct dvb_frontend *dvb_dummy_fe_ofdm_attach(void)
 	/* create dvb_frontend */
 	memcpy(&state->frontend.ops,
 	       &dvb_dummy_fe_ofdm_ops,
-	       sizeof(struct dvb_frontend_ops));
+	       sizeof(struct neumo_dvb_frontend_ops));
 
 	state->frontend.demodulator_priv = state;
 	return &state->frontend;
 }
 EXPORT_SYMBOL(dvb_dummy_fe_ofdm_attach);
 
-static const struct dvb_frontend_ops dvb_dummy_fe_qpsk_ops;
+static const struct neumo_dvb_frontend_ops dvb_dummy_fe_qpsk_ops;
 
-struct dvb_frontend *dvb_dummy_fe_qpsk_attach(void)
+struct neumo_dvb_frontend *dvb_dummy_fe_qpsk_attach(void)
 {
 	struct dvb_dummy_fe_state *state = NULL;
 
@@ -142,16 +142,16 @@ struct dvb_frontend *dvb_dummy_fe_qpsk_attach(void)
 	/* create dvb_frontend */
 	memcpy(&state->frontend.ops,
 	       &dvb_dummy_fe_qpsk_ops,
-	       sizeof(struct dvb_frontend_ops));
+	       sizeof(struct neumo_dvb_frontend_ops));
 
 	state->frontend.demodulator_priv = state;
 	return &state->frontend;
 }
 EXPORT_SYMBOL(dvb_dummy_fe_qpsk_attach);
 
-static const struct dvb_frontend_ops dvb_dummy_fe_qam_ops;
+static const struct neumo_dvb_frontend_ops dvb_dummy_fe_qam_ops;
 
-struct dvb_frontend *dvb_dummy_fe_qam_attach(void)
+struct neumo_dvb_frontend *dvb_dummy_fe_qam_attach(void)
 {
 	struct dvb_dummy_fe_state *state = NULL;
 
@@ -163,14 +163,14 @@ struct dvb_frontend *dvb_dummy_fe_qam_attach(void)
 	/* create dvb_frontend */
 	memcpy(&state->frontend.ops,
 	       &dvb_dummy_fe_qam_ops,
-	       sizeof(struct dvb_frontend_ops));
+	       sizeof(struct neumo_dvb_frontend_ops));
 
 	state->frontend.demodulator_priv = state;
 	return &state->frontend;
 }
 EXPORT_SYMBOL(dvb_dummy_fe_qam_attach);
 
-static const struct dvb_frontend_ops dvb_dummy_fe_ofdm_ops = {
+static const struct neumo_dvb_frontend_ops dvb_dummy_fe_ofdm_ops = {
 	.delsys = { SYS_DVBT },
 	.info = {
 		.name			= "Dummy DVB-T",
@@ -209,7 +209,7 @@ static const struct dvb_frontend_ops dvb_dummy_fe_ofdm_ops = {
 	.read_ucblocks = dvb_dummy_fe_read_ucblocks,
 };
 
-static const struct dvb_frontend_ops dvb_dummy_fe_qam_ops = {
+static const struct neumo_dvb_frontend_ops dvb_dummy_fe_qam_ops = {
 	.delsys = { SYS_DVBC_ANNEX_A },
 	.info = {
 		.name			= "Dummy DVB-C",
@@ -243,7 +243,7 @@ static const struct dvb_frontend_ops dvb_dummy_fe_qam_ops = {
 	.read_ucblocks = dvb_dummy_fe_read_ucblocks,
 };
 
-static const struct dvb_frontend_ops dvb_dummy_fe_qpsk_ops = {
+static const struct neumo_dvb_frontend_ops dvb_dummy_fe_qpsk_ops = {
 	.delsys = { SYS_DVBS },
 	.info = {
 		.name			= "Dummy DVB-S",

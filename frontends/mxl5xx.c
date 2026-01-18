@@ -73,7 +73,7 @@ struct mxl {
 	struct list_head     mxl;
 
 	struct mxl_base     *base;
-	struct dvb_frontend  fe;
+	struct neumo_dvb_frontend  fe;
 	struct device       *i2cdev;
 	u32                  demod;
 	u32                  tuner;
@@ -332,9 +332,9 @@ static int firmware_is_alive(struct mxl *state)
 	return 1;
 }
 
-static int init(struct dvb_frontend *fe)
+static int init(struct neumo_dvb_frontend *fe)
 {
-	struct dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
 
 	/* init fe stats */
 	p->strength.len = 1;
@@ -353,7 +353,7 @@ static int init(struct dvb_frontend *fe)
 	return 0;
 }
 
-static void release(struct dvb_frontend *fe)
+static void release(struct neumo_dvb_frontend *fe)
 {
 	struct mxl *state = fe->demodulator_priv;
 
@@ -367,7 +367,7 @@ static void release(struct dvb_frontend *fe)
 	kfree(state);
 }
 
-static enum dvbfe_algo get_algo(struct dvb_frontend *fe)
+static enum neumo_dvbfe_algo get_algo(struct neumo_dvb_frontend *fe)
 {
 	return DVBFE_ALGO_HW;
 }
@@ -417,7 +417,7 @@ static int cfg_demod_abort_tune(struct mxl *state)
 			    &cmd_buff[0]);
 }
 
-static int send_master_cmd(struct dvb_frontend *fe,
+static int send_master_cmd(struct neumo_dvb_frontend *fe,
 			   struct dvb_diseqc_master_cmd *cmd)
 {
 	/*struct mxl *state = fe->demodulator_priv;*/
@@ -425,10 +425,10 @@ static int send_master_cmd(struct dvb_frontend *fe,
 	return 0; /*CfgDemodAbortTune(state);*/
 }
 
-static int set_parameters(struct dvb_frontend *fe)
+static int set_parameters(struct neumo_dvb_frontend *fe)
 {
 	struct mxl *state = fe->demodulator_priv;
-	struct dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	struct MXL_HYDRA_DEMOD_PARAM_T demod_chan_cfg;
 	u8 cmd_size = sizeof(demod_chan_cfg);
 	u8 cmd_buff[MXL_HYDRA_OEM_MAX_CMD_BUFF_LEN];
@@ -491,7 +491,7 @@ static int set_parameters(struct dvb_frontend *fe)
 
 static int enable_tuner(struct mxl *state, u32 tuner, u32 enable);
 
-static int sleep(struct dvb_frontend *fe)
+static int sleep(struct neumo_dvb_frontend *fe)
 {
 	struct mxl *state = fe->demodulator_priv;
 	struct mxl *p;
@@ -511,12 +511,12 @@ static int sleep(struct dvb_frontend *fe)
 	return 0;
 }
 
-static int read_snr(struct dvb_frontend *fe)
+static int read_snr(struct neumo_dvb_frontend *fe)
 {
 	struct mxl *state = fe->demodulator_priv;
 	int stat;
 	u32 reg_data = 0;
-	struct dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
 
 	mutex_lock(&state->base->status_lock);
 	HYDRA_DEMOD_STATUS_LOCK(state, state->demod);
@@ -532,10 +532,10 @@ static int read_snr(struct dvb_frontend *fe)
 	return stat;
 }
 
-static int read_ber(struct dvb_frontend *fe)
+static int read_ber(struct neumo_dvb_frontend *fe)
 {
 	struct mxl *state = fe->demodulator_priv;
-	struct dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	u32 reg[8];
 
 	mutex_lock(&state->base->status_lock);
@@ -588,10 +588,10 @@ static int read_ber(struct dvb_frontend *fe)
 	return 0;
 }
 
-static int read_signal_strength(struct dvb_frontend *fe)
+static int read_signal_strength(struct neumo_dvb_frontend *fe)
 {
 	struct mxl *state = fe->demodulator_priv;
-	struct dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int stat;
 	u32 reg_data = 0;
 
@@ -609,10 +609,10 @@ static int read_signal_strength(struct dvb_frontend *fe)
 	return stat;
 }
 
-static int read_status(struct dvb_frontend *fe, enum fe_status *status)
+static int read_status(struct neumo_dvb_frontend *fe, enum fe_status *status)
 {
 	struct mxl *state = fe->demodulator_priv;
-	struct dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	u32 reg_data = 0;
 
 	mutex_lock(&state->base->status_lock);
@@ -647,7 +647,7 @@ static int read_status(struct dvb_frontend *fe, enum fe_status *status)
 	return 0;
 }
 
-static int tune(struct dvb_frontend *fe, bool re_tune,
+static int tune(struct neumo_dvb_frontend *fe, bool re_tune,
 		unsigned int mode_flags,
 		unsigned int *delay, enum fe_status *status)
 {
@@ -678,8 +678,8 @@ static enum fe_code_rate conv_fec(enum MXL_HYDRA_FEC_E fec)
 	return fec2fec[fec];
 }
 
-static int get_frontend(struct dvb_frontend *fe,
-			struct dtv_frontend_properties *p)
+static int get_frontend(struct neumo_dvb_frontend *fe,
+			struct neumo_driver_dtv_frontend_properties *p)
 {
 	struct mxl *state = fe->demodulator_priv;
 	u32 reg_data[MXL_DEMOD_CHAN_PARAMS_BUFF_SIZE];
@@ -765,7 +765,7 @@ static int get_frontend(struct dvb_frontend *fe,
 	return 0;
 }
 
-static int set_input(struct dvb_frontend *fe, int input)
+static int set_input(struct neumo_dvb_frontend *fe, int input)
 {
 	struct mxl *state = fe->demodulator_priv;
 
@@ -773,7 +773,7 @@ static int set_input(struct dvb_frontend *fe, int input)
 	return 0;
 }
 
-static const struct dvb_frontend_ops mxl_ops = {
+static const struct neumo_dvb_frontend_ops mxl_ops = {
 	.delsys = { SYS_DVBS, SYS_DVBS2, SYS_DSS },
 	.info = {
 		.name			= "MaxLinear MxL5xx DVB-S/S2 tuner-demodulator",
@@ -1824,9 +1824,9 @@ static int probe(struct mxl *state, struct mxl5xx_cfg *cfg)
 	return 0;
 }
 
-struct dvb_frontend *mxl5xx_attach(struct i2c_adapter *i2c,
+struct neumo_dvb_frontend *mxl5xx_attach(struct i2c_adapter *i2c,
 	struct mxl5xx_cfg *cfg, u32 demod, u32 tuner,
-	int (**fn_set_input)(struct dvb_frontend *, int))
+	int (**fn_set_input)(struct neumo_dvb_frontend *, int))
 {
 	struct mxl *state;
 	struct mxl_base *base;

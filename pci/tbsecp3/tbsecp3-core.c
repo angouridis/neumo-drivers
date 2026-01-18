@@ -1,18 +1,18 @@
 /*
-    TBS ECP3 FPGA based cards PCIe driver
+		TBS ECP3 FPGA based cards PCIe driver
 
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+		This program is free software: you can redistribute it and/or modify
+		it under the terms of the GNU General Public License as published by
+		the Free Software Foundation, either version 3 of the License, or
+		(at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+		This program is distributed in the hope that it will be useful,
+		but WITHOUT ANY WARRANTY; without even the implied warranty of
+		MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+		GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+		You should have received a copy of the GNU General Public License
+		along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "tbsecp3.h"
@@ -26,8 +26,12 @@ module_param(cimode, int, 0444);
 MODULE_PARM_DESC(cimode,
 	"set the ci mode,0=Tuners and CAMs are separated into mulitple adapters, \
 	 1= Tuner and cam in same adapters");
-	
+
 struct workqueue_struct *tbs_wq;   //sec
+
+#define dprintk(fmt, arg...)																					\
+	printk(KERN_DEBUG pr_fmt("%s:%d " fmt), __func__, __LINE__, ##arg)
+
 
 void tbsecp3_gpio_set_pin(struct tbsecp3_dev *dev,
 		struct tbsecp3_gpio_pin *pin, int state)
@@ -57,23 +61,20 @@ static irqreturn_t tbsecp3_irq_handler(int irq, void *dev_id)
 	struct tbsecp3_i2c *i2c;
 	int i, in;
 	int nr = dev->info->adapters;
-	
-	u32 stat = tbs_read(TBSECP3_INT_BASE, TBSECP3_INT_STAT);
 
+	u32 stat = tbs_read(TBSECP3_INT_BASE, TBSECP3_INT_STAT);
 	tbs_write(TBSECP3_INT_BASE, TBSECP3_INT_STAT, stat);
 
-
 	if (stat & 0x00000ff0) {
-		
 		/* dma0~7 */
 		for (i = 0; i < dev->info->adapters; i++) {
 			in = dev->adapter[i].cfg->ts_in;
-			if (stat & TBSECP3_DMA_IF(in)){
+			if (stat & TBSECP3_DMA_IF(in)) {
 				tasklet_schedule(&dev->adapter[i].tasklet);
-				}
+			}
 		}
-	
 	}
+
 	if (stat & 0x0000f000) {
 		if(dev->info->sec==0){
 			/* dma8~11 */
@@ -81,10 +82,9 @@ static irqreturn_t tbsecp3_irq_handler(int irq, void *dev_id)
 				in = dev->adapter[i].cfg->ts_in;
 				if (stat & TBSECP3_DMA_IF(in)){
 					tasklet_schedule(&dev->adapter[i].tasklet);
-					}
+				}
 			}
-		}
-		else{  //sec
+		} else { // sec
 			if (stat & 0x8000){ //dma3 status
 				//outchannelprocess(dev,1);
 				queue_work(tbs_wq,&dev->adapter[nr+1].tbsci->write_work);
@@ -102,11 +102,10 @@ static irqreturn_t tbsecp3_irq_handler(int irq, void *dev_id)
 
 			if (stat & 0x1000){ //dma0 status
 				queue_work(tbs_wq,&dev->adapter[nr].tbsci->read_work);
-				//TBS_PCIE_WRITE(int_adapter, 0x04, 0x00000001);	
+				//TBS_PCIE_WRITE(int_adapter, 0x04, 0x00000001);
 			}
-		}				
+		}
 	}
-
 	if (stat & 0x000f0000) {
 		/* dma 12~15*/
 		for (i = 12; i < dev->info->adapters; i++) {
@@ -116,6 +115,7 @@ static irqreturn_t tbsecp3_irq_handler(int irq, void *dev_id)
 				}
 		}
 	}
+
 	if (stat & 0x0000000f) {
 		/* i2c */
 		for (i = 0; i < 4; i++) {
@@ -144,7 +144,12 @@ static int tbsecp3_adapters_attach(struct tbsecp3_dev *dev)
 {
 	int i, ret = 0;
 	for (i = 0; i < dev->info->adapters; i++) {
+
 		ret = tbsecp3_dvb_init(&dev->adapter[i]);
+		dprintk("adapter[%d]=%p tbs_nr=%d dvb_nr=%d q=%d\n", i, &dev->adapter[i],
+						dev->adapter[i].nr, dev->adapter[i].dvb_adapter.num, DVB_MAX_ADAPTERS);
+
+
 		if (ret) {
 			dev_err(&dev->pci_dev->dev,
 				"adapter%d attach failed\n",
@@ -159,15 +164,16 @@ static void tbsecp3_adapters_detach(struct tbsecp3_dev *dev)
 {
 	struct tbsecp3_adapter *adapter;
 	int i;
-
+	dprintk("detaching %d adapters", dev->info->adapters);
 	for (i = 0; i < dev->info->adapters; i++) {
 		adapter = &dev->adapter[i];
-
 		/* attach has failed, nothing to do */
 		if (adapter->nr == -1)
 			continue;
-
+#if 0 //not in neumo. Could be bug in tbs drivers?
 		tbsecp3_i2c_remove_clients(adapter);
+#endif
+		dprintk("calling  tbsecp3_dvb_exit for adapter %d/%d", adapter->nr, dev->info->adapters);
 		tbsecp3_dvb_exit(adapter);
 	}
 }
@@ -218,7 +224,7 @@ static void tbsecp3_adapters_init(struct tbsecp3_dev *dev)
 		adapter->dev = dev;
 		adapter->i2c = &dev->i2c_bus[adapter->cfg->i2c_bus_nr];
 	}
-	for(j = 0;j < dev->info->sec; j++){	
+	for(j = 0;j < dev->info->sec; j++){
 		adapter = &dev->adapter[i+j];
 		adapter->nr = i+j;
 		adapter->dev = dev;
@@ -283,9 +289,9 @@ static int tbsecp3_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		if(dma_set_mask(&pdev->dev, DMA_BIT_MASK(32)))
 		{
 			dev_err(&pdev->dev, "64/32-bit PCI DMA not supported\n");
-			goto err0;	
+			goto err0;
 		}
-	
+
 	pci_set_master(pdev);
 
 	dev = kzalloc(sizeof(struct tbsecp3_dev), GFP_KERNEL);
@@ -296,7 +302,6 @@ static int tbsecp3_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	dev->pci_dev = pdev;
 	pci_set_drvdata(pdev, dev);
-
 	dev->info = (struct tbsecp3_board *) id->driver_data;
 	dev_info(&pdev->dev, "%s\n", dev->info->name);
 
@@ -309,9 +314,7 @@ static int tbsecp3_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	tbs_write(TBSECP3_INT_BASE, TBSECP3_INT_EN, 0);
 	tbs_write(TBSECP3_INT_BASE, TBSECP3_INT_STAT, 0xff);
-
 	tbsecp3_adapters_init(dev);
-
 	/* dma */
 	ret = tbsecp3_dma_init(dev);
 	if (ret < 0)
@@ -348,17 +351,17 @@ static int tbsecp3_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	     tbs_write(TBSECP3_GPIO_BASE, 0x2c, tmp);
 	}
-	
+
 	ret = tbsecp3_adapters_attach(dev);
 	if (ret < 0)
 		goto err5;
-		
+
 	if((cimode==0)&(dev->info->sec!=0)){
 	    ret = tbsecp3_ci_attach(dev);
 	    if (ret < 0)
 		goto err5;
 	}
-	
+
 	dev_info(&pdev->dev, "%s: PCI %s, IRQ %d, MMIO 0x%lx\n",
 		dev->info->name, pci_name(pdev), pdev->irq,
 		(unsigned long) pci_resource_start(pdev, 0));
@@ -371,7 +374,7 @@ err5:
 
    	if((cimode==0 )&(dev->info->sec!=0))
 	   tbsecp3_ci_detach(dev);
-	   
+
 	tbs_write(TBSECP3_INT_BASE, TBSECP3_INT_EN, 0);
 	free_irq(dev->pci_dev->irq, dev);
 	if (dev->msi) {
@@ -399,7 +402,7 @@ static void tbsecp3_remove(struct pci_dev *pdev)
 	struct tbsecp3_dev *dev = pci_get_drvdata(pdev);
 
 	/* disable interrupts */
-	tbs_write(TBSECP3_INT_BASE, TBSECP3_INT_EN, 0); 
+	tbs_write(TBSECP3_INT_BASE, TBSECP3_INT_EN, 0);
 	free_irq(pdev->irq, dev);
 	if (dev->msi) {
 		pci_disable_msi(pdev);
@@ -462,7 +465,7 @@ static const struct pci_device_id tbsecp3_id_table[] = {
 	TBSECP3_ID(TBSECP3_BOARD_TBS6312X,0x6312,0x0010),
 	TBSECP3_ID(TBSECP3_BOARD_TBS6909X,0x6909,0x0010),
 	TBSECP3_ID(TBSECP3_BOARD_TBS6909X,0x6909,0x0009),
-	TBSECP3_ID(TBSECP3_BOARD_TBS6909X,0x6909,0x0019),	
+	TBSECP3_ID(TBSECP3_BOARD_TBS6909X,0x6909,0x0019),
 	TBSECP3_ID(TBSECP3_BOARD_TBS6903X,0x6903,0x0020),
 	TBSECP3_ID(TBSECP3_BOARD_TBS6903X,0x6903,0x0021),
 	TBSECP3_ID(TBSECP3_BOARD_TBS6903X,0x6903,0x8888),
@@ -479,12 +482,12 @@ static const struct pci_device_id tbsecp3_id_table[] = {
 	TBSECP3_ID(TBSECP3_BOARD_TBS6301SE,0x6301,0x0004),
 	TBSECP3_ID(TBSECP3_BOARD_TBS6910SE,0x6910,0x0006),
 	TBSECP3_ID(TBSECP3_BOARD_TBS7901,0x7901,0x0001),
-	TBSECP3_ID(TBSECP3_BOARD_TBS6209SE,0x6209,0x0006),	
+	TBSECP3_ID(TBSECP3_BOARD_TBS6209SE,0x6209,0x0006),
 	TBSECP3_ID(TBSECP3_BOARD_TBS7901,0x7901,0x0001),
 	TBSECP3_ID(TBSECP3_BOARD_TBS7230,0x7230,0x0006),
-	TBSECP3_ID(TBSECP3_BOARD_TBS6302X,0x6302,0x0010),	
+	TBSECP3_ID(TBSECP3_BOARD_TBS6302X,0x6302,0x0010),
 	TBSECP3_ID(TBSECP3_BOARD_TBS6302T,0x6302,0x0009),
-	TBSECP3_ID(TBSECP3_BOARD_TBS6304X,0x6304,0x0010),	
+	TBSECP3_ID(TBSECP3_BOARD_TBS6304X,0x6304,0x0010),
 	TBSECP3_ID(TBSECP3_BOARD_TBS6205SE,0x6205,0x0003),
 	TBSECP3_ID(TBSECP3_BOARD_TBS6281TD,0x6281,0x0003),
 	TBSECP3_ID(TBSECP3_BOARD_TBS6909SE,0x6909,0x0066),
@@ -499,7 +502,7 @@ static const struct pci_device_id tbsecp3_id_table[] = {
 	TBSECP3_ID(TBSECP3_BOARD_TBS6302RV,0x6302,0x0008),
 	TBSECP3_ID(TBSECP3_BOARD_TBS6331,0x6331,0xa001),
 	TBSECP3_ID(TBSECP3_BOARD_TBS6216,0x6216,0x0001),
-	TBSECP3_ID(TBSECP3_BOARD_TBS6910X,0x6910,0x0008),				
+	TBSECP3_ID(TBSECP3_BOARD_TBS6910X,0x6910,0x0008),
 	{0}
 };
 MODULE_DEVICE_TABLE(pci, tbsecp3_id_table);
@@ -513,29 +516,11 @@ static struct pci_driver tbsecp3_driver = {
 	.suspend  = NULL,
 };
 
-//module_pci_driver(tbsecp3_driver);
-
-static __init int module_init_tbsecp3(void)
-{
-	int stat;
-
-	tbs_wq = create_singlethread_workqueue("tbs_wq");
-	stat = pci_register_driver(&tbsecp3_driver);
-	return stat;
-}
-
-static __exit void module_exit_tbsecp3(void)
-{	
-	if(tbs_wq)
-		destroy_workqueue(tbs_wq);
-	tbs_wq=NULL;
-	
-	pci_unregister_driver(&tbsecp3_driver);
-}
-
-module_init(module_init_tbsecp3);
-module_exit(module_exit_tbsecp3);
+module_pci_driver(tbsecp3_driver);
 
 MODULE_AUTHOR("Luis Alves <ljalvs@gmail.com>");
 MODULE_DESCRIPTION("TBS ECP3 driver");
 MODULE_LICENSE("GPL");
+
+//check for incorrect include files
+#include <media/neumo-check.h>

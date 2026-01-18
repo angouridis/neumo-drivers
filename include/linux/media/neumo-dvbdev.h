@@ -16,8 +16,7 @@
  *
  */
 
-#ifndef _DVBDEV_H_
-#define _DVBDEV_H_
+#pragma once
 
 #include <linux/types.h>
 #include <linux/poll.h>
@@ -75,7 +74,7 @@ enum dvb_device_type {
 	module_param_array(adapter_nr, short, NULL, 0444); \
 	MODULE_PARM_DESC(adapter_nr, "DVB adapter numbers")
 
-struct dvb_frontend;
+struct neumo_dvb_frontend;
 
 /**
  * struct dvb_adapter - represents a Digital TV adapter using Linux DVB API
@@ -491,5 +490,3 @@ void dvb_module_release(struct i2c_client *client);
 #define dvb_detach(FUNC)	{}
 
 #endif	/* CONFIG_MEDIA_ATTACH */
-
-#endif /* #ifndef _DVBDEV_H_ */

@@ -7,7 +7,7 @@
 #define __DVB_PLL_H__
 
 #include <linux/i2c.h>
-#include <media/dvb_frontend.h>
+#include <media/neumo-dvb-frontend.h>
 
 #define DVB_PLL_UNDEFINED               0
 #define DVB_PLL_THOMSON_DTT7579         1
@@ -33,7 +33,7 @@
 #define DVB_PLL_TDA665X_EARTH_PT1      21
 
 struct dvb_pll_config {
-	struct dvb_frontend *fe;
+	struct neumo_dvb_frontend *fe;
 };
 
 #if IS_REACHABLE(CONFIG_DVB_PLL)
@@ -47,12 +47,12 @@ struct dvb_pll_config {
  *
  * return: Frontend pointer on success, NULL on failure
  */
-extern struct dvb_frontend *dvb_pll_attach(struct dvb_frontend *fe,
+extern struct neumo_dvb_frontend *dvb_pll_attach(struct neumo_dvb_frontend *fe,
 					   int pll_addr,
 					   struct i2c_adapter *i2c,
 					   unsigned int pll_desc_id);
 #else
-static inline struct dvb_frontend *dvb_pll_attach(struct dvb_frontend *fe,
+static inline struct neumo_dvb_frontend *dvb_pll_attach(struct neumo_dvb_frontend *fe,
 					   int pll_addr,
 					   struct i2c_adapter *i2c,
 					   unsigned int pll_desc_id)

@@ -40,7 +40,7 @@
 #include <linux/vmalloc.h>
 #include <asm/div64.h>
 
-#if (KERNEL_VERSION(6,12,0) > LINUX_VERSION_CODE) 
+#if (KERNEL_VERSION(6,12,0) > LINUX_VERSION_CODE)
 #include <asm/unaligned.h>
 #endif
 
@@ -96,7 +96,7 @@ struct mxl_base {
 
 struct mxl {
 	struct mxl_base     *base;
-	struct dvb_frontend  fe;
+	struct neumo_dvb_frontend  fe;
 	u32                  demod;
 	u32                  rf_in;
 };
@@ -172,6 +172,7 @@ static int write_register(struct mxl *state, u32 reg, u32 val)
 	return stat;
 }
 
+#ifdef UNUSED
 static int write_register_block(struct mxl *state, u32 reg, u32 size, u8 *data)
 {
 	int stat;
@@ -194,6 +195,7 @@ static int write_register_block(struct mxl *state, u32 reg, u32 size, u8 *data)
 	mutex_unlock(&state->base->i2c_lock);
 	return stat;
 }
+#endif
 
 static int write_firmware_block(struct mxl *state,
 				u32 reg, u32 size, u8 *regDataPtr)
@@ -296,6 +298,7 @@ static int update_by_mnemonic(struct mxl *state,
 	return stat;
 }
 
+#ifdef UNUSED
 static void extract_from_mnemonic(u32 regAddr, u8 lsbPos, u8 width,
 				  u32 *toAddr, u8 *toLsbPos, u8 *toWidth)
 {
@@ -306,6 +309,7 @@ static void extract_from_mnemonic(u32 regAddr, u8 lsbPos, u8 width,
 	if (toWidth)
 		*toWidth = width;
 }
+#endif
 
 static int firmware_is_alive(struct mxl *state)
 {
@@ -321,12 +325,12 @@ static int firmware_is_alive(struct mxl *state)
 	return 1;
 }
 
-static int init(struct dvb_frontend *fe)
+static int init(struct neumo_dvb_frontend *fe)
 {
 	return 0;
 }
 
-static void release(struct dvb_frontend *fe)
+static void release(struct neumo_dvb_frontend *fe)
 {
 	struct mxl *state = fe->demodulator_priv;
 
@@ -338,23 +342,25 @@ static void release(struct dvb_frontend *fe)
 	kfree(state);
 }
 
-static enum dvbfe_algo get_algo(struct dvb_frontend *fe)
+static enum neumo_dvbfe_algo get_algo(struct neumo_dvb_frontend *fe)
 {
 	return DVBFE_ALGO_HW;
 }
 
+#ifdef UNUSED
 static int CfgDemodAbortTune(struct mxl *state)
 {
 	MXL_HYDRA_DEMOD_ABORT_TUNE_T abortTuneCmd;
 	u8 cmdSize = sizeof(abortTuneCmd);
 	u8 cmdBuff[MXL_HYDRA_OEM_MAX_CMD_BUFF_LEN];
-	
+
 	abortTuneCmd.demodId = state->demod;
 	BUILD_HYDRA_CMD(MXL_HYDRA_ABORT_TUNE_CMD, MXL_CMD_WRITE, cmdSize, &abortTuneCmd, cmdBuff);
 	return send_command(state, cmdSize + MXL_HYDRA_CMD_HEADER_SIZE, &cmdBuff[0]);
 }
+#endif
 
-static int send_master_cmd(struct dvb_frontend *fe,
+static int send_master_cmd(struct neumo_dvb_frontend *fe,
 			   struct dvb_diseqc_master_cmd *cmd)
 {
 	struct mxl *state = fe->demodulator_priv;
@@ -379,14 +385,14 @@ static int send_master_cmd(struct dvb_frontend *fe,
 	return ret;
 }
 
-static int send_burst(struct dvb_frontend *fe,
+static int send_burst(struct neumo_dvb_frontend *fe,
 	enum fe_sec_mini_cmd burst)
 {
 	struct mxl *state = fe->demodulator_priv;
 	MXL_HYDRA_DISEQC_TX_MSG_T diseqcMsgPtr;
 	u8 cmdSize = sizeof(MXL_HYDRA_DISEQC_TX_MSG_T);
 	u8 cmdBuff[MXL_HYDRA_OEM_MAX_CMD_BUFF_LEN];
-	int i = 0,ret = 0;
+	int ret = 0;
 
 	diseqcMsgPtr.diseqcId = state->rf_in;
 	diseqcMsgPtr.nbyte	= 0;
@@ -400,10 +406,10 @@ static int send_burst(struct dvb_frontend *fe,
 	return ret;
 }
 
-static int set_parameters(struct dvb_frontend *fe)
+static int set_parameters(struct neumo_dvb_frontend *fe)
 {
 	struct mxl *state = fe->demodulator_priv;
-	struct dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int ret;
 
 	MXL_HYDRA_DEMOD_PARAM_T demodChanCfg;
@@ -417,14 +423,14 @@ static int set_parameters(struct dvb_frontend *fe)
 		{XPT_INP_MODE_DSS4}, {XPT_INP_MODE_DSS5},
 		{XPT_INP_MODE_DSS6}, {XPT_INP_MODE_DSS7} };
 #endif
-	
+
 	if (p->frequency < 950000 || p->frequency > 2150000)
 		return -EINVAL;
 	if (p->symbol_rate < 1000000 || p->symbol_rate > 45000000)
 		return -EINVAL;
 
 	//CfgDemodAbortTune(state);
-	
+
 	switch (p->delivery_system) {
 	case SYS_DSS:
 		demodChanCfg.standard = MXL_HYDRA_DSS;
@@ -466,7 +472,7 @@ static int set_parameters(struct dvb_frontend *fe)
 				   xpt_enable_dss_input[demodId].numOfBits,
 				   MXL_FALSE);
 #endif
-	
+
 	BUILD_HYDRA_CMD(MXL_HYDRA_DEMOD_SET_PARAM_CMD, MXL_CMD_WRITE,
 			cmdSize, &demodChanCfg, cmdBuff);
 
@@ -477,10 +483,10 @@ static int set_parameters(struct dvb_frontend *fe)
 	return ret;
 }
 
-static int read_status(struct dvb_frontend *fe, enum fe_status *status)
+static int read_status(struct neumo_dvb_frontend *fe, enum fe_status *status)
 {
 	struct mxl *state = fe->demodulator_priv;
-	struct dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int stat;
 	u32 reg[8];
 
@@ -558,7 +564,7 @@ static int read_status(struct dvb_frontend *fe, enum fe_status *status)
 		p->pre_bit_count.len = 1;
 		p->pre_bit_count.stat[0].scale = FE_SCALE_COUNTER;
 		p->pre_bit_count.stat[0].uvalue = reg[3];
-		dev_dbg(&state->base->i2c->dev,"pre_bit_error=%u pre_bit_count=%u\n", p->pre_bit_error.stat[0].uvalue, p->pre_bit_count.stat[0].uvalue);
+		dev_dbg(&state->base->i2c->dev,"pre_bit_error=%llu pre_bit_count=%llu\n", p->pre_bit_error.stat[0].uvalue, p->pre_bit_count.stat[0].uvalue);
 		break;
 	default:
 		break;
@@ -593,14 +599,14 @@ static int read_status(struct dvb_frontend *fe, enum fe_status *status)
 	default:
 		break;
 	}
-	dev_dbg(&state->base->i2c->dev,"post_bit_error=%u post_bit_count=%u\n", p->post_bit_error.stat[0].uvalue, p->post_bit_count.stat[0].uvalue);
+	dev_dbg(&state->base->i2c->dev,"post_bit_error=%llu post_bit_count=%llu\n", p->post_bit_error.stat[0].uvalue, p->post_bit_count.stat[0].uvalue);
 
 	return 0;
 }
 
-static int read_signal_strength(struct dvb_frontend *fe, u16 *strength)
+static int read_signal_strength(struct neumo_dvb_frontend *fe, u16 *strength)
 {
-	struct dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int i;
 
 	for (i=0; i < p->strength.len; i++) {
@@ -614,9 +620,9 @@ static int read_signal_strength(struct dvb_frontend *fe, u16 *strength)
 
 }
 
-static int read_snr(struct dvb_frontend *fe, u16 *snr)
+static int read_snr(struct neumo_dvb_frontend *fe, u16 *snr)
 {
-	struct dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int i;
 
 	*snr = 0;
@@ -627,24 +633,24 @@ static int read_snr(struct dvb_frontend *fe, u16 *snr)
 	return 0;
 }
 
-static int read_ber(struct dvb_frontend *fe, u32 *ber)
+static int read_ber(struct neumo_dvb_frontend *fe, u32 *ber)
 {
-	struct dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
 
 	if ( p->post_bit_error.stat[0].scale == FE_SCALE_COUNTER &&
-		p->post_bit_count.stat[0].scale == FE_SCALE_COUNTER )	  
+		p->post_bit_count.stat[0].scale == FE_SCALE_COUNTER )
 	      *ber = (u32)p->post_bit_count.stat[0].uvalue ? (u32)p->post_bit_error.stat[0].uvalue / (u32)p->post_bit_count.stat[0].uvalue : 0;
 
 	return 0;
 }
 
-static int read_ucblocks(struct dvb_frontend *fe, u32 *ucblocks)
+static int read_ucblocks(struct neumo_dvb_frontend *fe, u32 *ucblocks)
 {
 	*ucblocks = 0;
 	return 0;
 }
 
-static int tune(struct dvb_frontend *fe, bool re_tune,
+static int tune(struct neumo_dvb_frontend *fe, bool re_tune,
 		unsigned int mode_flags,
 		unsigned int *delay, enum fe_status *status)
 {
@@ -668,7 +674,7 @@ static int tune(struct dvb_frontend *fe, bool re_tune,
 	return 0;
 }
 
-static int sleep(struct dvb_frontend *fe)
+static int sleep(struct neumo_dvb_frontend *fe)
 {
 	return 0;
 }
@@ -680,13 +686,13 @@ static enum fe_code_rate conv_fec(MXL_HYDRA_FEC_E fec)
 		FEC_3_4, FEC_4_5, FEC_5_6, FEC_6_7,
 		FEC_7_8, FEC_8_9, FEC_9_10
 	};
-	
+
 	if (fec > MXL_HYDRA_FEC_9_10)
 		return FEC_NONE;
 	return fec2fec[fec];
 }
 
-static int get_frontend(struct dvb_frontend *fe, struct dtv_frontend_properties *p)
+static int get_frontend(struct neumo_dvb_frontend *fe, struct neumo_driver_dtv_frontend_properties *p)
 {
 	struct mxl *state = fe->demodulator_priv;
 	u32 regData[MXL_DEMOD_CHAN_PARAMS_BUFF_SIZE];
@@ -761,7 +767,7 @@ static int get_frontend(struct dvb_frontend *fe, struct dtv_frontend_properties 
 	return 0;
 }
 
-static int set_input_tone(struct dvb_frontend *fe, enum fe_sec_tone_mode tone, int rf_in)
+static int set_input_tone(struct neumo_dvb_frontend *fe, enum fe_sec_tone_mode tone, int rf_in)
 {
 	struct mxl *state = fe->demodulator_priv;
 	u8 buf[14] = {
@@ -776,7 +782,7 @@ static int set_input_tone(struct dvb_frontend *fe, enum fe_sec_tone_mode tone, i
 
 
 
-static int set_voltage(struct dvb_frontend *fe, enum fe_sec_voltage voltage)
+static int set_voltage(struct neumo_dvb_frontend *fe, enum fe_sec_voltage voltage)
 {
 	struct mxl *state = fe->demodulator_priv;
 	struct i2c_adapter *i2c = state->base->i2c;
@@ -791,11 +797,11 @@ static int set_voltage(struct dvb_frontend *fe, enum fe_sec_voltage voltage)
 			state->rf_in |= 2;
 	}
 
-	return 0;  
+	return 0;
 }
 
 
-static int set_tone(struct dvb_frontend *fe, enum fe_sec_tone_mode tone)
+static int set_tone(struct neumo_dvb_frontend *fe, enum fe_sec_tone_mode tone)
 {
 	struct mxl *state = fe->demodulator_priv;
 
@@ -811,7 +817,7 @@ static int set_tone(struct dvb_frontend *fe, enum fe_sec_tone_mode tone)
 	return 0;
 }
 
-static void spi_read(struct dvb_frontend *fe, struct ecp3_info *ecp3inf)
+static void spi_read(struct neumo_dvb_frontend *fe, struct ecp3_info *ecp3inf)
 {
 	struct mxl *state = fe->demodulator_priv;
 	struct i2c_adapter *adapter = state->base->i2c;
@@ -821,7 +827,7 @@ static void spi_read(struct dvb_frontend *fe, struct ecp3_info *ecp3inf)
 	return ;
 }
 
-static void spi_write(struct dvb_frontend *fe,struct ecp3_info *ecp3inf)
+static void spi_write(struct neumo_dvb_frontend *fe,struct ecp3_info *ecp3inf)
 {
 	struct mxl *state = fe->demodulator_priv;
 	struct i2c_adapter *adapter = state->base->i2c;
@@ -831,7 +837,7 @@ static void spi_write(struct dvb_frontend *fe,struct ecp3_info *ecp3inf)
 	return ;
 }
 
-static void eeprom_read(struct dvb_frontend *fe, struct eeprom_info *eepinf)
+static void eeprom_read(struct neumo_dvb_frontend *fe, struct eeprom_info *eepinf)
 {
 	struct mxl *state = fe->demodulator_priv;
 	struct i2c_adapter *adapter = state->base->i2c;
@@ -841,7 +847,7 @@ static void eeprom_read(struct dvb_frontend *fe, struct eeprom_info *eepinf)
 	return ;
 }
 
-static void eeprom_write(struct dvb_frontend *fe,struct eeprom_info *eepinf)
+static void eeprom_write(struct neumo_dvb_frontend *fe,struct eeprom_info *eepinf)
 {
 	struct mxl *state = fe->demodulator_priv;
 	struct i2c_adapter *adapter = state->base->i2c;
@@ -851,7 +857,7 @@ static void eeprom_write(struct dvb_frontend *fe,struct eeprom_info *eepinf)
 	return ;
 }
 
-static int read_temp(struct dvb_frontend *fe, s16 *temp)
+static int read_temp(struct neumo_dvb_frontend *fe, s16 *temp)
 {
 	struct mxl *state = fe->demodulator_priv;
 	int status;
@@ -864,7 +870,7 @@ static int read_temp(struct dvb_frontend *fe, s16 *temp)
 	return 0;
 }
 
-static struct dvb_frontend_ops mxl_ops = {
+static struct neumo_dvb_frontend_ops mxl_ops = {
 	.delsys = { SYS_DVBS, SYS_DVBS2, SYS_DSS },
 	.info = {
 		.name			= "MXL58X",
@@ -992,7 +998,7 @@ static int write_fw_segment(struct mxl *state,
 
 static int do_firmware_download(struct mxl *state,
 				u32 mbinBufferSize,
-				u8 *mbinBufferPtr)
+				const u8 *mbinBufferPtr)
 {
 	int status;
 	u32 index = 0;
@@ -1032,7 +1038,7 @@ static int do_firmware_download(struct mxl *state,
 }
 
 static int firmware_download(struct mxl *state, u32 mbinBufferSize,
-			     u8 *mbinBufferPtr)
+			     const u8 *mbinBufferPtr)
 {
 	int status;
 	u32 regData = 0;
@@ -1076,16 +1082,16 @@ static int firmware_download(struct mxl *state, u32 mbinBufferSize,
 	status = do_firmware_download(state, mbinBufferSize, mbinBufferPtr);
 	if (status)
 		return status;
-	
+
 	if (state->base->type == MXL_HYDRA_DEVICE_568) {
 		msleep(10);
-		
+
 		// bring XCPU out of reset
 		status = write_register(state, 0x90720000, 1);
 		if (status)
 			return status;
 		msleep(500);
-		
+
 		// Enable XCPU UART message processing in MCPU
 		status = write_register(state, 0x9076B510, 1);
 		if (status)
@@ -1104,7 +1110,7 @@ static int firmware_download(struct mxl *state, u32 mbinBufferSize,
 	status = write_register(state, XPT_DMD0_BASEADDR, 0x76543210);
 	if (status)
 		return status;
-	
+
 	if (!firmware_is_alive(state))
 		return -1;
 
@@ -1138,6 +1144,7 @@ static int firmware_download(struct mxl *state, u32 mbinBufferSize,
 	return status;
 }
 
+#ifdef UNUSED
 static int cfg_ts_pad_mux(struct mxl *state, MXL_BOOL_E enableSerialTS)
 {
 	int status = 0;
@@ -1183,7 +1190,9 @@ static int cfg_ts_pad_mux(struct mxl *state, MXL_BOOL_E enableSerialTS)
 	}
 	return status;
 }
+#endif
 
+#ifdef UNUSED
 static int config_ts(struct mxl *state, MXL_HYDRA_DEMOD_ID_E demodId, MXL_HYDRA_MPEGOUT_PARAM_T *mpegOutParamPtr)
 {
 	int status = 0;
@@ -1243,6 +1252,7 @@ static int config_ts(struct mxl *state, MXL_HYDRA_DEMOD_ID_E demodId, MXL_HYDRA_
 		{XPT_TS_CLK_OUT_EN2}, {XPT_TS_CLK_OUT_EN3},
 		{XPT_TS_CLK_OUT_EN4}, {XPT_TS_CLK_OUT_EN5},
 		{XPT_TS_CLK_OUT_EN6}, {XPT_TS_CLK_OUT_EN7} };
+#ifdef UNUSED
 	static const MXL_REG_FIELD_T mxl561_xpt_ts_sync[MXL_HYDRA_DEMOD_ID_6] = {
 		{PAD_MUX_DIGIO_25_PINMUX_SEL}, {PAD_MUX_DIGIO_20_PINMUX_SEL},
 		{PAD_MUX_DIGIO_17_PINMUX_SEL}, {PAD_MUX_DIGIO_11_PINMUX_SEL},
@@ -1251,7 +1261,7 @@ static int config_ts(struct mxl *state, MXL_HYDRA_DEMOD_ID_E demodId, MXL_HYDRA_
 		{PAD_MUX_DIGIO_26_PINMUX_SEL}, {PAD_MUX_DIGIO_19_PINMUX_SEL},
 		{PAD_MUX_DIGIO_18_PINMUX_SEL}, {PAD_MUX_DIGIO_10_PINMUX_SEL},
 		{PAD_MUX_DIGIO_09_PINMUX_SEL}, {PAD_MUX_DIGIO_02_PINMUX_SEL} };
-
+#endif
 	if (MXL_ENABLE == mpegOutParamPtr->enable) {
 		cfg_ts_pad_mux(state, MXL_TRUE);
 		SET_REG_FIELD_DATA(XPT_ENABLE_PARALLEL_OUTPUT, MXL_FALSE);
@@ -1371,7 +1381,9 @@ static int config_ts(struct mxl *state, MXL_HYDRA_DEMOD_ID_E demodId, MXL_HYDRA_
 	}
 	return status;
 }
+#endif
 
+#ifdef UNUSED
 static int config_mux(struct mxl *state)
 {
 	SET_REG_FIELD_DATA(XPT_ENABLE_OUTPUT0, 0);
@@ -1386,7 +1398,7 @@ static int config_mux(struct mxl *state)
 	SET_REG_FIELD_DATA(XPT_STREAM_MUXMODE1, 1);
 	return 0;
 }
-
+#endif
 static int config_dis(struct mxl *state, u32 id)
 {
 	MXL_HYDRA_DISEQC_ID_E diseqcId = id;
@@ -1409,9 +1421,7 @@ static int config_dis(struct mxl *state, u32 id)
 
 static int load_fw(struct mxl *state)
 {
-	struct mxl58x_cfg *cfg = state->base->cfg;
 	int stat = 0;
-	u8 *buf;
 
 	const struct firmware *fw;
 
@@ -1423,18 +1433,18 @@ static int load_fw(struct mxl *state)
 		return stat;
 
 	stat = firmware_download(state, fw->size, fw->data);
-	
+
 	release_firmware(fw);
 
 	if (stat)
 		dev_err(&state->base->i2c->dev,"error loading firmware\n");
-	
+
 	return stat;
 }
 
 static int init_multisw(struct mxl *state)
 {
-	struct dvb_frontend *fe = &state->fe;
+	struct neumo_dvb_frontend *fe = &state->fe;
 	struct i2c_adapter *i2c = state->base->i2c;
 	struct mxl58x_cfg *cfg = state->base->cfg;
 
@@ -1457,8 +1467,7 @@ static int probe(struct mxl *state)
 {
 	struct mxl58x_cfg *cfg = state->base->cfg;
 	u32 chipver;
-	int fw, status, j;
-	MXL_HYDRA_MPEGOUT_PARAM_T mpegInterfaceCfg;
+	int fw, status;
 
 	fw = firmware_is_alive(state);
 
@@ -1533,7 +1542,7 @@ static int probe(struct mxl *state)
 	return 0;
 }
 
-struct dvb_frontend *mxl58x_attach(struct i2c_adapter *i2c,
+struct neumo_dvb_frontend *mxl58x_attach(struct i2c_adapter *i2c,
 				   struct mxl58x_cfg *cfg,
 				   u32 demod)
 {
@@ -1547,7 +1556,7 @@ struct dvb_frontend *mxl58x_attach(struct i2c_adapter *i2c,
 	state->demod = demod;
 	state->rf_in = 0;
 	if(mode)
-	{ 
+	{
 		if((demod==0)||(demod==1))
 			state->rf_in = 3;
 		if((demod==2)||(demod==3))
@@ -1559,7 +1568,7 @@ struct dvb_frontend *mxl58x_attach(struct i2c_adapter *i2c,
 
 		if (rfsource > 0 && rfsource < 5)
 			state->rf_in = 4 - rfsource;
-		
+
 		if (mode==2)
 			state->rf_in = 0;
 	}
@@ -1591,7 +1600,7 @@ struct dvb_frontend *mxl58x_attach(struct i2c_adapter *i2c,
 			kfree(base);
 			goto fail;
 		}
-		
+
 		init_multisw(state);
 
 		list_add(&base->mxllist, &mxllist);

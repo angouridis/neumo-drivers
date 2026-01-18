@@ -22,7 +22,9 @@
 #define TAS2101_H
 
 #include <linux/kconfig.h>
-#include <linux/dvb/frontend.h>
+#include <media/neumo-dvb-frontend.h>
+#include <dvb/neumo-frontend.h>
+
 
 typedef enum tas210x_id {
 	ID_TAS2100,
@@ -37,18 +39,18 @@ struct tas2101_config {
 	tas210x_id_t id;
 
 	/* demod hard reset */
-	void (*reset_demod)(struct dvb_frontend *fe);
+	void (*reset_demod)(struct neumo_dvb_frontend *fe);
 	/* lnb power */
-	void (*lnb_power)(struct dvb_frontend *fe, int onoff);
+	void (*lnb_power)(struct neumo_dvb_frontend *fe, int onoff);
 
 	//spi flash op
-	void (*write_properties) (struct i2c_adapter *i2c,u8 reg, u32 buf);  
+	void (*write_properties) (struct i2c_adapter *i2c,u8 reg, u32 buf);
 	void (*read_properties) (struct i2c_adapter *i2c,u8 reg, u32 *buf);
 	void (*write_eeprom) (struct i2c_adapter *i2c,u8 reg, u8 buf);
 	void (*read_eeprom) (struct i2c_adapter *i2c,u8 reg, u8 *buf);
 
-	void (*mcuWrite_properties) (struct i2c_adapter *i2c,u32 bassaddr,u8 reg, u32 buf);  
-	void (*mcuRead_properties) (struct i2c_adapter *i2c,u32 bassaddr,u8 reg, u32 *buf);	
+	void (*mcuWrite_properties) (struct i2c_adapter *i2c,u32 bassaddr,u8 reg, u32 buf);
+	void (*mcuRead_properties) (struct i2c_adapter *i2c,u32 bassaddr,u8 reg, u32 *buf);
 	void (*i2cRead_properties) (struct i2c_adapter *i2c,u8 chip_addr,u8 reg, u8 num, u8 *buf);
 	void (*i2cwrite_properties) (struct i2c_adapter *i2c,u8 chip_addr,u8 reg, u8 num, u8 *buf);
 	/* frontend gpio/tuner init */
@@ -56,12 +58,9 @@ struct tas2101_config {
 	u8 init2;
 };
 
-
-
-extern struct dvb_frontend *tas2101_attach(
+extern struct neumo_dvb_frontend *tas2101_attach(
 	const struct tas2101_config *cfg,
-	struct i2c_adapter *i2c);
-extern struct i2c_adapter *tas2101_get_i2c_adapter(struct dvb_frontend *fe, int bus);
-
+	struct i2c_adapter *i2c, int rf_in);
+extern struct i2c_adapter *tas2101_get_i2c_adapter(struct neumo_dvb_frontend *fe, int bus);
 
 #endif /* TAS2101_H */

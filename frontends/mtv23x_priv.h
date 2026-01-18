@@ -1,7 +1,7 @@
 #ifndef MTV23X_PRIV_H
 #define MTV23X_PRIV_H
 
-#include <media/dvb_frontend.h>
+#include <media/neumo-dvb-frontend.h>
 #include "mtv23x.h"
 #include <linux/regmap.h>
 
@@ -22,9 +22,9 @@ enum E_RTV_SERVICE_TYPE {
 struct mtv23x_dev {
 	struct i2c_client *client;
 	struct regmap *regmap;
-	struct dvb_frontend fe;
+	struct neumo_dvb_frontend fe;
 	u16 i2c_wr_max;
-	
+
 	int ts_mode;
 	int clk_freq;//u:KHZ
 

@@ -21,6 +21,8 @@
 #ifndef GX1133_PRIV_H
 #define GX1133_PRIV_H
 
+#include <linux/version.h>
+
 #define Demod_TOP            		0xff
 #define DVB_S2                 		0xf2
 
@@ -342,7 +344,7 @@ struct gx1133_priv {
 
 	int i2c_ch;
 
-	struct dvb_frontend fe;
+	struct neumo_dvb_frontend fe;
 	const struct gx1133_config *cfg;
 
 };

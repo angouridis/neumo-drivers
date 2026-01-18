@@ -16,7 +16,7 @@
 #include "stb6100.h"
 #include "stb6100_cfg.h"
 
-#include <media/dvb_ca_en50221.h>
+#include <media/neumo-dvb-ca-en50221.h>
 
 #define TBSQBOX_READ_MSG 0
 #define TBSQBOX_WRITE_MSG 1
@@ -461,7 +461,7 @@ static u32 tbsqbox2ci_i2c_func(struct i2c_adapter *adapter)
 	return I2C_FUNC_I2C;
 }
 
-static void tbsqbox2ci_led_ctrl(struct dvb_frontend *fe, int offon)
+static void tbsqbox2ci_led_ctrl(struct neumo_dvb_frontend *fe, int offon)
 {
 	static u8 led_off[] = { 0 };
 	static u8 led_on[] = { 1 };
@@ -549,7 +549,7 @@ static int tbsqbox2ci_read_mac_address(struct dvb_usb_device *d, u8 mac[6])
 	return 0;
 };
 
-static int tbsqbox2ci_set_voltage(struct dvb_frontend *fe, 
+static int tbsqbox2ci_set_voltage(struct neumo_dvb_frontend *fe, 
 						enum fe_sec_voltage voltage)
 {
 	static u8 command_13v[1] = {0x00};

@@ -3,7 +3,7 @@
 
 
 #include <linux/kconfig.h>
-#include <media/dvb_frontend.h>
+#include <media/neumo-dvb-frontend.h>
 
 struct r850_config {
 	/* tuner i2c address */
@@ -14,10 +14,10 @@ struct r850_config {
 };
 
 #if IS_REACHABLE(CONFIG_MEDIA_TUNER_R850)
-extern struct dvb_frontend *r850_attach(struct dvb_frontend *fe,
+extern struct neumo_dvb_frontend *r850_attach(struct neumo_dvb_frontend *fe,
 		struct r850_config *cfg, struct i2c_adapter *i2c);
 #else
-static inline struct dvb_frontend *r850_attach(struct dvb_frontend *fe,
+static inline struct neumo_dvb_frontend *r850_attach(struct neumo_dvb_frontend *fe,
 		struct r850_config *cfg, struct i2c_adapter *i2c)
 {
 	printk(KERN_WARNING "%s: driver disabled by Kconfig\n", __func__);

@@ -21,10 +21,10 @@ struct m88rs6000t_reg_val {
 };
 
 /* set demod main mclk and ts mclk */
-static int m88rs6000t_set_demod_mclk(struct dvb_frontend *fe)
+static int m88rs6000t_set_demod_mclk(struct neumo_dvb_frontend *fe)
 {
 	struct m88rs6000t_dev *dev = fe->tuner_priv;
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	u8 reg11, reg15, reg16, reg1D, reg1E, reg1F;
 	u8 N, f0 = 0, f1 = 0, f2 = 0, f3 = 0;
 	u16 pll_div_fb;
@@ -382,10 +382,10 @@ static int m88rs6000t_set_bb(struct m88rs6000t_dev *dev,
 	return regmap_write(dev->regmap, 0x40, reg40);
 }
 
-static int m88rs6000t_set_params(struct dvb_frontend *fe)
+static int m88rs6000t_set_params(struct neumo_dvb_frontend *fe)
 {
 	struct m88rs6000t_dev *dev = fe->tuner_priv;
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret;
 	s32 lpf_offset_KHz;
 	u32 realFreq, freq_MHz;
@@ -422,7 +422,7 @@ err:
 	return ret;
 }
 
-static int m88rs6000t_init(struct dvb_frontend *fe)
+static int m88rs6000t_init(struct neumo_dvb_frontend *fe)
 {
 	struct m88rs6000t_dev *dev = fe->tuner_priv;
 	int ret;
@@ -444,7 +444,7 @@ err:
 	return ret;
 }
 
-static int m88rs6000t_sleep(struct dvb_frontend *fe)
+static int m88rs6000t_sleep(struct neumo_dvb_frontend *fe)
 {
 	struct m88rs6000t_dev *dev = fe->tuner_priv;
 	int ret;
@@ -460,7 +460,7 @@ static int m88rs6000t_sleep(struct dvb_frontend *fe)
 	return 0;
 }
 
-static int m88rs6000t_get_frequency(struct dvb_frontend *fe, u32 *frequency)
+static int m88rs6000t_get_frequency(struct neumo_dvb_frontend *fe, u32 *frequency)
 {
 	struct m88rs6000t_dev *dev = fe->tuner_priv;
 
@@ -470,7 +470,7 @@ static int m88rs6000t_get_frequency(struct dvb_frontend *fe, u32 *frequency)
 	return 0;
 }
 
-static int m88rs6000t_get_if_frequency(struct dvb_frontend *fe, u32 *frequency)
+static int m88rs6000t_get_if_frequency(struct neumo_dvb_frontend *fe, u32 *frequency)
 {
 	struct m88rs6000t_dev *dev = fe->tuner_priv;
 
@@ -481,7 +481,7 @@ static int m88rs6000t_get_if_frequency(struct dvb_frontend *fe, u32 *frequency)
 }
 
 
-static int m88rs6000t_get_rf_strength(struct dvb_frontend *fe, u16 *strength)
+static int m88rs6000t_get_rf_strength(struct neumo_dvb_frontend *fe, u16 *strength)
 {
 	struct m88rs6000t_dev *dev = fe->tuner_priv;
 	unsigned int val, i;
@@ -558,7 +558,7 @@ err:
 	return ret;
 }
 
-static const struct dvb_tuner_ops m88rs6000t_tuner_ops = {
+static const struct neumo_dvb_tuner_ops m88rs6000t_tuner_ops = {
 	.info = {
 		.name             = "Montage M88RS6000 Internal Tuner",
 		.frequency_min_hz =  950 * MHz,
@@ -582,7 +582,7 @@ static int m88rs6000t_probe(struct i2c_client *client)
 #endif
 {
 	struct m88rs6000t_config *cfg = client->dev.platform_data;
-	struct dvb_frontend *fe = cfg->fe;
+	struct neumo_dvb_frontend *fe = cfg->fe;
 	struct m88rs6000t_dev *dev;
 	int ret, i;
 	unsigned int utmp;
@@ -693,7 +693,7 @@ static int m88rs6000t_probe(struct i2c_client *client)
 
 	fe->tuner_priv = dev;
 	memcpy(&fe->ops.tuner_ops, &m88rs6000t_tuner_ops,
-			sizeof(struct dvb_tuner_ops));
+			sizeof(struct neumo_dvb_tuner_ops));
 	i2c_set_clientdata(client, dev);
 	return 0;
 err:
@@ -709,11 +709,11 @@ static void m88rs6000t_remove(struct i2c_client *client)
 #endif
 {
 	struct m88rs6000t_dev *dev = i2c_get_clientdata(client);
-	struct dvb_frontend *fe = dev->cfg.fe;
+	struct neumo_dvb_frontend *fe = dev->cfg.fe;
 
 	dev_dbg(&client->dev, "\n");
 
-	memset(&fe->ops.tuner_ops, 0, sizeof(struct dvb_tuner_ops));
+	memset(&fe->ops.tuner_ops, 0, sizeof(struct neumo_dvb_tuner_ops));
 	fe->tuner_priv = NULL;
 	kfree(dev);
 	

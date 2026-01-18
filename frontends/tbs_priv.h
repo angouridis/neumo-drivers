@@ -2,7 +2,7 @@
 #define TBS_PRIV_H_
 
 #include <linux/i2c.h>
-#include <media/dvb_frontend.h>
+#include <media/neumo-dvb-frontend.h>
 
 struct tbs_cfg{
 	u8 adr;
@@ -24,7 +24,7 @@ struct tbs_cfg{
 };
 
 
-extern struct dvb_frontend *tbs_attach(struct i2c_adapter * i2c,
+extern struct neumo_dvb_frontend *tbs_attach(struct i2c_adapter * i2c,
 											struct tbs_cfg * cfg,int demod);
 
 

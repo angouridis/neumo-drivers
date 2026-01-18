@@ -54,7 +54,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 			{
 				.ts_in = 0,
 				.i2c_bus_nr = 0,
-			}, 
+			},
 			{
 				.ts_in = 1,
 				.i2c_bus_nr = 0,
@@ -86,7 +86,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 			{
 				.ts_in = 8,
 				.i2c_bus_nr = 4,
-			}, 
+			},
 			{
 				.ts_in = 9,
 				.i2c_bus_nr = 4,
@@ -120,9 +120,14 @@ struct tbsecp3_board tbsecp3_boards[] = {
 	},
 	[TBSECP3_BOARD_TBS6916] = {
 		.board_id	= TBSECP3_BOARD_TBS6916,
-		.name		= "TurboSight TBS 6916 (Octa DVB-S/S2/S2X)",
+		.name		= "TurboSight TBS 6916 (Hexa DVB-S/S2/S2X)",
+		.short_name = "TBS 6916",
 		.adapters	= 16,
-		.i2c_speed	= 39,
+#if 0
+		.i2c_speed	= 39, //TBS provided value
+#else
+		.i2c_speed = 5, //default=9, 6 was a good value
+#endif
 		.eeprom_i2c	= 1,
 		.eeprom_addr	= 0x02,
 		.adap_config	= {
@@ -131,7 +136,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.i2c_bus_nr = 0,
 				.gpio.demod_reset.lvl = TBSECP3_GPIODEF_LOW,
 				.gpio.demod_reset.nr  = TBSECP3_GPIO_PIN(0, 0),
-			}, 
+			},
 			{
 				.ts_in = 1,
 				.i2c_bus_nr = 0,
@@ -165,7 +170,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.i2c_bus_nr = 1,
 				.gpio.demod_reset.lvl = TBSECP3_GPIODEF_LOW,
 				.gpio.demod_reset.nr  = TBSECP3_GPIO_PIN(1, 0),
-			}, 
+			},
 			{
 				.ts_in = 9,
 				.i2c_bus_nr = 1,
@@ -235,15 +240,15 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.gpio.lnb_power.lvl   = TBSECP3_GPIODEF_HIGH,
 				.gpio.lnb_power.nr    = TBSECP3_GPIO_PIN(0, 2),
 				.gpio.lnb_voltage.lvl = TBSECP3_GPIODEF_HIGH,
-				.gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(0, 1),		
-			}, 
+				.gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(0, 1),
+			},
 			{
 				.ts_in = 1,
 				.i2c_bus_nr = 0,
 				.gpio.lnb_power.lvl   = TBSECP3_GPIODEF_HIGH,
 				.gpio.lnb_power.nr    = TBSECP3_GPIO_PIN(1, 2),
 				.gpio.lnb_voltage.lvl = TBSECP3_GPIODEF_HIGH,
-				.gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(1, 1),				
+				.gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(1, 1),
 			},
 			{
 				.ts_in = 2,
@@ -259,7 +264,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.gpio.lnb_power.lvl   = TBSECP3_GPIODEF_HIGH,
 				.gpio.lnb_power.nr    = TBSECP3_GPIO_PIN(3, 2),
 				.gpio.lnb_voltage.lvl = TBSECP3_GPIODEF_HIGH,
-	                       .gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(3, 1),				
+	                       .gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(3, 1),
 			},
 			{
 				.ts_in = 4,
@@ -277,7 +282,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 			{
 				.ts_in = 7,
 				.i2c_bus_nr = 3,
-			},												
+			},
 		}
 	},
 	[TBSECP3_BOARD_TBS6522H] = {
@@ -293,7 +298,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.i2c_bus_nr = 0,
 				.gpio.demod_reset.lvl = TBSECP3_GPIODEF_LOW,
 				.gpio.demod_reset.nr  = TBSECP3_GPIO_PIN(0, 0),
-			}, 
+			},
 			{
 				.ts_in = 1,
 				.i2c_bus_nr = 1,
@@ -318,7 +323,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.gpio.lnb_power.lvl   = TBSECP3_GPIODEF_HIGH,
 				.gpio.lnb_power.nr    = TBSECP3_GPIO_PIN(3, 2),
 				.gpio.lnb_voltage.lvl = TBSECP3_GPIODEF_HIGH,
-	                       .gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(3, 1),				
+	                       .gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(3, 1),
 			}
 		}
 	},
@@ -336,15 +341,15 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.gpio.lnb_power.lvl   = TBSECP3_GPIODEF_HIGH,
 				.gpio.lnb_power.nr    = TBSECP3_GPIO_PIN(0, 2),
 				.gpio.lnb_voltage.lvl = TBSECP3_GPIODEF_HIGH,
-				.gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(0, 1),	
-			}, 
+				.gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(0, 1),
+			},
 			{
 				.ts_in = 1,
 				.i2c_bus_nr = 0,
 				.gpio.lnb_power.lvl   = TBSECP3_GPIODEF_HIGH,
 				.gpio.lnb_power.nr    = TBSECP3_GPIO_PIN(0, 2),
 				.gpio.lnb_voltage.lvl = TBSECP3_GPIODEF_HIGH,
-				.gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(0, 1),	
+				.gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(0, 1),
 			},
 			{
 				.ts_in = 2,
@@ -360,7 +365,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.gpio.lnb_power.lvl   = TBSECP3_GPIODEF_HIGH,
 				.gpio.lnb_power.nr    = TBSECP3_GPIO_PIN(1, 2),
 				.gpio.lnb_voltage.lvl = TBSECP3_GPIODEF_HIGH,
-				.gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(1, 1),	
+				.gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(1, 1),
 			},
 			{
 				.ts_in = 4,
@@ -376,7 +381,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.gpio.lnb_power.lvl   = TBSECP3_GPIODEF_HIGH,
 				.gpio.lnb_power.nr    = TBSECP3_GPIO_PIN(2, 2),
 				.gpio.lnb_voltage.lvl = TBSECP3_GPIODEF_HIGH,
-				.gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(2, 1),				
+				.gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(2, 1),
 			},
 			{
 				.ts_in = 6,
@@ -384,7 +389,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.gpio.lnb_power.lvl   = TBSECP3_GPIODEF_HIGH,
 				.gpio.lnb_power.nr    = TBSECP3_GPIO_PIN(3, 2),
 				.gpio.lnb_voltage.lvl = TBSECP3_GPIODEF_HIGH,
-				.gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(3, 1),				
+				.gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(3, 1),
 
 			},
 			{
@@ -393,7 +398,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.gpio.lnb_power.lvl   = TBSECP3_GPIODEF_HIGH,
 				.gpio.lnb_power.nr    = TBSECP3_GPIO_PIN(3, 2),
 				.gpio.lnb_voltage.lvl = TBSECP3_GPIODEF_HIGH,
-				.gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(3, 1),				
+				.gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(3, 1),
 			}
 
 		}
@@ -411,7 +416,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.i2c_bus_nr = 0,
 				.gpio.demod_reset.lvl = TBSECP3_GPIODEF_LOW,
 				.gpio.demod_reset.nr  = TBSECP3_GPIO_PIN(0, 0),
-			}, 
+			},
 			{
 				.ts_in = 1,
 				.i2c_bus_nr = 1,
@@ -433,7 +438,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.i2c_bus_nr = 0,
 				.gpio.demod_reset.lvl = TBSECP3_GPIODEF_LOW,
 				.gpio.demod_reset.nr  = TBSECP3_GPIO_PIN(0, 0),
-			}, 
+			},
 			{
 				.ts_in = 1,
 				.i2c_bus_nr = 1,
@@ -467,7 +472,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.gpio.demod_reset.lvl = TBSECP3_GPIODEF_LOW,
 				.gpio.demod_reset.nr  = TBSECP3_GPIO_PIN(0, 0),
 
-			}, 
+			},
 			{
 				.ts_in = 1,
 				.i2c_bus_nr = 1,
@@ -490,8 +495,8 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.i2c_bus_nr = 0,
 				.gpio.demod_reset.lvl = TBSECP3_GPIODEF_LOW,
 				.gpio.demod_reset.nr  = TBSECP3_GPIO_PIN(0, 0),
-			}, 
-	
+			},
+
 		}
 	},
 	[TBSECP3_BOARD_TBS6209SE] = {
@@ -505,7 +510,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 			{
 				.ts_in = 0,
 				.i2c_bus_nr = 0,
-			}, 
+			},
 			{
 				.ts_in = 1,
 				.i2c_bus_nr = 0,
@@ -539,6 +544,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 
 		}
 	},
+
 	[TBSECP3_BOARD_TBS7901] = {
 		.board_id	= TBSECP3_BOARD_TBS7901,
 		.name		= "TurboSight TBS 7901 DVB-S/S2/S2x ",
@@ -555,9 +561,9 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.gpio.lnb_power.lvl   = TBSECP3_GPIODEF_LOW,
 				.gpio.lnb_power.nr    = TBSECP3_GPIO_PIN(0, 2),
 				.gpio.lnb_voltage.lvl = TBSECP3_GPIODEF_HIGH,
-				.gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(0,1),				
-			}	
-			
+				.gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(0,1),
+			}
+
 		}
 	},
 
@@ -586,6 +592,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 	[TBSECP3_BOARD_TBS6902SE] = {
 		.board_id	= TBSECP3_BOARD_TBS6902SE,
 		.name		= "TurboSight TBS 6902SE DVB-S/S2/S2x ",
+		.short_name = "TBS 6902SE",
 		.adapters	= 2,
 		.i2c_speed	= 39,
 		.eeprom_i2c	= 1,
@@ -599,8 +606,8 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.gpio.lnb_power.lvl   = TBSECP3_GPIODEF_LOW,
 				.gpio.lnb_power.nr    = TBSECP3_GPIO_PIN(0, 2),
 				.gpio.lnb_voltage.lvl = TBSECP3_GPIODEF_HIGH,
-				.gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(0, 1),				
-			},	
+				.gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(0, 1),
+			},
 			{
 				.ts_in = 1,
 				.i2c_bus_nr = 1,
@@ -609,17 +616,18 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.gpio.lnb_power.lvl   = TBSECP3_GPIODEF_LOW,
 				.gpio.lnb_power.nr    = TBSECP3_GPIO_PIN(1, 2),
 				.gpio.lnb_voltage.lvl = TBSECP3_GPIODEF_HIGH,
-				.gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(1, 1),			
+				.gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(1, 1),
 			}
-			
+
 		}
 	},
 
 	[TBSECP3_BOARD_TBS6904SE] = {
 		.board_id	= TBSECP3_BOARD_TBS6904SE,
 		.name		= "TurboSight TBS 6904se DVB-S/S2/S2x ",
+		.short_name		= "TBS 6904se",
 		.adapters	= 4,
-		.i2c_speed	= 39,
+		.i2c_speed	= 3, //39 in official driver
 		.eeprom_i2c	= 3,
 		.adap_config	= {
 			{
@@ -640,7 +648,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.gpio.lnb_power.lvl   = TBSECP3_GPIODEF_LOW,
 				.gpio.lnb_power.nr    = TBSECP3_GPIO_PIN(1, 2),
 				.gpio.lnb_voltage.lvl = TBSECP3_GPIODEF_HIGH,
-				.gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(1, 1),				
+				.gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(1, 1),
 			},
 			{
 				.ts_in = 2,
@@ -650,7 +658,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.gpio.lnb_power.lvl   = TBSECP3_GPIODEF_LOW,
 				.gpio.lnb_power.nr    = TBSECP3_GPIO_PIN(2, 2),
 				.gpio.lnb_voltage.lvl = TBSECP3_GPIODEF_HIGH,
-				.gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(2, 1),	
+				.gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(2, 1),
 			},
 			{
 				.ts_in = 3,
@@ -660,10 +668,12 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.gpio.lnb_power.lvl   = TBSECP3_GPIODEF_LOW,
 				.gpio.lnb_power.nr    = TBSECP3_GPIO_PIN(3, 2),
 				.gpio.lnb_voltage.lvl = TBSECP3_GPIODEF_HIGH,
-				.gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(3, 1),			
-			}, 
+				.gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(3, 1),
+			},
 		}
 	},
+
+
 	[TBSECP3_BOARD_TBS6508] = {
 		.board_id	= TBSECP3_BOARD_TBS6508,
 		.name		= "TurboSight TBS 6508 DVB-S/S2/S2X/T/T2/C(QAM-A/B/C)/C2/ISDB-T ",
@@ -749,7 +759,8 @@ struct tbsecp3_board tbsecp3_boards[] = {
 
 	[TBSECP3_BOARD_TBS6504] = {
 		.board_id	= TBSECP3_BOARD_TBS6504,
-		.name		= "TurboSight TBS 6504 DVB-S/S2/S2X/T/T2/C/C2/ISDB-T ",
+		.name		= "TurboSight TBS 6504 ",
+		.short_name		= "TBS 6504",
 		.adapters	= 4,
 		.i2c_speed	= 39,
 		.eeprom_i2c	= 0,
@@ -796,6 +807,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 	[TBSECP3_BOARD_TBS6904X] = {
 		.board_id	= TBSECP3_BOARD_TBS6904X,
 		.name		= "TurboSight TBS 6904x DVB-S/S2/S2X ",
+		.short_name		= "TBS 6904X",
 		.adapters	= 4,
 		.i2c_speed	= 39,
 		.eeprom_i2c	= 0,
@@ -848,15 +860,15 @@ struct tbsecp3_board tbsecp3_boards[] = {
 		.i2c_speed	= 39,
 		.eeprom_i2c	= 0,
 		.adap_config	= {
- 			{ 
+ 			{
  			 	.ts_in = 1,
 				.i2c_bus_nr = 2,
-			}, 
- 			{ 
+			},
+ 			{
  			 	.ts_in = 3,
 				.i2c_bus_nr = 0,
-			}, 
-			
+			},
+
 		}
 	},
 	[TBSECP3_BOARD_TBS6308] = {
@@ -869,7 +881,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 			{
 				.ts_in = 0,
 				.i2c_bus_nr = 0,
-			}, 
+			},
 			{
 				.ts_in = 1,
 				.i2c_bus_nr = 0,
@@ -912,7 +924,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				{
 					.ts_in = 0,
 					.i2c_bus_nr = 0,
-				}, 
+				},
 				{
 					.ts_in = 1,
 					.i2c_bus_nr = 0,
@@ -946,7 +958,8 @@ struct tbsecp3_board tbsecp3_boards[] = {
 		},
 	[TBSECP3_BOARD_TBS6312X] = {
 			.board_id	= TBSECP3_BOARD_TBS6312X,
-			.name		= "TurboSight TBS 6312X 4K@30FPS HDMI PCIe Encoder",
+			.name		= "TurboSight TBS 6312X HDMI Capture",
+			.short_name = "TBS 6312X",
 			.adapters	= 12,
 			.i2c_speed	= 39,
 			.eeprom_i2c	= 1,
@@ -955,7 +968,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				{
 					.ts_in = 0,
 					.i2c_bus_nr = 0,
-				}, 
+				},
 				{
 					.ts_in = 1,
 					.i2c_bus_nr = 0,
@@ -1015,39 +1028,39 @@ struct tbsecp3_board tbsecp3_boards[] = {
 		.i2c_speed	= 39,
 		.eeprom_i2c	= 0,
 		.adap_config	= {
- 			{ 
+ 			{
  			 	.ts_in = 0,
 				.i2c_bus_nr = 3,
 				.gpio.demod_reset.lvl = TBSECP3_GPIODEF_LOW,
 				.gpio.demod_reset.nr  = TBSECP3_GPIO_PIN(3, 0),
 				.gpio.lnb_power.lvl   = TBSECP3_GPIODEF_LOW,
 				.gpio.lnb_power.nr    = TBSECP3_GPIO_PIN(3, 2),
-			}, 
- 			{ 
+			},
+ 			{
  			 	.ts_in = 1,
 				.i2c_bus_nr = 2,
 				.gpio.demod_reset.lvl = TBSECP3_GPIODEF_LOW,
 				.gpio.demod_reset.nr  = TBSECP3_GPIO_PIN(2, 0),
 				.gpio.lnb_power.lvl   = TBSECP3_GPIODEF_LOW,
 				.gpio.lnb_power.nr    = TBSECP3_GPIO_PIN(2, 2),
-			}, 
- 			{ 
+			},
+ 			{
  			 	.ts_in = 2,
 				.i2c_bus_nr = 1,
 				.gpio.demod_reset.lvl = TBSECP3_GPIODEF_LOW,
 				.gpio.demod_reset.nr  = TBSECP3_GPIO_PIN(1, 0),
 				.gpio.lnb_power.lvl   = TBSECP3_GPIODEF_LOW,
 				.gpio.lnb_power.nr    = TBSECP3_GPIO_PIN(1, 2),
-			}, 
- 			{ 
+			},
+ 			{
  			 	.ts_in = 3,
 				.i2c_bus_nr = 0,
 				.gpio.demod_reset.lvl = TBSECP3_GPIODEF_LOW,
 				.gpio.demod_reset.nr  = TBSECP3_GPIO_PIN(0, 0),
 				.gpio.lnb_power.lvl   = TBSECP3_GPIODEF_LOW,
 				.gpio.lnb_power.nr    = TBSECP3_GPIO_PIN(0, 2),
-			}, 
-			
+			},
+
 		}
 	},
 	[TBSECP3_BOARD_TBS6301] = {
@@ -1065,12 +1078,14 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.gpio.lnb_power.lvl   = TBSECP3_GPIODEF_LOW,
 				.gpio.lnb_power.nr    = TBSECP3_GPIO_PIN(3, 2),
 			},
-			
+
 		}
 	},
-	[TBSECP3_BOARD_TBS6301SE] = {
+
+		[TBSECP3_BOARD_TBS6301SE] = {
 		.board_id	= TBSECP3_BOARD_TBS6301SE,
-		.name		= "TurboSight TBS 6301T HDMI Capture ",
+		.name		= "TurboSight TBS 6301SE HDMI Capture ",
+		.name   = "TBS 6301SE",
 		.adapters	= 1,
 		.i2c_speed	= 39,
 		.eeprom_i2c	= 1,
@@ -1083,9 +1098,10 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.gpio.lnb_power.lvl   = TBSECP3_GPIODEF_LOW,
 				.gpio.lnb_power.nr    = TBSECP3_GPIO_PIN(3, 2),
 			},
-			
+
 		}
 	},
+
 	[TBSECP3_BOARD_TBS6302X] = {
 		.board_id	= TBSECP3_BOARD_TBS6302X,
 		.name		= "TurboSight TBS 6302X 4K@30FPS HDMI PCIe Encoder ",
@@ -1292,7 +1308,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.gpio.demod_reset.nr  = TBSECP3_GPIO_PIN(0, 0),
 				.gpio.lnb_power.lvl   = TBSECP3_GPIODEF_LOW,
 				.gpio.lnb_power.nr    = TBSECP3_GPIO_PIN(0, 2),
-			}, 
+			},
 		}
 	},
 		[TBSECP3_BOARD_TBS6331] = {
@@ -1319,13 +1335,13 @@ struct tbsecp3_board tbsecp3_boards[] = {
 		.eeprom_i2c = 1,
 		.adapters	= 4,
 		.adap_config ={
-			
+
 			{
 				.ts_in = 0,
 				.i2c_bus_nr = 0,
 				.gpio.demod_reset.lvl = TBSECP3_GPIODEF_LOW,
 				.gpio.demod_reset.nr  = TBSECP3_GPIO_PIN(0, 0),
-			}, 
+			},
 			{
 				.ts_in = 1,
 				.i2c_bus_nr = 1,
@@ -1354,13 +1370,13 @@ struct tbsecp3_board tbsecp3_boards[] = {
 		.eeprom_i2c = 1,
 		.adapters	= 4,
 		.adap_config ={
-			
+
 			{
 				.ts_in = 0,
 				.i2c_bus_nr = 0,
 				.gpio.demod_reset.lvl = TBSECP3_GPIODEF_LOW,
 				.gpio.demod_reset.nr  = TBSECP3_GPIO_PIN(0, 0),
-			}, 
+			},
 			{
 				.ts_in = 1,
 				.i2c_bus_nr = 1,
@@ -1394,7 +1410,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.i2c_bus_nr = 0,
 				.gpio.demod_reset.lvl = TBSECP3_GPIODEF_LOW,
 				.gpio.demod_reset.nr  = TBSECP3_GPIO_PIN(0, 0),
-			}, 
+			},
 			{
 				.ts_in = 1,
 				.i2c_bus_nr = 0,
@@ -1414,7 +1430,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.i2c_bus_nr = 2,
 				.gpio.demod_reset.lvl = TBSECP3_GPIODEF_LOW,
 				.gpio.demod_reset.nr  = TBSECP3_GPIO_PIN(2, 0),
-				
+
 			},
 			{
 				.ts_in = 5,
@@ -1425,13 +1441,13 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.i2c_bus_nr = 3,
 				.gpio.demod_reset.lvl = TBSECP3_GPIODEF_LOW,
 				.gpio.demod_reset.nr  = TBSECP3_GPIO_PIN(3, 0),
-				
+
 			},
 			{
 				.ts_in = 7,
 				.i2c_bus_nr = 3,
 			}
-		
+
 		}
 	},
 	[TBSECP3_BOARD_TBS6704] = {
@@ -1446,7 +1462,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.i2c_bus_nr = 0,
 				.gpio.demod_reset.lvl = TBSECP3_GPIODEF_LOW,
 				.gpio.demod_reset.nr  = TBSECP3_GPIO_PIN(0, 0),
-			}, 
+			},
 			{
 				.ts_in = 1,
 				.i2c_bus_nr = 1,
@@ -1481,7 +1497,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.i2c_bus_nr = 0,
 				.gpio.demod_reset.lvl = TBSECP3_GPIODEF_LOW,
 				.gpio.demod_reset.nr  = TBSECP3_GPIO_PIN(0, 0),
-			}, 
+			},
 			{
 				.ts_in = 1,
 				.i2c_bus_nr = 1,
@@ -1505,6 +1521,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 	[TBSECP3_BOARD_TBS6522] = {
 		.board_id	= TBSECP3_BOARD_TBS6522,
 		.name		= "TurboSight TBS 6522 DVB-S/S2/S2X/T/T2/C/C2/ISDB-T ",
+		.short_name = "TBS 6522",
 		.adapters	= 2,
 		.i2c_speed	= 39,
 		.eeprom_i2c	= 0,
@@ -1544,7 +1561,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.gpio.demod_reset.nr  = TBSECP3_GPIO_PIN(1, 0),
 				.gpio.lnb_power.lvl   = TBSECP3_GPIODEF_LOW,
 				.gpio.lnb_power.nr    = TBSECP3_GPIO_PIN(1, 2),
-			},	
+			},
 			{
 				.ts_in = 0,
 				.i2c_bus_nr = 0,
@@ -1553,12 +1570,13 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.gpio.lnb_power.lvl   = TBSECP3_GPIODEF_LOW,
 				.gpio.lnb_power.nr    = TBSECP3_GPIO_PIN(0, 2),
 			}
-			
+
 		}
 	},
 	[TBSECP3_BOARD_TBS6903] = {
 		.board_id	= TBSECP3_BOARD_TBS6903,
 		.name		= "TurboSight TBS 6903 DVB-S/S2 ",
+		.short_name		= "TBS 6903",
 		.adapters	= 2,
 		.i2c_speed	= 39,
 		.eeprom_i2c	= 1,
@@ -1572,7 +1590,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.gpio.lnb_power.nr    = TBSECP3_GPIO_PIN(0, 2),
 				.gpio.lnb_voltage.lvl = TBSECP3_GPIODEF_HIGH,
 				.gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(0, 1),
-			}, 
+			},
 			{
 				.ts_in = 1,
 				.i2c_bus_nr = 0,
@@ -1586,6 +1604,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 	[TBSECP3_BOARD_TBS6904] = {
 		.board_id	= TBSECP3_BOARD_TBS6904,
 		.name		= "TurboSight TBS 6904 DVB-S/S2 ",
+		.short_name		= "TBS 6904",
 		.adapters	= 4,
 		.i2c_speed	= 39,
 		.eeprom_i2c	= 1,
@@ -1621,7 +1640,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.gpio.demod_reset.nr  = TBSECP3_GPIO_PIN(0, 0),
 				.gpio.lnb_power.lvl   = TBSECP3_GPIODEF_LOW,
 				.gpio.lnb_power.nr    = TBSECP3_GPIO_PIN(0, 2),
-			}, 
+			},
 		}
 	},
 	[TBSECP3_BOARD_TBS6905] = {
@@ -1672,6 +1691,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 	[TBSECP3_BOARD_TBS6908] = {
 		.board_id	= TBSECP3_BOARD_TBS6908,
 		.name		= "TurboSight TBS 6908 DVB-S/S2 ",
+		.short_name		= "TBS 6908",
 		.adapters	= 4,
 		.i2c_speed	= 39,
 		.eeprom_i2c	= 2,
@@ -1718,6 +1738,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 	[TBSECP3_BOARD_TBS6909] = {
 		.board_id	= TBSECP3_BOARD_TBS6909,
 		.name		= "TurboSight TBS 6909 DVB-S/S2 ",
+		.short_name		= "TBS 6909",
 		.adapters	= 8,
 		.i2c_speed	= 39,
 		.eeprom_i2c	= 0,
@@ -1728,7 +1749,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.i2c_bus_nr = 0,
 				.gpio.demod_reset.lvl = TBSECP3_GPIODEF_LOW,
 				.gpio.demod_reset.nr  = TBSECP3_GPIO_PIN(0, 0),
-			}, 
+			},
 			{
 				.ts_in = 1,
 				.i2c_bus_nr = 0,
@@ -1803,10 +1824,11 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(0, 1),
 			},
 		}
-	},	
+	},
 	[TBSECP3_BOARD_TBS6590] = {
 		.board_id	= TBSECP3_BOARD_TBS6590,
 		.name		= "TurboSight TBS 6590 DVB-S/S2/S2X/T/T2/C/C2/ISDB-T + 2xCI ",
+		.short_name = "TBS 6590",
 		.adapters	= 2,
 		.i2c_speed	= 39,
 		.eeprom_i2c	= 0,
@@ -1844,17 +1866,15 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.i2c_bus_nr = 0,
 				.gpio.demod_reset.lvl = TBSECP3_GPIODEF_NONE,
 				.gpio.demod_reset.nr  = TBSECP3_GPIO_PIN(0, 0),
-
-			}, 
+			},
 			{
 				.ts_in = 1,
 				.i2c_bus_nr = 1,
 				.gpio.demod_reset.lvl = TBSECP3_GPIODEF_NONE,
 				.gpio.demod_reset.nr  = TBSECP3_GPIO_PIN(2, 0),
-
 			},
 		}
-	},	
+	},
 	[TBSECP3_BOARD_TBS6281SE] = {
 		.board_id	= TBSECP3_BOARD_TBS6281SE,
 		.name		= "TurboSight TBS 6281SE DVB-T/T2/C ",
@@ -1867,7 +1887,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.i2c_bus_nr = 1,
 				.gpio.demod_reset.lvl = TBSECP3_GPIODEF_LOW,
 				.gpio.demod_reset.nr  = TBSECP3_GPIO_PIN(1, 0),
-			}, 
+			},
 			{
 				.ts_in = 2,
 				.i2c_bus_nr = 2,
@@ -1877,8 +1897,12 @@ struct tbsecp3_board tbsecp3_boards[] = {
 		}
 	},
 	[TBSECP3_BOARD_TBS6909X] = {
+#if 1
+		.i2c_speed = 4, //default=9
+#endif
 		.board_id	= TBSECP3_BOARD_TBS6909X,
-		.name		= "TurboSight TBS 6909x (Octa DVB-S/S2/S2X)",
+		.name		= "TurboSight TBS 6909x ",
+		.short_name		= "TBS 6909X",
 		.adapters	= 8,
 		.eeprom_i2c	= 0,
 		.eeprom_addr	= 0x10,
@@ -1888,7 +1912,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.i2c_bus_nr = 0,
 				.gpio.demod_reset.lvl = TBSECP3_GPIODEF_LOW,
 				.gpio.demod_reset.nr  = TBSECP3_GPIO_PIN(0, 0),
-			}, 
+			},
 			{
 				.ts_in = 1,
 				.i2c_bus_nr = 0,
@@ -1920,8 +1944,12 @@ struct tbsecp3_board tbsecp3_boards[] = {
 		}
 	},
 	[TBSECP3_BOARD_TBS6903X] = {
+#if 1
+		.i2c_speed = 4, //default=9
+#endif
 		.board_id	= TBSECP3_BOARD_TBS6903X,
-		.name		= "TurboSight TBS 6903x (Dual DVB-S/S2/S2X)",
+		.name		= "TurboSight TBS 6903x ",
+		.short_name		= "TBS 6903X",
 		.adapters	= 2,
 		.eeprom_i2c	= 0,
 		.eeprom_addr	= 0x10,
@@ -1935,7 +1963,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.gpio.lnb_power.nr    = TBSECP3_GPIO_PIN(0, 2),
 				.gpio.lnb_voltage.lvl = TBSECP3_GPIODEF_HIGH,
 				.gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(0, 1),
-			}, 
+			},
 			{
 				.ts_in = 1,
 				.i2c_bus_nr = 0,
@@ -1946,7 +1974,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 			},
 		}
 	},
-	
+
 	[TBSECP3_BOARD_TBS6912] = {
 		.board_id	= TBSECP3_BOARD_TBS6912,
 		.name		= "TurboSight TBS 6912 (Dual DVB-S/S2/S2X CI card)",
@@ -1963,7 +1991,7 @@ struct tbsecp3_board tbsecp3_boards[] = {
 				.gpio.lnb_power.nr    = TBSECP3_GPIO_PIN(0, 2),
 				.gpio.lnb_voltage.lvl = TBSECP3_GPIODEF_HIGH,
 				.gpio.lnb_voltage.nr  = TBSECP3_GPIO_PIN(0, 1),
-			}, 
+			},
 			{
 				.ts_in = 1,
 				.i2c_bus_nr = 0,
@@ -1976,3 +2004,6 @@ struct tbsecp3_board tbsecp3_boards[] = {
 		}
 	},
 };
+
+//check for incorrect include files
+#include <media/neumo-check.h>

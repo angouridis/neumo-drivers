@@ -17,7 +17,7 @@
 #include <linux/types.h>
 #include <linux/i2c.h>
 
-#include <media/dvb_frontend.h>
+#include <media/neumo-dvb-frontend.h>
 
 struct mxl5xx_cfg {
 	u8   adr;
@@ -34,9 +34,9 @@ struct mxl5xx_cfg {
 };
 
 
-extern struct dvb_frontend *mxl5xx_attach(struct i2c_adapter *i2c,
+extern struct neumo_dvb_frontend *mxl5xx_attach(struct i2c_adapter *i2c,
 	struct mxl5xx_cfg *cfg, u32 demod, u32 tuner,
-	int (**fn_set_input)(struct dvb_frontend *, int));
+	int (**fn_set_input)(struct neumo_dvb_frontend *, int));
 
 
 

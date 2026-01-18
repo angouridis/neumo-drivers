@@ -9,12 +9,7 @@
 
 #define pr_fmt(fmt) "dvb_demux: " fmt
 
-#include <linux/version.h>
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0))
 #include <linux/sched/signal.h>
-#else
-#include <linux/sched.h>
-#endif
 #include <linux/spinlock.h>
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
@@ -26,29 +21,7 @@
 #include <asm/div64.h>
 
 #include <media/dvb_demux.h>
-
-
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 0, 0))
-static inline s64 ktime_ms_delta(const ktime_t later, const ktime_t earlier)
-{
-	return ktime_to_ms(ktime_sub(later, earlier));
-}
-#endif
-
-static int dvb_demux_tscheck;
-module_param(dvb_demux_tscheck, int, 0644);
-MODULE_PARM_DESC(dvb_demux_tscheck,
-		"enable transport stream continuity and TEI check");
-
-static int dvb_demux_speedcheck;
-module_param(dvb_demux_speedcheck, int, 0644);
-MODULE_PARM_DESC(dvb_demux_speedcheck,
-		"enable transport stream speed check");
-
-static int dvb_demux_feed_err_pkts = 1;
-module_param(dvb_demux_feed_err_pkts, int, 0644);
-MODULE_PARM_DESC(dvb_demux_feed_err_pkts,
-		 "when set to 0, drop packets with the TEI bit set (1 by default)");
+#include <media/neumo-dvb-demux-private.h>
 
 #define dprintk(fmt, arg...) \
 	printk(KERN_DEBUG pr_fmt("%s: " fmt),  __func__, ##arg)
@@ -1251,16 +1224,6 @@ int dvb_dmx_init(struct dvb_demux *dvbdemux)
 
 	dvbdemux->cnt_storage = NULL;
 	dvbdemux->users = 0;
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 18, 0))
-	dvbdemux->filter = vmalloc(sizeof(struct dvb_demux_filter) *
-				   dvbdemux->filternum);
-
-	if (!dvbdemux->filter)
-		return -ENOMEM;
-
-	dvbdemux->feed = vmalloc(sizeof(struct dvb_demux_feed) *
-				 dvbdemux->feednum);
-#else
 	dvbdemux->filter = vmalloc(array_size(sizeof(struct dvb_demux_filter),
 					      dvbdemux->filternum));
 
@@ -1269,7 +1232,6 @@ int dvb_dmx_init(struct dvb_demux *dvbdemux)
 
 	dvbdemux->feed = vmalloc(array_size(sizeof(struct dvb_demux_feed),
 					    dvbdemux->feednum));
-#endif
 	if (!dvbdemux->feed) {
 		vfree(dvbdemux->filter);
 		dvbdemux->filter = NULL;

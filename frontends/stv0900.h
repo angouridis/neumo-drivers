@@ -12,8 +12,8 @@
 #ifndef STV0900_H
 #define STV0900_H
 
-#include <linux/dvb/frontend.h>
-#include <media/dvb_frontend.h>
+#include <linux/dvb/neumo-frontend.h>
+#include <media/neumo-dvb-frontend.h>
 
 struct stv0900_reg {
 	u16 addr;
@@ -38,16 +38,16 @@ struct stv0900_config {
 	u8 tun1_type;/* for now 3 for stb6100 auto, else - software */
 	u8 tun2_type;
 	/* Set device param to start dma */
-	int (*set_ts_params)(struct dvb_frontend *fe, int is_punctured);
+	int (*set_ts_params)(struct neumo_dvb_frontend *fe, int is_punctured);
 	/* Hook for Lock LED */
-	void (*set_lock_led)(struct dvb_frontend *fe, int offon);
+	void (*set_lock_led)(struct neumo_dvb_frontend *fe, int offon);
 };
 
 #if IS_REACHABLE(CONFIG_DVB_STV0900)
-extern struct dvb_frontend *stv0900_attach(const struct stv0900_config *config,
+extern struct neumo_dvb_frontend *stv0900_attach(const struct stv0900_config *config,
 					struct i2c_adapter *i2c, int demod);
 #else
-static inline struct dvb_frontend *stv0900_attach(const struct stv0900_config *config,
+static inline struct neumo_dvb_frontend *stv0900_attach(const struct stv0900_config *config,
 					struct i2c_adapter *i2c, int demod)
 {
 	printk(KERN_WARNING "%s: driver disabled by Kconfig\n", __func__);

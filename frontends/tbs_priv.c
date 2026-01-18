@@ -5,12 +5,12 @@
 #include <linux/init.h>
 #include <linux/i2c-mux.h>
 
-#include <media/dvb_frontend.h>
+#include <media/neumo-dvb-frontend.h>
 
 #include "tbs_priv.h"
 
 struct tbs_dev{
-	struct dvb_frontend fe;
+	struct neumo_dvb_frontend fe;
 	struct i2c_adapter *i2c;
 	struct tbs_cfg*cfg;
 	int demod;
@@ -18,25 +18,23 @@ struct tbs_dev{
 };
 
 
-static int tbs_read_status(struct dvb_frontend *fe,enum fe_status*status)
+static int tbs_read_status(struct neumo_dvb_frontend *fe, enum fe_status* status)
 {
-	struct tbs_dev*state =fe->demodulator_priv;
 
-	*status = FE_HAS_SIGNAL | FE_HAS_CARRIER |
-			FE_HAS_VITERBI | FE_HAS_SYNC | FE_HAS_LOCK;
+	*status =  (FE_HAS_SIGNAL | FE_HAS_CARRIER |
+							FE_HAS_VITERBI | FE_HAS_SYNC | FE_HAS_LOCK);
 	return 0;
 
 }
-static int tbs_read_ber(struct dvb_frontend*fe,u32*ber)
+static int tbs_read_ber(struct neumo_dvb_frontend*fe,u32*ber)
 {
 	*ber = 0;
 	return 0;
 }
 
-static int tbs_read_snr(struct dvb_frontend*fe,u16*snr)
+static int tbs_read_snr(struct neumo_dvb_frontend*fe,u16*snr)
 {
-	struct tbs_dev*state = fe->demodulator_priv;
-	struct dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
 
 	p->cnr.len = 1;
 	p->cnr.stat[0].scale = FE_SCALE_DECIBEL;
@@ -46,10 +44,9 @@ static int tbs_read_snr(struct dvb_frontend*fe,u16*snr)
 	return 0;
 }
 
-static int tbs_read_signal_strength(struct dvb_frontend*fe, u16*strength)
+static int tbs_read_signal_strength(struct neumo_dvb_frontend*fe, u16*strength)
 {
-	struct tbs_dev*state = fe->demodulator_priv;
-	struct dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
 
 	p->strength.len = 1;
 	p->strength.stat[0].scale = FE_SCALE_DECIBEL;
@@ -59,16 +56,16 @@ static int tbs_read_signal_strength(struct dvb_frontend*fe, u16*strength)
 
 	return 0;
 }
-static int tbs_sleep(struct dvb_frontend *fe)
+static int tbs_sleep(struct neumo_dvb_frontend *fe)
 {
 	return 0;
 }
-static int tbs_init(struct dvb_frontend *fe)
+static int tbs_init(struct neumo_dvb_frontend *fe)
 {
 	return 0;
 }
 
-static void tbs_spi_read(struct dvb_frontend *fe, struct ecp3_info *ecp3inf)
+static void tbs_spi_read(struct neumo_dvb_frontend *fe, struct ecp3_info *ecp3inf)
 {
 
 	struct tbs_dev *priv = fe->demodulator_priv;
@@ -79,7 +76,7 @@ static void tbs_spi_read(struct dvb_frontend *fe, struct ecp3_info *ecp3inf)
 
 	return;
 }
-static void tbs_spi_write(struct dvb_frontend *fe,struct ecp3_info *ecp3inf)
+static void tbs_spi_write(struct neumo_dvb_frontend *fe,struct ecp3_info *ecp3inf)
 {
 	struct tbs_dev *priv = fe->demodulator_priv;
 	struct i2c_adapter *adapter = priv->i2c;
@@ -90,7 +87,7 @@ static void tbs_spi_write(struct dvb_frontend *fe,struct ecp3_info *ecp3inf)
 	return ;
 }
 
-static void tbs_mcu_read(struct dvb_frontend * fe,struct mcu24cxx_info *mcu24cxxinf)
+static void tbs_mcu_read(struct neumo_dvb_frontend * fe,struct mcu24cxx_info *mcu24cxxinf)
 {
 
 	struct tbs_dev *priv = fe->demodulator_priv;
@@ -101,7 +98,7 @@ static void tbs_mcu_read(struct dvb_frontend * fe,struct mcu24cxx_info *mcu24cxx
 
 	return;
 }
-static void tbs_mcu_write(struct dvb_frontend *fe,struct mcu24cxx_info *mcu24cxxinf)
+static void tbs_mcu_write(struct neumo_dvb_frontend *fe,struct mcu24cxx_info *mcu24cxxinf)
 {
 	struct tbs_dev *priv = fe->demodulator_priv;
 	struct i2c_adapter *adapter = priv->i2c;
@@ -111,7 +108,7 @@ static void tbs_mcu_write(struct dvb_frontend *fe,struct mcu24cxx_info *mcu24cxx
 
 	return ;
 }
-static void tbs_reg_i2c_read(struct dvb_frontend *fe,struct usbi2c_access *pi2cinf)
+static void tbs_reg_i2c_read(struct neumo_dvb_frontend *fe,struct usbi2c_access *pi2cinf)
 {
 
 	struct tbs_dev *priv = fe->demodulator_priv;
@@ -122,7 +119,7 @@ static void tbs_reg_i2c_read(struct dvb_frontend *fe,struct usbi2c_access *pi2ci
 
 	return;
 }
-static void tbs_reg_i2c_write(struct dvb_frontend *fe,struct usbi2c_access *pi2cinf)
+static void tbs_reg_i2c_write(struct neumo_dvb_frontend *fe,struct usbi2c_access *pi2cinf)
 {
 	struct tbs_dev *priv = fe->demodulator_priv;
 	struct i2c_adapter *adapter = priv->i2c;
@@ -134,18 +131,18 @@ static void tbs_reg_i2c_write(struct dvb_frontend *fe,struct usbi2c_access *pi2c
 }
 
 
-static int tbs_set_tone(struct dvb_frontend *fe,
+static int tbs_set_tone(struct neumo_dvb_frontend *fe,
 	enum fe_sec_tone_mode tone)
 {
 	return 0;
 }
-static int tbs_set_voltage(struct dvb_frontend *fe,
+static int tbs_set_voltage(struct neumo_dvb_frontend *fe,
 	enum fe_sec_voltage voltage)
 {
 	return 0;
 
 }
-static int tbs_set_frontend(struct dvb_frontend *fe)
+static int tbs_set_frontend(struct neumo_dvb_frontend *fe)
 {
 	struct tbs_dev*state = fe->demodulator_priv;
 
@@ -158,8 +155,8 @@ static int tbs_set_frontend(struct dvb_frontend *fe)
 
 }
 
-static int tbs_get_frontend(struct dvb_frontend *fe,
-				struct dtv_frontend_properties *c)
+static int tbs_get_frontend(struct neumo_dvb_frontend *fe,
+				struct neumo_driver_dtv_frontend_properties *c)
 {
 	c->fec_inner = 1;
 	c->modulation = 9;
@@ -170,11 +167,10 @@ static int tbs_get_frontend(struct dvb_frontend *fe,
 	return 0;
 }
 
-static int tbs_tune(struct dvb_frontend *fe,bool re_tune,
+static int tbs_tune(struct neumo_dvb_frontend *fe,bool re_tune,
 			unsigned int mode_flags,
 			unsigned int* delay,enum fe_status*status)
 {
-	struct tbs_dev*state = fe->demodulator_priv;
 	int r;
 	if(re_tune){
 			r = tbs_set_frontend(fe);
@@ -188,14 +184,14 @@ static int tbs_tune(struct dvb_frontend *fe,bool re_tune,
 
 	return 0;
 }
-static void tbs_release(struct dvb_frontend *fe)
+static void tbs_release(struct neumo_dvb_frontend *fe)
 {
 	struct tbs_dev*state = fe->demodulator_priv;
 
 	kfree(state);
 
 }
-static struct dvb_frontend_ops tbs_ops = {
+static struct neumo_dvb_frontend_ops tbs_ops = {
 	.delsys = { SYS_DVBS, SYS_DVBS2 },
 	.info = {
 		.name = "TBS virtual frontend",
@@ -236,7 +232,7 @@ static struct dvb_frontend_ops tbs_ops = {
 
 };
 
-struct dvb_frontend *tbs_attach(struct i2c_adapter*i2c,
+struct neumo_dvb_frontend *tbs_attach(struct i2c_adapter*i2c,
 									struct tbs_cfg*cfg,
 									int demod)
 {
@@ -253,7 +249,7 @@ struct dvb_frontend *tbs_attach(struct i2c_adapter*i2c,
 	state->cfg = cfg;
 
 	memcpy(&state->fe.ops, &tbs_ops,
-		sizeof(struct dvb_frontend_ops));
+		sizeof(struct neumo_dvb_frontend_ops));
 
 	state->fe.demodulator_priv = state;
 

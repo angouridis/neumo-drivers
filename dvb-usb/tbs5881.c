@@ -14,7 +14,7 @@
 #include "si2168.h"
 #include "si2157.h"
 
-#include <media/dvb_ca_en50221.h>
+#include <media/neumo-dvb-ca-en50221.h>
 
 #define TBS5881_READ_MSG 0
 #define TBS5881_WRITE_MSG 1
@@ -36,7 +36,7 @@ struct tbs5881_state {
 /* debug */
 static int dvb_usb_tbs5881_debug;
 module_param_named(debug, dvb_usb_tbs5881_debug, int, 0644);
-MODULE_PARM_DESC(debug, "set debugging level (1=info 2=xfer (or-able))." 
+MODULE_PARM_DESC(debug, "set debugging level (1=info 2=xfer (or-able))."
 							DVB_USB_DEBUG_STATUS);
 
 DVB_DEFINE_MOD_OPT_ADAPTER_NR(adapter_nr);
@@ -136,7 +136,7 @@ static int tbs5881_write_attribute_mem(struct dvb_ca_en50221 *ca,
 	return 0;
 }
 
-static int tbs5881_read_cam_control(struct dvb_ca_en50221 *ca, int slot, 
+static int tbs5881_read_cam_control(struct dvb_ca_en50221 *ca, int slot,
 								u8 address)
 {
 	struct dvb_usb_device *d = (struct dvb_usb_device *)ca->data;
@@ -170,7 +170,7 @@ static int tbs5881_read_cam_control(struct dvb_ca_en50221 *ca, int slot,
 	return rbuf[0];
 }
 
-static int tbs5881_write_cam_control(struct dvb_ca_en50221 *ca, int slot, 
+static int tbs5881_write_cam_control(struct dvb_ca_en50221 *ca, int slot,
 							u8 address, u8 value)
 {
 	struct dvb_usb_device *d = (struct dvb_usb_device *)ca->data;
@@ -205,7 +205,7 @@ static int tbs5881_write_cam_control(struct dvb_ca_en50221 *ca, int slot,
 	return 0;
 }
 
-static int tbs5881_set_video_port(struct dvb_ca_en50221 *ca, 
+static int tbs5881_set_video_port(struct dvb_ca_en50221 *ca,
 							int slot, int enable)
 {
 	struct dvb_usb_device *d = (struct dvb_usb_device *)ca->data;
@@ -326,7 +326,7 @@ static void tbs5881_uninit(struct dvb_usb_device *d)
 	/* Error ignored. */
 	tbs5881_set_video_port(&state->ca, /* slot */ 0, /* enable */ 0);
 
-	dvb_ca_en50221_release(&state->ca);
+	neumo_dvb_ca_en50221_release(&state->ca);
 
 	memset(&state->ca, 0, sizeof(state->ca));
 }
@@ -349,7 +349,7 @@ static int tbs5881_init(struct dvb_usb_adapter *a)
 	state->ca.poll_slot_status = tbs5881_poll_slot_status;
 	state->ca.data = d;
 
-	ret = dvb_ca_en50221_init (&a->dvb_adap, &state->ca,
+	ret = neumo_dvb_ca_en50221_init (&a->dvb_adap, &state->ca,
 						/* flags */ 0, /* n_slots */ 1);
 
 	if (0 != ret) {
@@ -368,7 +368,7 @@ static int tbs5881_init(struct dvb_usb_adapter *a)
 }
 
 /* I2C */
-static int tbs5881_i2c_transfer(struct i2c_adapter *adap, 
+static int tbs5881_i2c_transfer(struct i2c_adapter *adap,
 					struct i2c_msg msg[], int num)
 {
 	struct dvb_usb_device *d = i2c_get_adapdata(adap);
@@ -473,7 +473,7 @@ static int tbs5881_read_mac_address(struct dvb_usb_device *d, u8 mac[6])
 				eepromline[i%16] = ibuf[0];
 				eeprom[i] = ibuf[0];
 			}
-			
+
 			if ((i % 16) == 15) {
 				deb_xfer("%02x: ", i - 15);
 				debug_dump(eepromline, 16, deb_xfer);

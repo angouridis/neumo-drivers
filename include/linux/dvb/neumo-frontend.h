@@ -7,12 +7,55 @@
  *		    Holger Waechtler <holger@convergence.de>
  *		    Andre Draszik <ad@convergence.de>
  *		    for convergence integrated media GmbH
+ *
+ * Copyright (C) 2020-2025 Deep Thought <deeptho@gmail.com> Blindscan interface
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public License
+ * as published by the Free Software Foundation; either version 2.1
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ *
+ */
+#pragma once
+
+/*
+	This file serves as a template from which uapi/neumo-frontend.h is computed.
+	The goal is to preserve the original dvb_api as much as possible, which means
+	-existing structure and ioctl's should remain unchanged
+	-existing enums should remain unchanged, but we do allow adding additional values.
+	 There is a weakness here: clashes may occur if the original dvb_api is modified
+	 and starts using enu, values which already are used by neumo for a different purpose.
+	 One (partial) solution is to pick higher values for newly added neumo enum values. This
+	 can lead to another problem where first neumo and later dvb_api adds a new value for the same
+	 purpose. Then suddenly we face the problem that a value conversion will be neede both
+	 at the uapi interface and at the internal interface
+	-in case new or extended structures are needed, we need to define a new url.
+
+	In the code below, all structured in common between dvb api and neumo api are prefixed by
+	. THose specific to neumo are prefixed by neumo
+
  */
 
-#ifndef _DVBFRONTEND_H_
-#define _DVBFRONTEND_H_
-
 #include <linux/types.h>
+#ifndef EINVAL
+#define   EINVAL          22
+#endif
+enum fe_extended_caps {
+	FE_EXTENDED_CAPS_IS_STUPID = 0x00,
+	FE_CAN_SPECTRUM_SWEEP      = 0x01,
+	FE_CAN_IQ                  = 0x02,
+	FE_CAN_BLINDSEARCH         = 0x04,
+	FE_CAN_SPECTRUM_FFT        = 0x08,
+	FE_CAN_MODCOD		          = 0x10,
+};
 
 /**
  * enum fe_caps - Frontend capabilities
@@ -143,6 +186,40 @@ struct dvb_frontend_info {
 	enum fe_caps caps;
 };
 
+struct dvb_frontend_extended_info {
+	char     card_name[64]; //human readable name of tuner card
+	char     adapter_name[64]; //human readable name of adapter
+	char     card_address[64]; //name of the linux bus to which the device is attached (e.g. pci-express slot)
+	char     card_short_name[64]; //short human readable name of tuner card
+	__u8     supports_neumo; /*historically we relied on FE_CAN... to indicate supported features,
+														 but in future we will rely on data returned by FE_GET_EXTENDED_INFO
+														 Note that FE_GET_EXTENDED_INFO works on all drivers, even non neumo ones:
+														 it is available as soon as neumo support is activated in dvb_api. Legacy
+														 drivers will initialize fields thet don;t know to zero, but in some case
+														 (e.g., rf_in) 0 is a valid value. The fe_info.supports_neumo flag, when
+														 set - indicates that such fields have been properly initialized anyway
+													 */
+	__u8     num_rf_inputs;
+	__s8     default_rf_input;
+	__u8     supports_bbframes;
+	__s32    reserved4;
+	__s64    card_mac_address;      //unique identifier for card
+	__s64    adapter_mac_address;   //unique identifier for adapter
+	char     unused[64 - 24 - 16];
+	__s8     rf_inputs[16];  /*rf inputs to which this tuner can connect. If num_rf_inputs==0,
+													then the adapter can connect to a single rf_input, which equals
+													adapter_no*/
+	__u32    frequency_min;
+	__u32    frequency_max;
+	__u32    frequency_stepsize;
+	__u32    frequency_tolerance;
+	__u32    symbol_rate_min;
+	__u32    symbol_rate_max;
+	__u32    symbol_rate_tolerance;
+	enum fe_caps caps;
+	enum fe_extended_caps extended_caps;
+};
+
 /**
  * struct dvb_diseqc_master_cmd - DiSEqC master command
  *
@@ -160,6 +237,12 @@ struct dvb_diseqc_master_cmd {
 	__u8 msg[6];
 	__u8 msg_len;
 };
+
+struct dvb_diseqc_long_master_cmd {
+	__u8 msg[16];
+	__u8 msg_len;
+};
+
 
 /**
  * struct dvb_diseqc_slave_reply - DiSEqC received data
@@ -205,7 +288,8 @@ enum fe_sec_voltage {
  */
 enum fe_sec_tone_mode {
 	SEC_TONE_ON,
-	SEC_TONE_OFF
+	SEC_TONE_OFF,
+	SEC_TONE_NOTSET
 };
 
 /**
@@ -232,18 +316,22 @@ enum fe_sec_mini_cmd {
  * @FE_HAS_SYNC:	Synchronization bytes was found.
  * @FE_HAS_LOCK:	Digital TV were locked and everything is working.
  * @FE_TIMEDOUT:	Fo lock within the last about 2 seconds.
- * @FE_REINIT:		Frontend was reinitialized, application is recommended
- *			to reset DiSEqC, tone and parameters.
+ * @FE_HAS_TIMING_LOCK:		Timing loop has locked
+ * @FE_IDLE:		Frontend has gone idle
+ * size: 4 byes
  */
 enum fe_status {
 	FE_NONE			= 0x00,
-	FE_HAS_SIGNAL		= 0x01,
+	FE_HAS_SIGNAL		= 0x01, //not useful
 	FE_HAS_CARRIER		= 0x02,
 	FE_HAS_VITERBI		= 0x04,
 	FE_HAS_SYNC		= 0x08,
 	FE_HAS_LOCK		= 0x10,
 	FE_TIMEDOUT		= 0x20,
-	FE_REINIT		= 0x40,
+	FE_REINIT		= 0x40, //not used internally, but checked by dvblast, so must remain 0
+	FE_IDLE		= 0x80,
+	FE_OUT_OF_RESOURCES = 0x100, //e.g., No LLR for stid135
+	FE_HAS_TIMING_LOCK		= 0x200, //was FE_REINIT; not used anyway
 };
 
 /**
@@ -322,8 +410,6 @@ enum fe_code_rate {
 	FEC_1_4,
 	FEC_5_9,
 	FEC_7_9,
-	FEC_4_15,
-	FEC_7_15,
 	FEC_8_15,
 	FEC_11_15,
 	FEC_13_18,
@@ -331,19 +417,22 @@ enum fe_code_rate {
 	FEC_11_20,
 	FEC_23_36,
 	FEC_25_36,
-	FEC_11_45,
 	FEC_13_45,
-	FEC_14_45,
 	FEC_26_45,
 	FEC_28_45,
+	FEC_32_45,
+	FEC_77_90,
+	FEC_11_45,
+	FEC_4_15,
+	FEC_14_45,
+	FEC_7_15,
+	FEC_5_11,
 	FEC_29_45,
 	FEC_31_45,
-	FEC_32_45,
-	FEC_77_90, 
 	FEC_R_58,
 	FEC_R_60,
 	FEC_R_62,
-	FEC_R_5E,
+	FEC_R_5E
 };
 
 /**
@@ -362,6 +451,7 @@ enum fe_code_rate {
  * @APSK_32:	32-APSK modulation
  * @DQPSK:	DQPSK modulation
  * @QAM_4_NR:	4-QAM-NR modulation
+ * @DUMMY_PLF:	DUMMY PLF Frames
  * @QAM_1024:	1024-QAM modulation
  * @QAM_4096:	4096-QAM modulation
  * @APSK_8_L:	8APSK-L modulation
@@ -388,19 +478,24 @@ enum fe_modulation {
 	APSK_32,
 	DQPSK,
 	QAM_4_NR,
-	QAM_512,
 	QAM_1024,
 	QAM_4096,
+	APSK_8_L,
+	APSK_16_L,
+	APSK_32_L,
 	APSK_64,
+	APSK_64_L,
 	APSK_128,
 	APSK_256,
-	APSK_8L,
-	APSK_16L,
-	APSK_32L,
-	APSK_64L,
-	APSK_128L,
-	APSK_256L,
+	APSK_128_L,
+	APSK_256_L,
 	APSK_1024,
+	C_QPSK,
+	I_QPSK,
+	Q_QPSK,
+	C_OQPSK,
+	QAM_512,
+	DUMMY_PLF
 };
 
 /**
@@ -566,8 +661,7 @@ enum fe_interleaving {
 
 #define DTV_STREAM_ID		42
 #define DTV_ISDBS_TS_ID_LEGACY	DTV_STREAM_ID
-#define DTV_DVBT2_PLP_ID_LEGACY	DTV_STREAM_ID
-#define DTV_MODCODE		43
+#define DTV_DVBT2_PLP_ID_LEGACY	43
 
 #define DTV_ENUM_DELSYS		44
 
@@ -604,7 +698,34 @@ enum fe_interleaving {
 /* Physical layer scrambling */
 #define DTV_SCRAMBLING_SEQUENCE_INDEX	70
 
-#define DTV_MAX_COMMAND		DTV_SCRAMBLING_SEQUENCE_INDEX
+#define DTV_MATYPE                      171
+#define DTV_FRAME_LEN                   172
+#define DTV_ENABLE_MODCOD		173
+#define DTV_ALGORITHM		174
+#define DTV_SEARCH_RANGE		175 //not needed? symbol rate could be reused
+#define DTV_ISI_LIST		176 //retrieve list of ISI codes (stream ids)
+#define DTV_PLS_SEARCH_LIST 177 //list of PLS scrambling modes/codes to test during scan
+#define DTV_PLS_SEARCH_RANGE 178 //Range of PLS scrambling modes/codes to test during scan
+#define DTV_SCAN_START_FREQUENCY 179
+#define DTV_SCAN_END_FREQUENCY 180
+#define DTV_SCAN_RESOLUTION 181
+#define DTV_SCAN_FFT_SIZE 182
+#define DTV_SCAN 183
+#define DTV_SPECTRUM 184
+#define DTV_MAX_SYMBOL_RATE	185 //for blindscan
+#define DTV_CONSTELLATION 186
+#define DTV_HEARTBEAT 187
+#define DTV_BITRATE 188
+#define DTV_LOCKTIME 189
+#define DTV_MATYPE_LIST		190 //retrieve list of present matypes and stream_ids
+#define DTV_RF_INPUT 191
+#define DTV_SET_SEC_CONFIGURED 192
+#define DTV_OUTPUT_BBFRAMES 193 //ask frontend to send bbframes to demux
+#define DTV_MODCODE		194
+#define DTV_MAX_COMMAND	 DTV_MODCODE
+
+//commands for controlling long running algorithms via FE_ALGO_CTRL ioctl
+#define DTV_STOP 1
 
 /**
  * enum fe_pilot - Type of pilot tone
@@ -624,6 +745,7 @@ enum fe_pilot {
  * @ROLLOFF_35:		Roloff factor: α=35%
  * @ROLLOFF_20:		Roloff factor: α=20%
  * @ROLLOFF_25:		Roloff factor: α=25%
+ * @ROLLOFF_LOW:	Roloff lower than 20%.
  * @ROLLOFF_AUTO:	Auto-detect the roloff factor.
  * @ROLLOFF_15:		Rolloff factor: α=15%
  * @ROLLOFF_10:		Rolloff factor: α=10%
@@ -641,6 +763,7 @@ enum fe_rolloff {
 	ROLLOFF_15,
 	ROLLOFF_10,
 	ROLLOFF_5,
+	ROLLOFF_LOW, //unknown but lower than 20
 };
 
 /**
@@ -708,6 +831,37 @@ enum fe_delivery_system {
 	SYS_TURBO,
 	SYS_DVBC_ANNEX_C,
 	SYS_DVBC2,
+	SYS_DVBS2X,
+	SYS_DCII,
+	SYS_AUTO //22
+};
+
+/**
+ * enum fe_algorithm - Type of scan algorithm to apply
+ *
+ * @ALGORITHM_WARM:
+ *	Tune to known carrier frequency and symbol rate
+ * @ALGORITHM_BLIND:
+ *	Blind scan starting at lowest frequency
+ * @ALGORITHM_BLIND_BEST_GUESS:
+ *	Blind scan starting with a guess for frequency and symbol rate
+ * @ALGORITHM_COLD:
+ *	Blind scan starting with known symbol rate
+ * @ALGORITHM_COLD_BEST_GUESS:
+ *	Blind scan starting with known symbol rate and starting with a guessed frequency
+ * @ALGORITHM_SEARCH:
+ *	Search a complete frequency range and stop at the first mux found
+ * @ALGORITHM_SEARCH_NEXT:
+ *	Scan for the mux with the next higher frequency compared to the last one tuned
+ * @ALGORITHM_BANDWITH:
+ *	Scan full bandwith, optimized for low symbol rate
+ */
+enum fe_algorithm {
+	ALGORITHM_WARM,
+	ALGORITHM_COLD,
+	ALGORITHM_COLD_BEST_GUESS,
+	ALGORITHM_BLIND,
+	ALGORITHM_BLIND_BEST_GUESS,
 };
 
 /* backward compatibility definitions for delivery systems */
@@ -869,11 +1023,69 @@ struct dtv_stats {
 	union {
 		__u64 uvalue;	/* for counters and relative scales */
 		__s64 svalue;	/* for 0.001 dB measures */
-	};
+	} __attribute__ ((packed));
 } __attribute__ ((packed));
 
 
 #define MAX_DTV_STATS   4
+
+/**
+	 enum  dtv_fe_spectrum_method;
+	 Should be passed as integer parameter when setting DTV_SPECTRUM property
+ **/
+enum dtv_fe_spectrum_method {
+	SPECTRUM_METHOD_SWEEP,
+	SPECTRUM_METHOD_FFT
+};
+
+enum dtv_fe_constellation_method {
+	CONSTELLATION_METHOD_DEFAULT,
+};
+
+struct spectral_peak_t {
+	__s32 freq; //frequency of current peak
+	__s32 symbol_rate; //estimated symbolrate of current peak
+	__s32 snr;
+	__s32 level;
+};
+
+/**
+ * struct dtv_pls_search_codes
+ * This is passed as an input to FE_GET_PROPERTY
+ * The caller should initialise the fields as followed
+ * @num_codes: numver of elements prvided in codes
+ * @codes: data array provided by caller, codes will be read from this
+ *
+ */
+struct dtv_pls_search_list {
+	int num_codes;
+	__u32* codes;
+};
+
+/**
+ * struct dtv_fe_spectrum - decriptor for a spectrum scan buffer
+ * This is passed as an input to FE_GET_PROPERTY
+ * The caller should initialise the fields as followed
+ * @spectrum_method: method to use for creating the spectrum
+ * @freq: buffer created by caller with num_freq elements; will be filled with data and should have
+ *  room for @num_freq elements
+ * @rf_level: buffer created by caller with num_freq elements; will be filled with data and should have
+ *  room for @num_freq elements
+ * @num_freq:	set by caller: length of the buffer, will be replaced on return with the true size,
+ * if the true size is smaller => num_freq should be set as an upper bound
+ * @scale: after return this will contain FE_SCALE_DECIBEL or FE_SCALE_RELATIVE
+ *
+ */
+struct dtv_fe_spectrum {
+	__u32 *freq;     //frequencies of spectrum will be returned in freq[num_freq]
+	__s32 *rf_level; //rf_level of spectrum  will be returned in rf_level[num_freq]
+	struct spectral_peak_t *candidates; //frequencies which were tried for locking are returned in candidate_frequencies[num_candidates]
+	__u32 num_freq;
+	__u32 num_candidates;
+	__u32 scale; //FE_SCALE_DECIBEL; or FE_SCALE_RELATIVE
+	__u8 spectrum_method;
+};
+
 
 /**
  * struct dtv_fe_stats - store Digital TV frontend statistics
@@ -890,6 +1102,58 @@ struct dtv_fe_stats {
 	__u8 len;
 	struct dtv_stats stat[MAX_DTV_STATS];
 } __attribute__ ((packed));
+
+
+struct dtv_fe_constellation_sample {
+	__s16 real;
+	__s16 imag;
+};
+
+struct dtv_fe_constellation {
+	__u32 num_samples;
+	struct dtv_fe_constellation_sample *samples;
+	__u8 method;
+	__u8 constel_select;
+};
+
+struct dtv_matype_list {
+	__u32 num_entries;
+	__u16* matypes;
+};
+
+/**
+ * struct dvb_api_dtv_property - store one of frontend command and its value
+ *
+ * @cmd:		Digital TV command.
+ * @reserved:		Not used.
+ * @u:			Union with the values for the command.
+ * @u.data:		A unsigned 32 bits integer with command value.
+ * @u.buffer:		Struct to store bigger properties.
+ *			Currently unused.
+ * @u.buffer.data:	an unsigned 32-bits array.
+ * @u.buffer.len:	number of elements of the buffer.
+ * @u.buffer.reserved1:	Reserved.
+ * @u.buffer.reserved2:	Reserved.
+ * @u.st:		a &struct dtv_fe_stats array of statistics.
+ * @result:		Currently unused.
+ *
+ */
+struct dvb_api_dtv_property {
+	__u32 cmd;
+	__u32 reserved[3];
+	union {
+		__u32 data;
+		struct dtv_fe_stats st;
+		struct {
+			__u8 data[32];
+			__u32 len;
+			__u32 reserved1[3];
+			void *reserved2;
+		} buffer;
+	} u;
+	int result;
+} __attribute__ ((packed));
+
 
 /**
  * struct dtv_property - store one of frontend command and its value
@@ -914,6 +1178,10 @@ struct dtv_property {
 	union {
 		__u32 data;
 		struct dtv_fe_stats st;
+		struct dtv_fe_spectrum spectrum;
+		struct dtv_fe_constellation constellation;
+		struct dtv_matype_list matype_list;
+		struct dtv_pls_search_list pls_search_codes;
 		struct {
 			__u8 data[32];
 			__u32 len;
@@ -927,6 +1195,18 @@ struct dtv_property {
 /* num of properties cannot exceed DTV_IOCTL_MAX_MSGS per ioctl */
 #define DTV_IOCTL_MAX_MSGS 64
 
+
+/**
+ * struct dtv_properties - a set of command/value pairs.
+ *
+ * @num:	amount of commands stored at the struct.
+ * @props:	a pointer to &struct dtv_property.
+ */
+struct dvb_api_dtv_properties {
+	__u32 num;
+	struct dvb_api_dtv_property *props;
+};
+
 /**
  * struct dtv_properties - a set of command/value pairs.
  *
@@ -937,6 +1217,55 @@ struct dtv_properties {
 	__u32 num;
 	struct dtv_property *props;
 };
+
+/**
+ * struct dtv_algo_ctrl - control a long running algorithm and/or get its state.
+ *
+ */
+struct dtv_algo_ctrl {
+	__u32 cmd;
+	__u32 reserved[3];
+};
+
+enum fe_ioctl_result {
+	FE_RESERVATION_MASTER = 0,
+	FE_RESERVATION_SLAVE = 1,
+	FE_RESERVATION_RETRY = 2,
+	FE_RESERVATION_UNCHANGED = 3,
+	FE_RESERVATION_RELEASED = 4,
+	FE_RESERVATION_NOT_SUPPORTED = 5,
+	FE_UNICABLE_DISEQC_RETRY = 10, //another frontend has started a unicable command. Retry later
+	FE_RESERVATION_FAILED = -1,
+	FE_RESERVATION_EINVAL = -EINVAL,
+};
+
+enum fe_reservation_mode {
+	FE_RESERVATION_MODE_MASTER_OR_SLAVE = 0, //driver will decide if caller can control voltage/tone/switches
+	FE_RESERVATION_MODE_MASTER = 1, //caller needs to control voltage/tone/switches
+	FE_RESERVATION_MODE_SLAVE = 2, //caller does not want to control voltage/tone/switches
+};
+
+struct fe_rf_input_control {
+	pid_t owner;
+	__s32 config_id;
+	__s8 unicable_mode; //allow slave reservations to perform unicable related voltage changes and diseqc commands
+	__s8 reserved;
+	__s16 rf_in;
+	enum fe_reservation_mode mode;
+};
+
+enum api_type {
+	API_TYPE_DVB_API,
+	API_TYPE_NEUMO,
+};
+
+struct dvb_select_api {
+	enum api_type api_type; /*specifies the desired api type on it, but returns a different one when
+																	the desired one is not abailable. API remains in dvb_api mode as long
+																	as no api is specifically selected*/
+	__u32 api_version; /* returns  the interface version of the driver*/
+};
+
 
 /*
  * When set, this flag will disable any zigzagging or other "normal" tuning
@@ -971,8 +1300,16 @@ struct dtv_properties {
 
 #define FE_DISHNETWORK_SEND_LEGACY_CMD _IO('o', 80) /* unsigned int */
 
-#define FE_SET_PROPERTY		   _IOW('o', 82, struct dtv_properties)
-#define FE_GET_PROPERTY		   _IOR('o', 83, struct dtv_properties)
+#define DVB_API_FE_SET_PROPERTY		   _IOW('o', 82, struct dvb_api_dtv_properties)
+#define DVB_API_FE_GET_PROPERTY		   _IOR('o', 83, struct dvb_api_dtv_properties)
+
+#define FE_SELECT_API		             _IOWR('o', 100, struct dvb_select_api)
+#define FE_SET_PROPERTY		   _IOW('o', 182, struct dtv_properties)
+#define FE_GET_PROPERTY		   _IOR('o', 183, struct dtv_properties)
+#define FE_ALGO_CTRL		       _IOW('o', 184, struct dtv_algo_ctrl)
+#define FE_SET_RF_INPUT		   _IOW('o', 185, struct fe_rf_input_control)
+#define FE_GET_EXTENDED_INFO	 _IOR('o', 186, struct dvb_frontend_extended_info)
+#define FE_DISEQC_SEND_LONG_MASTER_CMD  _IOW('o', 187, struct dvb_diseqc_long_master_cmd)
 
 #if defined(__DVB_CORE__) || !defined(__KERNEL__)
 
@@ -1020,6 +1357,7 @@ typedef enum fe_hierarchy fe_hierarchy_t;
 typedef enum fe_pilot fe_pilot_t;
 typedef enum fe_rolloff fe_rolloff_t;
 typedef enum fe_delivery_system fe_delivery_system_t;
+typedef enum fe_algorithm fe_algorithm_t;
 
 /* DVBv3 structs */
 
@@ -1112,5 +1450,3 @@ struct eeprom_info
 #define FE_EEPROM_WRITE   _IOW('o', 97, struct eeprom_info)
 
 #define FE_READ_TEMP	  _IOR('o', 98, __s16)
-
-#endif /* _DVBFRONTEND_H_ */

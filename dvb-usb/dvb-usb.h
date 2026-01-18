@@ -17,10 +17,10 @@
 #include <linux/mutex.h>
 #include <media/rc-core.h>
 
-#include <media/dvb_frontend.h>
-#include <media/dvb_demux.h>
-#include <media/dvb_net.h>
-#include <media/dmxdev.h>
+#include <media/neumo-dvb-frontend.h>
+#include <media/neumo-dvb-demux.h>
+#include <media/neumo-dvb-net.h>
+#include <media/neumo-dmxdev.h>
 
 #include "dvb-pll.h"
 
@@ -167,7 +167,7 @@ struct dvb_usb_adapter_fe_properties {
 struct dvb_usb_adapter_properties {
 	int size_of_priv;
 
-	int (*frontend_ctrl)   (struct dvb_frontend *, int);
+	int (*frontend_ctrl)   (struct neumo_dvb_frontend *, int);
 
 	int num_frontends;
 	struct dvb_usb_adapter_fe_properties fe[MAX_NO_OF_FE_PER_ADAP];
@@ -371,11 +371,11 @@ struct usb_data_stream {
  * @priv: private pointer
  */
 struct dvb_usb_fe_adapter {
-	struct dvb_frontend *fe;
-	struct dvb_frontend *fe2;
-	struct dvb_frontend _fe2;
-	int (*fe_init)  (struct dvb_frontend *);
-	int (*fe_sleep) (struct dvb_frontend *);
+	struct neumo_dvb_frontend *fe;
+	struct neumo_dvb_frontend *fe2;
+	struct neumo_dvb_frontend _fe2;
+	int (*fe_init)  (struct neumo_dvb_frontend *);
+	int (*fe_sleep) (struct neumo_dvb_frontend *);
 
 	struct usb_data_stream stream;
 
@@ -418,8 +418,8 @@ struct dvb_usb_adapter {
 
 	/* dvb */
 	struct dvb_adapter   dvb_adap;
-	struct dmxdev        dmxdev;
-	struct dvb_demux     demux;
+	struct neumo_dmxdev        dmxdev;
+	struct neumo_dvb_demux     demux;
 	struct dvb_net       dvb_net;
 
 	struct dvb_usb_fe_adapter fe_adap[MAX_NO_OF_FE_PER_ADAP];

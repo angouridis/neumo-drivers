@@ -21,13 +21,13 @@
 
 struct tbs5220_state {
 	struct i2c_client *i2c_client_demod;
-	struct i2c_client *i2c_client_tuner; 
+	struct i2c_client *i2c_client_tuner;
 };
 
 /* debug */
 static int dvb_usb_tbs5220_debug;
 module_param_named(debug, dvb_usb_tbs5220_debug, int, 0644);
-MODULE_PARM_DESC(debug, "set debugging level (1=info 2=xfer (or-able))." 
+MODULE_PARM_DESC(debug, "set debugging level (1=info 2=xfer (or-able))."
 							DVB_USB_DEBUG_STATUS);
 
 DVB_DEFINE_MOD_OPT_ADAPTER_NR(adapter_nr);
@@ -57,7 +57,7 @@ static int tbs5220_op_rw(struct usb_device *dev, u8 request, u16 value,
 }
 
 /* I2C */
-static int tbs5220_i2c_transfer(struct i2c_adapter *adap, 
+static int tbs5220_i2c_transfer(struct i2c_adapter *adap,
 					struct i2c_msg msg[], int num)
 {
 	struct dvb_usb_device *d = i2c_get_adapdata(adap);
@@ -157,7 +157,7 @@ static int tbs5220_read_mac_address(struct dvb_usb_device *d, u8 mac[6])
 				eepromline[i%16] = ibuf[0];
 				eeprom[i] = ibuf[0];
 			}
-			
+
 			if ((i % 16) == 15) {
 				deb_xfer("%02x: ", i - 15);
 				debug_dump(eepromline, 16, deb_xfer);
@@ -446,3 +446,6 @@ MODULE_AUTHOR("Konstantin Dimitrov <kosio.dimitrov@gmail.com>");
 MODULE_DESCRIPTION("TurboSight TBS 5220 driver");
 MODULE_VERSION("1.0");
 MODULE_LICENSE("GPL");
+
+
+#include<media/neumo-check.h>

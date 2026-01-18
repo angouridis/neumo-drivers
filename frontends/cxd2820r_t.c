@@ -8,11 +8,11 @@
 
 #include "cxd2820r_priv.h"
 
-int cxd2820r_set_frontend_t(struct dvb_frontend *fe)
+int cxd2820r_set_frontend_t(struct neumo_dvb_frontend *fe)
 {
 	struct cxd2820r_priv *priv = fe->demodulator_priv;
 	struct i2c_client *client = priv->client[0];
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret, bw_i;
 	unsigned int utmp;
 	u32 if_frequency;
@@ -123,8 +123,8 @@ error:
 	return ret;
 }
 
-int cxd2820r_get_frontend_t(struct dvb_frontend *fe,
-			    struct dtv_frontend_properties *c)
+int cxd2820r_get_frontend_t(struct neumo_dvb_frontend *fe,
+			    struct neumo_driver_dtv_frontend_properties *c)
 {
 	struct cxd2820r_priv *priv = fe->demodulator_priv;
 	struct i2c_client *client = priv->client[0];
@@ -244,11 +244,11 @@ error:
 	return ret;
 }
 
-int cxd2820r_read_status_t(struct dvb_frontend *fe, enum fe_status *status)
+int cxd2820r_read_status_t(struct neumo_dvb_frontend *fe, enum fe_status *status)
 {
 	struct cxd2820r_priv *priv = fe->demodulator_priv;
 	struct i2c_client *client = priv->client[0];
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret;
 	unsigned int utmp, utmp1, utmp2;
 	u8 buf[3];
@@ -369,7 +369,7 @@ error:
 	return ret;
 }
 
-int cxd2820r_init_t(struct dvb_frontend *fe)
+int cxd2820r_init_t(struct neumo_dvb_frontend *fe)
 {
 	struct cxd2820r_priv *priv = fe->demodulator_priv;
 	struct i2c_client *client = priv->client[0];
@@ -387,7 +387,7 @@ error:
 	return ret;
 }
 
-int cxd2820r_sleep_t(struct dvb_frontend *fe)
+int cxd2820r_sleep_t(struct neumo_dvb_frontend *fe)
 {
 	struct cxd2820r_priv *priv = fe->demodulator_priv;
 	struct i2c_client *client = priv->client[0];
@@ -414,8 +414,8 @@ error:
 	return ret;
 }
 
-int cxd2820r_get_tune_settings_t(struct dvb_frontend *fe,
-	struct dvb_frontend_tune_settings *s)
+int cxd2820r_get_tune_settings_t(struct neumo_dvb_frontend *fe,
+	struct neumo_dvb_frontend_tune_settings *s)
 {
 	s->min_delay_ms = 500;
 	s->step_size = fe->ops.info.frequency_stepsize_hz * 2;
@@ -423,3 +423,6 @@ int cxd2820r_get_tune_settings_t(struct dvb_frontend *fe,
 
 	return 0;
 }
+
+//check for incorrect include files
+#include "linux/media/neumo-check.h"

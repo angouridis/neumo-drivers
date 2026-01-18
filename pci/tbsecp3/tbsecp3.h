@@ -30,13 +30,12 @@
 #include <linux/fs.h>
 #include <linux/kfifo.h>
 
-#include <media/dmxdev.h>
-#include <media/dvbdev.h>
-#include <media/dvb_demux.h>
-#include <media/dvb_frontend.h>
-#include <media/dvb_ringbuffer.h>
-#include <media/dvb_ca_en50221.h>
-#include <media/dvb_net.h>
+#include <media/neumo-dmxdev.h>
+#include <media/neumo-dvbdev.h>
+#include <media/neumo-dvb-demux.h>
+#include <media/neumo-dvb-frontend.h>
+#include <media/neumo-dvb-ca-en50221.h>
+#include <media/neumo-dvb-net.h>
 
 #include "tbsecp3-regs.h"
 
@@ -126,7 +125,7 @@ struct tbsecp3_gpio_config {
 };
 
 struct tbsecp3_adap_config {
-        u32 ts_in;
+	u32 ts_in;
 	u8 i2c_bus_nr;
 	struct tbsecp3_gpio_config gpio;
 };
@@ -136,12 +135,13 @@ struct tbsecp3_ci_config{
 struct tbsecp3_board {
 	u16  board_id;
 	char *name;
+	char *short_name;
 	int adapters;
 	int sec;	//for sec files.
 	u32 i2c_speed;
 	u8 eeprom_i2c;
 	u8 eeprom_addr;
-	struct tbsecp3_adap_config adap_config[16];
+	struct tbsecp3_adap_config adap_config[TBSECP3_MAX_ADAPTERS];
 	struct tbsecp3_ci_config ci_config[2];
 };
 
@@ -196,12 +196,12 @@ struct tbsecp3_ci{
 	spinlock_t		writelock;
 
 	__le32			*w_dmavirt;
-	dma_addr_t		w_dmaphy;	
+	dma_addr_t		w_dmaphy;
 	__le32			*r_dmavirt;
-	dma_addr_t		r_dmaphy;	
-	struct kfifo 		w_fifo; 
-	struct kfifo 		r_fifo; 
-	u8			is_open;	
+	dma_addr_t		r_dmaphy;
+	struct kfifo 		w_fifo;
+	struct kfifo 		r_fifo;
+	u8			is_open;
 	u32			w_bitrate;
 	int is_open_for_read;
 	int feeds;
@@ -224,11 +224,11 @@ struct tbsecp3_adapter {
 
 	/* dvb */
 	struct dvb_adapter dvb_adapter;
-	struct dvb_frontend *fe;
-	struct dvb_frontend *fe2;
-	struct dvb_frontend _fe2;
-	struct dvb_demux demux;
-	struct dmxdev dmxdev;
+	struct neumo_dvb_frontend *fe;
+	struct neumo_dvb_frontend *fe2;
+	struct neumo_dvb_frontend _fe2;
+	struct neumo_dvb_demux demux;
+	struct neumo_dmxdev dmxdev;
 	struct dvb_net dvbnet;
 	struct dmx_frontend fe_hw;
 	struct dmx_frontend fe_mem;
@@ -258,7 +258,9 @@ struct tbsecp3_dev {
 
 	/* i2c */
 	struct tbsecp3_i2c i2c_bus[TBSECP3_MAX_I2C_BUS];
-	
+	char card_address[64]; //string to uniquely identify the card on the system; typically dev_name(&dev->pci_dev->dev)
+	u64 adapter_mac_address;
+	u64 card_mac_address;
 	u8 mac_num;
 	int cimode; //for 6910X
 };

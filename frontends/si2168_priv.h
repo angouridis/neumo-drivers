@@ -9,7 +9,7 @@
 #define SI2168_PRIV_H
 
 #include "si2168.h"
-#include <media/dvb_frontend.h>
+#include <media/neumo-dvb-frontend.h>
 #include <linux/firmware.h>
 #include <linux/i2c-mux.h>
 #include <linux/kernel.h>
@@ -23,7 +23,7 @@
 struct si2168_dev {
 	struct mutex i2c_mutex;
 	struct i2c_mux_core *muxc;
-	struct dvb_frontend fe;
+	struct neumo_dvb_frontend fe;
 	enum fe_delivery_system delivery_system;
 	enum fe_status fe_status;
 	u8 stat_resp;

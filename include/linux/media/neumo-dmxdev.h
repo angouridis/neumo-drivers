@@ -1,9 +1,10 @@
 /*
- * dmxdev.h
+ * neumo-dmxdev.h
  *
  * Copyright (C) 2000 Ralph Metzler & Marcus Metzler
  *                    for convergence integrated media GmbH
  *
+ * Copyright (C) 2025-2026 Deep Thought <deeptho@gmail.com>
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
  * as published by the Free Software Foundation; either version 2.1
@@ -15,12 +16,11 @@
  * GNU General Public License for more details.
  *
  */
-
-#ifndef _DMXDEV_H_
-#define _DMXDEV_H_
+#pragma once
 
 #include <linux/types.h>
 #include <linux/spinlock.h>
+#include <linux/kernel.h>
 #include <linux/time.h>
 #include <linux/timer.h>
 #include <linux/wait.h>
@@ -29,12 +29,11 @@
 #include <linux/mutex.h>
 #include <linux/slab.h>
 
-#include <linux/dvb/dmx.h>
-
-#include <media/dvbdev.h>
-#include <media/demux.h>
+#include <linux/dvb/neumo-dmx.h>
+#include "neumo-dvbdev.h"
+#include "neumo-demux.h"
 #include <media/dvb_ringbuffer.h>
-#include <media/dvb_vb2.h>
+#include <media/neumo-dvb-vb2.h>
 
 /**
  * enum dmxdev_type - type of demux filter type.
@@ -50,7 +49,7 @@ enum dmxdev_type {
 };
 
 /**
- * enum dmxdev_state - state machine for the dmxdev.
+ * enum neumo_dmxdev_state - state machine for the dmxdev.
  *
  * @DMXDEV_STATE_FREE:		indicates that the filter is freed.
  * @DMXDEV_STATE_ALLOCATED:	indicates that the filter was allocated
@@ -63,42 +62,31 @@ enum dmxdev_type {
  *				&dmx_sct_filter_params.
  * @DMXDEV_STATE_TIMEDOUT:	Indicates a timeout condition.
  */
-enum dmxdev_state {
-	DMXDEV_STATE_FREE,
-	DMXDEV_STATE_ALLOCATED,
-	DMXDEV_STATE_SET,
-	DMXDEV_STATE_GO,
-	DMXDEV_STATE_DONE,
+
+enum neumo_dmxdev_state {
+	DMXDEV_STATE_FREE,       //state before opening device
+	DMXDEV_STATE_ALLOCATED,  //state  after opening device but before any ioctl
+	DMXDEV_STATE_SET_STREAM_SELECT, //state before any final output selection
+	DMXDEV_STATE_SET_PES,    //state after DMX_SET_FILTER or DMX_SET_PES
+	DMXDEV_STATE_GO,         //state when running
+	DMXDEV_STATE_DONE,      //state after one-short section filter has finished
 	DMXDEV_STATE_TIMEDOUT
 };
 
-/**
- * struct dmxdev_feed - digital TV dmxdev feed
- *
- * @pid:	Program ID to be filtered
- * @ts:		pointer to &struct dmx_ts_feed
- * @next:	&struct list_head pointing to the next feed.
- */
-
-struct dmxdev_feed {
-	u16 pid;
-	struct dmx_ts_feed *ts;
-	struct list_head next;
-};
 
 /**
- * struct dmxdev_filter - digital TV dmxdev filter
+ * struct neumo_dmxdev_filter - digital TV dmxdev filter
  *
  * @filter:	a union describing a dmxdev filter.
  *		Currently used only for section filters.
- * @filter.sec: a &struct dmx_section_filter pointer.
+ * @filter.sec: a &struct neumo_dmx_section_filter pointer.
  *		For section filter only.
  * @feed:	a union describing a dmxdev feed.
  *		Depending on the filter type, it can be either
  *		@feed.ts or @feed.sec.
  * @feed.ts:	a &struct list_head list.
  *		For TS and PES feeds.
- * @feed.sec:	a &struct dmx_section_feed pointer.
+ * @feed.sec:	a &struct neumo_dmx_section_feed pointer.
  *		For section feed only.
  * @params:	a union describing dmxdev filter parameters.
  *		Depending on the filter type, it can be either
@@ -108,11 +96,11 @@ struct dmxdev_feed {
  * @params.pes:	a &struct dmx_pes_filter_params embedded struct.
  *		For PES filter only.
  * @type:	type of the dmxdev filter, as defined by &enum dmxdev_type.
- * @state:	state of the dmxdev filter, as defined by &enum dmxdev_state.
- * @dev:	pointer to &struct dmxdev.
+ * @state:	state of the dmxdev filter, as defined by &enum neumo_dmxdev_state.
+ * @dev:	pointer to &struct neumo_dmxdev.
  * @buffer:	an embedded &struct dvb_ringbuffer buffer.
  * @vb2_ctx:	control struct for VB2 handler
- * @mutex:	protects the access to &struct dmxdev_filter.
+ * @mutex:	protects the access to &struct neumo_dmxdev_filter.
  * @timer:	&struct timer_list embedded timer, used to check for
  *		feed timeouts.
  *		Only for section filter.
@@ -120,16 +108,39 @@ struct dmxdev_feed {
  *		Only for section filter.
  * @secheader:	buffer cache to parse the section header.
  *		Only for section filter.
+ * @current_feeds:  describes the &struct neumo_dvb_demux_feeds container of the sub demux in in which PES, TS and section feeds
+ *    will be allocated.
  */
-struct dmxdev_filter {
+//Not used in drivers!
+struct neumo_dmxdev_filter {
 	union {
-		struct dmx_section_filter *sec;
+		struct neumo_dmx_section_filter *sec;
 	} filter;
 
+	/*
+		The legacy code supports two types of filters
+		1. a filter unpacking sections in a single pid
+		2. a filter remuxing multiple pids into a partial or full transport stream
+
+		neumo changes this as follows
+		1. a filter unpacking sections in a single pid
+		2. a filter remuxing multiple pids into a partial or full transport stream, after optionally first
+		   internally extracting a transport stream from an embedded bbframes (stid) or t2mi stream
+
+		A future better interface would also allow internal extraction of a transport stream from an
+		embedded bbframes (stid) or t2mi stream, but very few legacy applications use section filters anyway
+	 */
 	union {
-		/* list of TS and PES feeds (struct dmxdev_feed) */
-		struct list_head ts;
-		struct dmx_section_feed *sec;
+		/* list of all output pid feeds and internal streams (t2mi, stid) activated by filter,
+			 in order of activation.
+			 This can only contain a single bbframes_stream and/or a single stid_stream, followed by
+			 multiple neumo_pid_streams, due to the interface calling conventions.
+		*/
+		struct list_head dmxdev_feed_list;
+		/*
+			or a single section feed
+		 */
+		struct neumo_dmx_section_feed *sec;
 	} feed;
 
 	union {
@@ -138,8 +149,8 @@ struct dmxdev_filter {
 	} params;
 
 	enum dmxdev_type type;
-	enum dmxdev_state state;
-	struct dmxdev *dev;
+	enum neumo_dmxdev_state state;
+	struct neumo_dmxdev *dev;
 	struct dvb_ringbuffer buffer;
 	struct dvb_vb2_ctx vb2_ctx;
 
@@ -147,19 +158,22 @@ struct dmxdev_filter {
 
 	/* only for sections */
 	struct timer_list timer;
+	struct neumo_dvb_demux_feeds* current_feeds;
+
 	int todo;
 	u8 secheader[3];
 };
 
 /**
- * struct dmxdev - Describes a digital TV demux device.
+ * struct neumo_dmxdev - Describes a digital TV demux device,
+ *                 Contains all datastructures for accessing the card
  *
  * @dvbdev:		pointer to &struct dvb_device associated with
  *			the demux device node.
  * @dvr_dvbdev:		pointer to &struct dvb_device associated with
  *			the dvr device node.
- * @filter:		pointer to &struct dmxdev_filter.
- * @demux:		pointer to &struct dmx_demux.
+ * @filter:		pointer to &struct neumo_dmxdev_filter.
+ * @demux:		pointer to &struct neumo_dmx_demux.
  * @filternum:		number of filters.
  * @capabilities:	demux capabilities as defined by &enum dmx_demux_caps.
  * @may_do_mmap:	flag used to indicate if the device may do mmap.
@@ -170,12 +184,12 @@ struct dmxdev_filter {
  * @mutex:		protects the usage of this structure.
  * @lock:		protects access to &dmxdev->filter->data.
  */
-struct dmxdev {
+struct neumo_dmxdev {
 	struct dvb_device *dvbdev;
 	struct dvb_device *dvr_dvbdev;
 
-	struct dmxdev_filter *filter;
-	struct dmx_demux *demux;
+	struct neumo_dmxdev_filter* filter;
+	struct neumo_dmx_demux *demux;
 
 	int filternum;
 	int capabilities;
@@ -192,22 +206,21 @@ struct dmxdev {
 
 	struct mutex mutex;
 	spinlock_t lock;
+	struct kobject* sysfs_kobject;
 };
 
 /**
- * dvb_dmxdev_init - initializes a digital TV demux and registers both demux
+ * neumo_dvb_dmxdev_init - initializes a digital TV demux and registers both demux
  *	and DVR devices.
  *
- * @dmxdev: pointer to &struct dmxdev.
+ * @dmxdev: pointer to &struct neumo_dmxdev.
  * @adap: pointer to &struct dvb_adapter.
  */
-int dvb_dmxdev_init(struct dmxdev *dmxdev, struct dvb_adapter *adap);
+int neumo_dvb_dmxdev_init(struct neumo_dmxdev *dmxdev, struct dvb_adapter *adap);
 
 /**
- * dvb_dmxdev_release - releases a digital TV demux and unregisters it.
+ * neumo_dvb_dmxdev_release - releases a digital TV demux and unregisters it.
  *
- * @dmxdev: pointer to &struct dmxdev.
+ * @dmxdev: pointer to &struct neumo_dmxdev.
  */
-void dvb_dmxdev_release(struct dmxdev *dmxdev);
-
-#endif /* _DMXDEV_H_ */
+void neumo_dvb_dmxdev_release(struct neumo_dmxdev *dmxdev);

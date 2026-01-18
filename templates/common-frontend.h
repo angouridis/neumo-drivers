@@ -1,0 +1,1452 @@
+/* SPDX-License-Identifier: LGPL-2.1+ WITH Linux-syscall-note */
+/*
+ * frontend.h
+ *
+ * Copyright (C) 2000 Marcus Metzler <marcus@convergence.de>
+ *		    Ralph  Metzler <ralph@convergence.de>
+ *		    Holger Waechtler <holger@convergence.de>
+ *		    Andre Draszik <ad@convergence.de>
+ *		    for convergence integrated media GmbH
+ *
+ * Copyright (C) 2020-2025 Deep Thought <deeptho@gmail.com> Blindscan interface
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public License
+ * as published by the Free Software Foundation; either version 2.1
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ *
+ */
+#pragma once
+
+/*
+	This file serves as a template from which uapi/neumo-frontend.h is computed.
+	The goal is to preserve the original dvb_api as much as possible, which means
+	-existing structure and ioctl's should remain unchanged
+	-existing enums should remain unchanged, but we do allow adding additional values.
+	 There is a weakness here: clashes may occur if the original dvb_api is modified
+	 and starts using enu, values which already are used by neumo for a different purpose.
+	 One (partial) solution is to pick higher values for newly added neumo enum values. This
+	 can lead to another problem where first neumo and later dvb_api adds a new value for the same
+	 purpose. Then suddenly we face the problem that a value conversion will be neede both
+	 at the uapi interface and at the internal interface
+	-in case new or extended structures are needed, we need to define a new url.
+
+	In the code below, all structured in common between dvb api and neumo api are prefixed by
+	common_. THose specific to neumo are prefixed by neumo
+
+ */
+
+#include <linux/types.h>
+#ifndef EINVAL
+#define   EINVAL          22
+#endif
+enum common_fe_extended_caps {
+	COMMON_FE_EXTENDED_CAPS_IS_STUPID = 0x00,
+	COMMON_FE_CAN_SPECTRUM_SWEEP      = 0x01,
+	COMMON_FE_CAN_IQ                  = 0x02,
+	COMMON_FE_CAN_BLINDSEARCH         = 0x04,
+	COMMON_FE_CAN_SPECTRUM_FFT        = 0x08,
+	COMMON_FE_CAN_MODCOD		          = 0x10,
+};
+
+/**
+ * enum common_fe_caps - Frontend capabilities
+ *
+ * @COMMON_FE_IS_STUPID:			There's something wrong at the
+ *					frontend, and it can't report its
+ *					capabilities.
+ * @COMMON_FE_CAN_INVERSION_AUTO:		Can auto-detect frequency spectral
+ *					band inversion
+ * @COMMON_FE_CAN_FEC_1_2:			Supports FEC 1/2
+ * @COMMON_FE_CAN_FEC_2_3:			Supports FEC 2/3
+ * @COMMON_FE_CAN_FEC_3_4:			Supports FEC 3/4
+ * @COMMON_FE_CAN_FEC_4_5:			Supports FEC 4/5
+ * @COMMON_FE_CAN_FEC_5_6:			Supports FEC 5/6
+ * @COMMON_FE_CAN_FEC_6_7:			Supports FEC 6/7
+ * @COMMON_FE_CAN_FEC_7_8:			Supports FEC 7/8
+ * @COMMON_FE_CAN_FEC_8_9:			Supports FEC 8/9
+ * @COMMON_FE_CAN_FEC_AUTO:			Can auto-detect FEC
+ * @COMMON_FE_CAN_QPSK:			Supports QPSK modulation
+ * @COMMON_FE_CAN_QAM_16:			Supports 16-QAM modulation
+ * @COMMON_FE_CAN_QAM_32:			Supports 32-QAM modulation
+ * @COMMON_FE_CAN_QAM_64:			Supports 64-QAM modulation
+ * @COMMON_FE_CAN_QAM_128:			Supports 128-QAM modulation
+ * @COMMON_FE_CAN_QAM_256:			Supports 256-QAM modulation
+ * @COMMON_FE_CAN_QAM_AUTO:			Can auto-detect QAM modulation
+ * @COMMON_FE_CAN_TRANSMISSION_MODE_AUTO:	Can auto-detect transmission mode
+ * @COMMON_FE_CAN_BANDWIDTH_AUTO:		Can auto-detect bandwidth
+ * @COMMON_FE_CAN_GUARD_INTERVAL_AUTO:		Can auto-detect guard interval
+ * @COMMON_FE_CAN_HIERARCHY_AUTO:		Can auto-detect hierarchy
+ * @COMMON_FE_CAN_8VSB:			Supports 8-VSB modulation
+ * @COMMON_FE_CAN_16VSB:			Supporta 16-VSB modulation
+ * @COMMON_FE_HAS_EXTENDED_CAPS:		Unused
+ * @COMMON_FE_CAN_MULTISTREAM:			Supports multistream filtering
+ * @COMMON_FE_CAN_TURBO_FEC:			Supports "turbo FEC" modulation
+ * @COMMON_FE_CAN_2G_MODULATION:		Supports "2nd generation" modulation,
+ *					e. g. DVB-S2, DVB-T2, DVB-C2
+ * @COMMON_FE_NEEDS_BENDING:			Unused
+ * @COMMON_FE_CAN_RECOVER:			Can recover from a cable unplug
+ *					automatically
+ * @COMMON_FE_CAN_MUTE_TS:			Can stop spurious TS data output
+ */
+
+enum common_fe_caps {
+	COMMON_FE_IS_STUPID			= 0,
+	COMMON_FE_CAN_INVERSION_AUTO		= 0x1,
+	COMMON_FE_CAN_FEC_1_2			= 0x2,
+	COMMON_FE_CAN_FEC_2_3			= 0x4,
+	COMMON_FE_CAN_FEC_3_4			= 0x8,
+	COMMON_FE_CAN_FEC_4_5			= 0x10,
+	COMMON_FE_CAN_FEC_5_6			= 0x20,
+	COMMON_FE_CAN_FEC_6_7			= 0x40,
+	COMMON_FE_CAN_FEC_7_8			= 0x80,
+	COMMON_FE_CAN_FEC_8_9			= 0x100,
+	COMMON_FE_CAN_FEC_AUTO			= 0x200,
+	COMMON_FE_CAN_QPSK			= 0x400,
+	COMMON_FE_CAN_QAM_16			= 0x800,
+	COMMON_FE_CAN_QAM_32			= 0x1000,
+	COMMON_FE_CAN_QAM_64			= 0x2000,
+	COMMON_FE_CAN_QAM_128			= 0x4000,
+	COMMON_FE_CAN_QAM_256			= 0x8000,
+	COMMON_FE_CAN_QAM_AUTO			= 0x10000,
+	COMMON_FE_CAN_TRANSMISSION_MODE_AUTO	= 0x20000,
+	COMMON_FE_CAN_BANDWIDTH_AUTO		= 0x40000,
+	COMMON_FE_CAN_GUARD_INTERVAL_AUTO	= 0x80000,
+	COMMON_FE_CAN_HIERARCHY_AUTO		= 0x100000,
+	COMMON_FE_CAN_8VSB			= 0x200000,
+	COMMON_FE_CAN_16VSB			= 0x400000,
+	COMMON_FE_HAS_EXTENDED_CAPS		= 0x800000,
+	COMMON_FE_CAN_MULTISTREAM		= 0x4000000,
+	COMMON_FE_CAN_TURBO_FEC		= 0x8000000,
+	COMMON_FE_CAN_2G_MODULATION		= 0x10000000,
+	COMMON_FE_NEEDS_BENDING		= 0x20000000,
+	COMMON_FE_CAN_RECOVER			= 0x40000000,
+	COMMON_FE_CAN_MUTE_TS			= 0x80000000
+};
+
+/*
+ * DEPRECATED: Should be kept just due to backward compatibility.
+ */
+enum common_fe_type {
+	COMMON_FE_QPSK,
+	COMMON_FE_QAM,
+	COMMON_FE_OFDM,
+	COMMON_FE_ATSC
+};
+
+/**
+ * struct common_dvb_frontend_info - Frontend properties and capabilities
+ *
+ * @name:			Name of the frontend
+ * @type:			**DEPRECATED**.
+ *				Should not be used on modern programs,
+ *				as a frontend may have more than one type.
+ *				In order to get the support types of a given
+ *				frontend, use :c:type:`COMMON_DTV_ENUM_DELSYS`
+ *				instead.
+ * @frequency_min:		Minimal frequency supported by the frontend.
+ * @frequency_max:		Minimal frequency supported by the frontend.
+ * @frequency_stepsize:		All frequencies are multiple of this value.
+ * @frequency_tolerance:	Frequency tolerance.
+ * @symbol_rate_min:		Minimal symbol rate, in bauds
+ *				(for Cable/Satellite systems).
+ * @symbol_rate_max:		Maximal symbol rate, in bauds
+ *				(for Cable/Satellite systems).
+ * @symbol_rate_tolerance:	Maximal symbol rate tolerance, in ppm
+ *				(for Cable/Satellite systems).
+ * @notifier_delay:		**DEPRECATED**. Not used by any driver.
+ * @caps:			Capabilities supported by the frontend,
+ *				as specified in &enum common_fe_caps.
+ *
+ * .. note:
+ *
+ *    #. The frequencies are specified in Hz for Terrestrial and Cable
+ *       systems.
+ *    #. The frequencies are specified in kHz for Satellite systems.
+ */
+struct common_dvb_frontend_info {
+	char       name[128];
+	enum common_fe_type type;	/* DEPRECATED. Use COMMON_DTV_ENUM_DELSYS instead */
+	__u32      frequency_min;
+	__u32      frequency_max;
+	__u32      frequency_stepsize;
+	__u32      frequency_tolerance;
+	__u32      symbol_rate_min;
+	__u32      symbol_rate_max;
+	__u32      symbol_rate_tolerance;
+	__u32      notifier_delay;		/* DEPRECATED */
+	enum common_fe_caps caps;
+};
+
+struct neumo_dvb_frontend_extended_info {
+	char     card_name[64]; //human readable name of tuner card
+	char     adapter_name[64]; //human readable name of adapter
+	char     card_address[64]; //name of the linux bus to which the device is attached (e.g. pci-express slot)
+	char     card_short_name[64]; //short human readable name of tuner card
+	__u8     supports_neumo; /*historically we relied on COMMON_FE_CAN... to indicate supported features,
+														 but in future we will rely on data returned by COMMON_FE_GET_EXTENDED_INFO
+														 Note that COMMON_FE_GET_EXTENDED_INFO works on all drivers, even non neumo ones:
+														 it is available as soon as neumo support is activated in dvb_api. Legacy
+														 drivers will initialize fields thet don;t know to zero, but in some case
+														 (e.g., rf_in) 0 is a valid value. The fe_info.supports_neumo flag, when
+														 set - indicates that such fields have been properly initialized anyway
+													 */
+	__u8     num_rf_inputs;
+	__s8     default_rf_input;
+	__u8     supports_bbframes;
+	__s32    reserved4;
+	__s64    card_mac_address;      //unique identifier for card
+	__s64    adapter_mac_address;   //unique identifier for adapter
+	char     unused[64 - 24 - 16];
+	__s8     rf_inputs[16];  /*rf inputs to which this tuner can connect. If num_rf_inputs==0,
+													then the adapter can connect to a single rf_input, which equals
+													adapter_no*/
+	__u32    frequency_min;
+	__u32    frequency_max;
+	__u32    frequency_stepsize;
+	__u32    frequency_tolerance;
+	__u32    symbol_rate_min;
+	__u32    symbol_rate_max;
+	__u32    symbol_rate_tolerance;
+	enum common_fe_caps caps;
+	enum common_fe_extended_caps extended_caps;
+};
+
+/**
+ * struct common_dvb_diseqc_master_cmd - DiSEqC master command
+ *
+ * @msg:
+ *	DiSEqC message to be sent. It contains a 3 bytes header with:
+ *	framing + address + command, and an optional argument
+ *	of up to 3 bytes of data.
+ * @msg_len:
+ *	Length of the DiSEqC message. Valid values are 3 to 6.
+ *
+ * Check out the DiSEqC bus spec available on http://www.eutelsat.org/ for
+ * the possible messages that can be used.
+ */
+struct common_dvb_diseqc_master_cmd {
+	__u8 msg[6];
+	__u8 msg_len;
+};
+
+struct neumo_dvb_diseqc_long_master_cmd {
+	__u8 msg[16];
+	__u8 msg_len;
+};
+
+
+/**
+ * struct common_dvb_diseqc_slave_reply - DiSEqC received data
+ *
+ * @msg:
+ *	DiSEqC message buffer to store a message received via DiSEqC.
+ *	It contains one byte header with: framing and
+ *	an optional argument of up to 3 bytes of data.
+ * @msg_len:
+ *	Length of the DiSEqC message. Valid values are 0 to 4,
+ *	where 0 means no message.
+ * @timeout:
+ *	Return from ioctl after timeout ms with errorcode when
+ *	no message was received.
+ *
+ * Check out the DiSEqC bus spec available on http://www.eutelsat.org/ for
+ * the possible messages that can be used.
+ */
+struct common_dvb_diseqc_slave_reply {
+	__u8 msg[4];
+	__u8 msg_len;
+	int  timeout;
+};
+
+/**
+ * enum common_fe_sec_voltage - DC Voltage used to feed the LNBf
+ *
+ * @SEC_VOLTAGE_13:	Output 13V to the LNBf
+ * @SEC_VOLTAGE_18:	Output 18V to the LNBf
+ * @SEC_VOLTAGE_OFF:	Don't feed the LNBf with a DC voltage
+ */
+enum common_fe_sec_voltage {
+	SEC_VOLTAGE_13,
+	SEC_VOLTAGE_18,
+	SEC_VOLTAGE_OFF
+};
+
+/**
+ * enum common_fe_sec_tone_mode - Type of tone to be send to the LNBf.
+ * @SEC_TONE_ON:	Sends a 22kHz tone burst to the antenna.
+ * @SEC_TONE_OFF:	Don't send a 22kHz tone to the antenna (except
+ *			if the ``FE_DISEQC_*`` ioctls are called).
+ */
+enum common_fe_sec_tone_mode {
+	SEC_TONE_ON,
+	SEC_TONE_OFF,
+	SEC_TONE_NOTSET
+};
+
+/**
+ * enum common_fe_sec_mini_cmd - Type of mini burst to be sent
+ *
+ * @SEC_MINI_A:		Sends a mini-DiSEqC 22kHz '0' Tone Burst to select
+ *			satellite-A
+ * @SEC_MINI_B:		Sends a mini-DiSEqC 22kHz '1' Data Burst to select
+ *			satellite-B
+ */
+enum common_fe_sec_mini_cmd {
+	SEC_MINI_A,
+	SEC_MINI_B
+};
+
+/**
+ * enum common_fe_status - Enumerates the possible frontend status.
+ * @COMMON_FE_NONE:		The frontend doesn't have any kind of lock.
+ *			That's the initial frontend status
+ * @COMMON_FE_HAS_SIGNAL:	Has found something above the noise level.
+ * @COMMON_FE_HAS_CARRIER:	Has found a signal.
+ * @COMMON_FE_HAS_VITERBI:	FEC inner coding (Viterbi, LDPC or other inner code).
+ *			is stable.
+ * @COMMON_FE_HAS_SYNC:	Synchronization bytes was found.
+ * @COMMON_FE_HAS_LOCK:	Digital TV were locked and everything is working.
+ * @COMMON_FE_TIMEDOUT:	Fo lock within the last about 2 seconds.
+ * @COMMON_FE_HAS_TIMING_LOCK:		Timing loop has locked
+ * @COMMON_FE_IDLE:		Frontend has gone idle
+ * size: 4 byes
+ */
+enum common_fe_status {
+	COMMON_FE_NONE			= 0x00,
+	COMMON_FE_HAS_SIGNAL		= 0x01, //not useful
+	COMMON_FE_HAS_CARRIER		= 0x02,
+	COMMON_FE_HAS_VITERBI		= 0x04,
+	COMMON_FE_HAS_SYNC		= 0x08,
+	COMMON_FE_HAS_LOCK		= 0x10,
+	COMMON_FE_TIMEDOUT		= 0x20,
+	COMMON_FE_REINIT		= 0x40, //not used internally, but checked by dvblast, so must remain 0
+	COMMON_FE_IDLE		= 0x80,
+	COMMON_FE_OUT_OF_RESOURCES = 0x100, //e.g., No LLR for stid135
+	COMMON_FE_HAS_TIMING_LOCK		= 0x200, //was COMMON_FE_REINIT; not used anyway
+};
+
+/**
+ * enum common_fe_spectral_inversion - Type of inversion band
+ *
+ * @INVERSION_OFF:	Don't do spectral band inversion.
+ * @INVERSION_ON:	Do spectral band inversion.
+ * @INVERSION_AUTO:	Autodetect spectral band inversion.
+ *
+ * This parameter indicates if spectral inversion should be presumed or
+ * not. In the automatic setting (``INVERSION_AUTO``) the hardware will try
+ * to figure out the correct setting by itself. If the hardware doesn't
+ * support, the %dvb_frontend will try to lock at the carrier first with
+ * inversion off. If it fails, it will try to enable inversion.
+ */
+enum common_fe_spectral_inversion {
+	INVERSION_OFF,
+	INVERSION_ON,
+	INVERSION_AUTO
+};
+
+/**
+ * enum common_fe_code_rate - Type of Forward Error Correction (FEC)
+ *
+ * @FEC_NONE: No Forward Error Correction Code
+ * @FEC_1_2:  Forward Error Correction Code 1/2
+ * @FEC_2_3:  Forward Error Correction Code 2/3
+ * @FEC_3_4:  Forward Error Correction Code 3/4
+ * @FEC_4_5:  Forward Error Correction Code 4/5
+ * @FEC_5_6:  Forward Error Correction Code 5/6
+ * @FEC_6_7:  Forward Error Correction Code 6/7
+ * @FEC_7_8:  Forward Error Correction Code 7/8
+ * @FEC_8_9:  Forward Error Correction Code 8/9
+ * @FEC_AUTO: Autodetect Error Correction Code
+ * @FEC_3_5:  Forward Error Correction Code 3/5
+ * @FEC_9_10: Forward Error Correction Code 9/10
+ * @FEC_2_5:  Forward Error Correction Code 2/5
+ * @FEC_1_3:  Forward Error Correction Code 1/3
+ * @FEC_1_4:  Forward Error Correction Code 1/4
+ * @FEC_5_9:  Forward Error Correction Code 5/9
+ * @FEC_7_9:  Forward Error Correction Code 7/9
+ * @FEC_8_15:  Forward Error Correction Code 8/15
+ * @FEC_11_15: Forward Error Correction Code 11/15
+ * @FEC_13_18: Forward Error Correction Code 13/18
+ * @FEC_9_20:  Forward Error Correction Code 9/20
+ * @FEC_11_20: Forward Error Correction Code 11/20
+ * @FEC_23_36: Forward Error Correction Code 23/36
+ * @FEC_25_36: Forward Error Correction Code 25/36
+ * @FEC_13_45: Forward Error Correction Code 13/45
+ * @FEC_26_45: Forward Error Correction Code 26/45
+ * @FEC_28_45: Forward Error Correction Code 28/45
+ * @FEC_32_45: Forward Error Correction Code 32/45
+ * @FEC_77_90: Forward Error Correction Code 77/90
+ * @FEC_11_45: Forward Error Correction Code 11/45
+ * @FEC_4_15: Forward Error Correction Code 4/15
+ * @FEC_14_45: Forward Error Correction Code 14/45
+ * @FEC_7_15: Forward Error Correction Code 7/15
+ *
+ * Please note that not all FEC types are supported by a given standard.
+ */
+enum common_fe_code_rate {
+	FEC_NONE = 0,
+	FEC_1_2,
+	FEC_2_3,
+	FEC_3_4,
+	FEC_4_5,
+	FEC_5_6,
+	FEC_6_7,
+	FEC_7_8,
+	FEC_8_9,
+	FEC_AUTO,
+	FEC_3_5,
+	FEC_9_10,
+	FEC_2_5,
+	FEC_1_3,
+	FEC_1_4,
+	FEC_5_9,
+	FEC_7_9,
+	FEC_8_15,
+	FEC_11_15,
+	FEC_13_18,
+	FEC_9_20,
+	FEC_11_20,
+	FEC_23_36,
+	FEC_25_36,
+	FEC_13_45,
+	FEC_26_45,
+	FEC_28_45,
+	FEC_32_45,
+	FEC_77_90,
+	FEC_11_45,
+	FEC_4_15,
+	FEC_14_45,
+	FEC_7_15,
+	FEC_5_11,
+	FEC_29_45,
+	FEC_31_45,
+	FEC_R_58,
+	FEC_R_60,
+	FEC_R_62,
+	FEC_R_5E
+};
+
+/**
+ * enum common_fe_modulation - Type of modulation/constellation
+ * @QPSK:	QPSK modulation
+ * @QAM_16:	16-QAM modulation
+ * @QAM_32:	32-QAM modulation
+ * @QAM_64:	64-QAM modulation
+ * @QAM_128:	128-QAM modulation
+ * @QAM_256:	256-QAM modulation
+ * @QAM_AUTO:	Autodetect QAM modulation
+ * @VSB_8:	8-VSB modulation
+ * @VSB_16:	16-VSB modulation
+ * @PSK_8:	8-PSK modulation
+ * @APSK_16:	16-APSK modulation
+ * @APSK_32:	32-APSK modulation
+ * @DQPSK:	DQPSK modulation
+ * @QAM_4_NR:	4-QAM-NR modulation
+ * @DUMMY_PLF:	DUMMY PLF Frames
+ * @QAM_1024:	1024-QAM modulation
+ * @QAM_4096:	4096-QAM modulation
+ * @APSK_8_L:	8APSK-L modulation
+ * @APSK_16_L:	16APSK-L modulation
+ * @APSK_32_L:	32APSK-L modulation
+ * @APSK_64:	64APSK modulation
+ * @APSK_64_L:	64APSK-L modulation
+ *
+ * Please note that not all modulations are supported by a given standard.
+ *
+ */
+enum common_fe_modulation {
+	QPSK,
+	QAM_16,
+	QAM_32,
+	QAM_64,
+	QAM_128,
+	QAM_256,
+	QAM_AUTO,
+	VSB_8,
+	VSB_16,
+	PSK_8,
+	APSK_16,
+	APSK_32,
+	DQPSK,
+	QAM_4_NR,
+	QAM_1024,
+	QAM_4096,
+	APSK_8_L,
+	APSK_16_L,
+	APSK_32_L,
+	APSK_64,
+	APSK_64_L,
+	APSK_128,
+	APSK_256,
+	APSK_128_L,
+	APSK_256_L,
+	APSK_1024,
+	C_QPSK,
+	I_QPSK,
+	Q_QPSK,
+	C_OQPSK,
+	QAM_512,
+	DUMMY_PLF
+};
+
+/**
+ * enum common_fe_transmit_mode - Transmission mode
+ *
+ * @TRANSMISSION_MODE_AUTO:
+ *	Autodetect transmission mode. The hardware will try to find the
+ *	correct FFT-size (if capable) to fill in the missing parameters.
+ * @TRANSMISSION_MODE_1K:
+ *	Transmission mode 1K
+ * @TRANSMISSION_MODE_2K:
+ *	Transmission mode 2K
+ * @TRANSMISSION_MODE_8K:
+ *	Transmission mode 8K
+ * @TRANSMISSION_MODE_4K:
+ *	Transmission mode 4K
+ * @TRANSMISSION_MODE_16K:
+ *	Transmission mode 16K
+ * @TRANSMISSION_MODE_32K:
+ *	Transmission mode 32K
+ * @TRANSMISSION_MODE_C1:
+ *	Single Carrier (C=1) transmission mode (DTMB only)
+ * @TRANSMISSION_MODE_C3780:
+ *	Multi Carrier (C=3780) transmission mode (DTMB only)
+ *
+ * Please note that not all transmission modes are supported by a given
+ * standard.
+ */
+enum common_fe_transmit_mode {
+	TRANSMISSION_MODE_2K,
+	TRANSMISSION_MODE_8K,
+	TRANSMISSION_MODE_AUTO,
+	TRANSMISSION_MODE_4K,
+	TRANSMISSION_MODE_1K,
+	TRANSMISSION_MODE_16K,
+	TRANSMISSION_MODE_32K,
+	TRANSMISSION_MODE_C1,
+	TRANSMISSION_MODE_C3780,
+};
+
+/**
+ * enum fe_guard_interval - Guard interval
+ *
+ * @GUARD_INTERVAL_AUTO:	Autodetect the guard interval
+ * @GUARD_INTERVAL_1_128:	Guard interval 1/128
+ * @GUARD_INTERVAL_1_32:	Guard interval 1/32
+ * @GUARD_INTERVAL_1_16:	Guard interval 1/16
+ * @GUARD_INTERVAL_1_8:		Guard interval 1/8
+ * @GUARD_INTERVAL_1_4:		Guard interval 1/4
+ * @GUARD_INTERVAL_19_128:	Guard interval 19/128
+ * @GUARD_INTERVAL_19_256:	Guard interval 19/256
+ * @GUARD_INTERVAL_PN420:	PN length 420 (1/4)
+ * @GUARD_INTERVAL_PN595:	PN length 595 (1/6)
+ * @GUARD_INTERVAL_PN945:	PN length 945 (1/9)
+ * @GUARD_INTERVAL_1_64:	Guard interval 1/64
+ *
+ * Please note that not all guard intervals are supported by a given standard.
+ */
+enum fe_guard_interval {
+	GUARD_INTERVAL_1_32,
+	GUARD_INTERVAL_1_16,
+	GUARD_INTERVAL_1_8,
+	GUARD_INTERVAL_1_4,
+	GUARD_INTERVAL_AUTO,
+	GUARD_INTERVAL_1_128,
+	GUARD_INTERVAL_19_128,
+	GUARD_INTERVAL_19_256,
+	GUARD_INTERVAL_PN420,
+	GUARD_INTERVAL_PN595,
+	GUARD_INTERVAL_PN945,
+	GUARD_INTERVAL_1_64,
+};
+
+/**
+ * enum fe_hierarchy - Hierarchy
+ * @HIERARCHY_NONE:	No hierarchy
+ * @HIERARCHY_AUTO:	Autodetect hierarchy (if supported)
+ * @HIERARCHY_1:	Hierarchy 1
+ * @HIERARCHY_2:	Hierarchy 2
+ * @HIERARCHY_4:	Hierarchy 4
+ *
+ * Please note that not all hierarchy types are supported by a given standard.
+ */
+enum fe_hierarchy {
+	HIERARCHY_NONE,
+	HIERARCHY_1,
+	HIERARCHY_2,
+	HIERARCHY_4,
+	HIERARCHY_AUTO
+};
+
+/**
+ * enum common_fe_interleaving - Interleaving
+ * @INTERLEAVING_NONE:	No interleaving.
+ * @INTERLEAVING_AUTO:	Auto-detect interleaving.
+ * @INTERLEAVING_240:	Interleaving of 240 symbols.
+ * @INTERLEAVING_720:	Interleaving of 720 symbols.
+ *
+ * Please note that, currently, only DTMB uses it.
+ */
+enum common_fe_interleaving {
+	INTERLEAVING_NONE,
+	INTERLEAVING_AUTO,
+	INTERLEAVING_240,
+	INTERLEAVING_720,
+};
+
+/* DVBv5 property Commands */
+
+#define COMMON_DTV_UNDEFINED		0
+#define COMMON_DTV_TUNE		1
+#define COMMON_DTV_CLEAR		2
+#define COMMON_DTV_FREQUENCY		3
+#define COMMON_DTV_MODULATION		4
+#define COMMON_DTV_BANDWIDTH_HZ	5
+#define COMMON_DTV_INVERSION		6
+#define COMMON_DTV_DISEQC_MASTER	7
+#define COMMON_DTV_SYMBOL_RATE		8
+#define COMMON_DTV_INNER_FEC		9
+#define COMMON_DTV_VOLTAGE		10
+#define COMMON_DTV_TONE		11
+#define COMMON_DTV_PILOT		12
+#define COMMON_DTV_ROLLOFF		13
+#define COMMON_DTV_DISEQC_SLAVE_REPLY	14
+
+/* Basic enumeration set for querying unlimited capabilities */
+#define COMMON_DTV_FE_CAPABILITY_COUNT	15
+#define COMMON_DTV_FE_CAPABILITY	16
+#define COMMON_DTV_DELIVERY_SYSTEM	17
+
+/* ISDB-T and ISDB-Tsb */
+#define COMMON_DTV_ISDBT_PARTIAL_RECEPTION	18
+#define COMMON_DTV_ISDBT_SOUND_BROADCASTING	19
+
+#define COMMON_DTV_ISDBT_SB_SUBCHANNEL_ID	20
+#define COMMON_DTV_ISDBT_SB_SEGMENT_IDX	21
+#define COMMON_DTV_ISDBT_SB_SEGMENT_COUNT	22
+
+#define COMMON_DTV_ISDBT_LAYERA_FEC			23
+#define COMMON_DTV_ISDBT_LAYERA_MODULATION		24
+#define COMMON_DTV_ISDBT_LAYERA_SEGMENT_COUNT		25
+#define COMMON_DTV_ISDBT_LAYERA_TIME_INTERLEAVING	26
+
+#define COMMON_DTV_ISDBT_LAYERB_FEC			27
+#define COMMON_DTV_ISDBT_LAYERB_MODULATION		28
+#define COMMON_DTV_ISDBT_LAYERB_SEGMENT_COUNT		29
+#define COMMON_DTV_ISDBT_LAYERB_TIME_INTERLEAVING	30
+
+#define COMMON_DTV_ISDBT_LAYERC_FEC			31
+#define COMMON_DTV_ISDBT_LAYERC_MODULATION		32
+#define COMMON_DTV_ISDBT_LAYERC_SEGMENT_COUNT		33
+#define COMMON_DTV_ISDBT_LAYERC_TIME_INTERLEAVING	34
+
+#define COMMON_DTV_API_VERSION		35
+
+#define COMMON_DTV_CODE_RATE_HP	36
+#define COMMON_DTV_CODE_RATE_LP	37
+#define COMMON_DTV_GUARD_INTERVAL	38
+#define COMMON_DTV_TRANSMISSION_MODE	39
+#define COMMON_DTV_HIERARCHY		40
+
+#define COMMON_DTV_ISDBT_LAYER_ENABLED	41
+
+#define COMMON_DTV_STREAM_ID		42
+#define COMMON_DTV_ISDBS_TS_ID_LEGACY	COMMON_DTV_STREAM_ID
+#define COMMON_DTV_DVBT2_PLP_ID_LEGACY	43
+
+#define COMMON_DTV_ENUM_DELSYS		44
+
+/* ATSC-MH */
+#define COMMON_DTV_ATSCMH_FIC_VER		45
+#define COMMON_DTV_ATSCMH_PARADE_ID		46
+#define COMMON_DTV_ATSCMH_NOG			47
+#define COMMON_DTV_ATSCMH_TNOG			48
+#define COMMON_DTV_ATSCMH_SGN			49
+#define COMMON_DTV_ATSCMH_PRC			50
+#define COMMON_DTV_ATSCMH_RS_FRAME_MODE	51
+#define COMMON_DTV_ATSCMH_RS_FRAME_ENSEMBLE	52
+#define COMMON_DTV_ATSCMH_RS_CODE_MODE_PRI	53
+#define COMMON_DTV_ATSCMH_RS_CODE_MODE_SEC	54
+#define COMMON_DTV_ATSCMH_SCCC_BLOCK_MODE	55
+#define COMMON_DTV_ATSCMH_SCCC_CODE_MODE_A	56
+#define COMMON_DTV_ATSCMH_SCCC_CODE_MODE_B	57
+#define COMMON_DTV_ATSCMH_SCCC_CODE_MODE_C	58
+#define COMMON_DTV_ATSCMH_SCCC_CODE_MODE_D	59
+
+#define COMMON_DTV_INTERLEAVING			60
+#define COMMON_DTV_LNA					61
+
+/* Quality parameters */
+#define COMMON_DTV_STAT_SIGNAL_STRENGTH	62
+#define COMMON_DTV_STAT_CNR			63
+#define COMMON_DTV_STAT_PRE_ERROR_BIT_COUNT	64
+#define COMMON_DTV_STAT_PRE_TOTAL_BIT_COUNT	65
+#define COMMON_DTV_STAT_POST_ERROR_BIT_COUNT	66
+#define COMMON_DTV_STAT_POST_TOTAL_BIT_COUNT	67
+#define COMMON_DTV_STAT_ERROR_BLOCK_COUNT	68
+#define COMMON_DTV_STAT_TOTAL_BLOCK_COUNT	69
+
+/* Physical layer scrambling */
+#define COMMON_DTV_SCRAMBLING_SEQUENCE_INDEX	70
+
+#define NEUMO_DTV_MATYPE                      171
+#define NEUMO_DTV_FRAME_LEN                   172
+#define NEUMO_DTV_ENABLE_MODCOD		173
+#define NEUMO_DTV_ALGORITHM		174
+#define NEUMO_DTV_SEARCH_RANGE		175 //not needed? symbol rate could be reused
+#define NEUMO_DTV_ISI_LIST		176 //retrieve list of ISI codes (stream ids)
+#define NEUMO_DTV_PLS_SEARCH_LIST 177 //list of PLS scrambling modes/codes to test during scan
+#define NEUMO_DTV_PLS_SEARCH_RANGE 178 //Range of PLS scrambling modes/codes to test during scan
+#define NEUMO_DTV_SCAN_START_FREQUENCY 179
+#define NEUMO_DTV_SCAN_END_FREQUENCY 180
+#define NEUMO_DTV_SCAN_RESOLUTION 181
+#define NEUMO_DTV_SCAN_FFT_SIZE 182
+#define NEUMO_DTV_SCAN 183
+#define NEUMO_DTV_SPECTRUM 184
+#define NEUMO_DTV_MAX_SYMBOL_RATE	185 //for blindscan
+#define NEUMO_DTV_CONSTELLATION 186
+#define NEUMO_DTV_HEARTBEAT 187
+#define NEUMO_DTV_BITRATE 188
+#define NEUMO_DTV_LOCKTIME 189
+#define NEUMO_DTV_MATYPE_LIST		190 //retrieve list of present matypes and stream_ids
+#define NEUMO_DTV_RF_INPUT 191
+#define NEUMO_DTV_SET_SEC_CONFIGURED 192
+#define NEUMO_DTV_OUTPUT_BBFRAMES 193 //ask frontend to send bbframes to demux
+#define NEUMO_DTV_MODCODE		194
+#define DTV_MAX_COMMAND	 DTV_MODCODE
+
+//commands for controlling long running algorithms via COMMON_FE_ALGO_CTRL ioctl
+#define COMMON_DTV_STOP 1
+
+/**
+ * enum common_fe_pilot - Type of pilot tone
+ *
+ * @PILOT_ON:	Pilot tones enabled
+ * @PILOT_OFF:	Pilot tones disabled
+ * @PILOT_AUTO:	Autodetect pilot tones
+ */
+enum common_fe_pilot {
+	PILOT_ON,
+	PILOT_OFF,
+	PILOT_AUTO,
+};
+
+/**
+ * enum common_fe_rolloff - Rolloff factor
+ * @ROLLOFF_35:		Roloff factor: α=35%
+ * @ROLLOFF_20:		Roloff factor: α=20%
+ * @ROLLOFF_25:		Roloff factor: α=25%
+ * @ROLLOFF_LOW:	Roloff lower than 20%.
+ * @ROLLOFF_AUTO:	Auto-detect the roloff factor.
+ * @ROLLOFF_15:		Rolloff factor: α=15%
+ * @ROLLOFF_10:		Rolloff factor: α=10%
+ * @ROLLOFF_5:		Rolloff factor: α=5%
+ *
+ * .. note:
+ *
+ *    Roloff factor of 35% is implied on DVB-S. On DVB-S2, it is default.
+ */
+enum common_fe_rolloff {
+	ROLLOFF_35,
+	ROLLOFF_20,
+	ROLLOFF_25,
+	ROLLOFF_AUTO,
+	ROLLOFF_15,
+	ROLLOFF_10,
+	ROLLOFF_5,
+	ROLLOFF_LOW, //unknown but lower than 20
+};
+
+/**
+ * enum common_fe_delivery_system - Type of the delivery system
+ *
+ * @SYS_UNDEFINED:
+ *	Undefined standard. Generally, indicates an error
+ * @SYS_DVBC_ANNEX_A:
+ *	Cable TV: DVB-C following ITU-T J.83 Annex A spec
+ * @SYS_DVBC_ANNEX_B:
+ *	Cable TV: DVB-C following ITU-T J.83 Annex B spec (ClearQAM)
+ * @SYS_DVBC_ANNEX_C:
+ *	Cable TV: DVB-C following ITU-T J.83 Annex C spec
+ * @SYS_DVBC2:
+ *      Cable TV: DVB-C2
+ * @SYS_ISDBC:
+ *	Cable TV: ISDB-C (no drivers yet)
+ * @SYS_DVBT:
+ *	Terrestrial TV: DVB-T
+ * @SYS_DVBT2:
+ *	Terrestrial TV: DVB-T2
+ * @SYS_ISDBT:
+ *	Terrestrial TV: ISDB-T
+ * @SYS_ATSC:
+ *	Terrestrial TV: ATSC
+ * @SYS_ATSCMH:
+ *	Terrestrial TV (mobile): ATSC-M/H
+ * @SYS_DTMB:
+ *	Terrestrial TV: DTMB
+ * @SYS_DVBS:
+ *	Satellite TV: DVB-S
+ * @SYS_DVBS2:
+ *	Satellite TV: DVB-S2 and DVB-S2X
+ * @SYS_TURBO:
+ *	Satellite TV: DVB-S Turbo
+ * @SYS_ISDBS:
+ *	Satellite TV: ISDB-S
+ * @SYS_DAB:
+ *	Digital audio: DAB (not fully supported)
+ * @SYS_DSS:
+ *	Satellite TV: DSS (not fully supported)
+ * @SYS_CMMB:
+ *	Terrestrial TV (mobile): CMMB (not fully supported)
+ * @SYS_DVBH:
+ *	Terrestrial TV (mobile): DVB-H (standard deprecated)
+ */
+enum common_fe_delivery_system {
+	SYS_UNDEFINED,
+	SYS_DVBC_ANNEX_A,
+	SYS_DVBC_ANNEX_B,
+	SYS_DVBT,
+	SYS_DSS,
+	SYS_DVBS,
+	SYS_DVBS2,
+	SYS_DVBH,
+	SYS_ISDBT,
+	SYS_ISDBS,
+	SYS_ISDBC,
+	SYS_ATSC,
+	SYS_ATSCMH,
+	SYS_DTMB,
+	SYS_CMMB,
+	SYS_DAB,
+	SYS_DVBT2,
+	SYS_TURBO,
+	SYS_DVBC_ANNEX_C,
+	SYS_DVBC2,
+	SYS_DVBS2X,
+	SYS_DCII,
+	SYS_AUTO //22
+};
+
+/**
+ * enum neumo_fe_algorithm - Type of scan algorithm to apply
+ *
+ * @ALGORITHM_WARM:
+ *	Tune to known carrier frequency and symbol rate
+ * @ALGORITHM_BLIND:
+ *	Blind scan starting at lowest frequency
+ * @ALGORITHM_BLIND_BEST_GUESS:
+ *	Blind scan starting with a guess for frequency and symbol rate
+ * @ALGORITHM_COLD:
+ *	Blind scan starting with known symbol rate
+ * @ALGORITHM_COLD_BEST_GUESS:
+ *	Blind scan starting with known symbol rate and starting with a guessed frequency
+ * @ALGORITHM_SEARCH:
+ *	Search a complete frequency range and stop at the first mux found
+ * @ALGORITHM_SEARCH_NEXT:
+ *	Scan for the mux with the next higher frequency compared to the last one tuned
+ * @ALGORITHM_BANDWITH:
+ *	Scan full bandwith, optimized for low symbol rate
+ */
+enum neumo_fe_algorithm {
+	ALGORITHM_WARM,
+	ALGORITHM_COLD,
+	ALGORITHM_COLD_BEST_GUESS,
+	ALGORITHM_BLIND,
+	ALGORITHM_BLIND_BEST_GUESS,
+};
+
+/* backward compatibility definitions for delivery systems */
+#define SYS_DVBC_ANNEX_AC	SYS_DVBC_ANNEX_A
+#define SYS_DMBTH		SYS_DTMB /* DMB-TH is legacy name, use DTMB */
+
+/* ATSC-MH specific parameters */
+
+/**
+ * enum atscmh_sccc_block_mode - Type of Series Concatenated Convolutional
+ *				 Code Block Mode.
+ *
+ * @ATSCMH_SCCC_BLK_SEP:
+ *	Separate SCCC: the SCCC outer code mode shall be set independently
+ *	for each Group Region (A, B, C, D)
+ * @ATSCMH_SCCC_BLK_COMB:
+ *	Combined SCCC: all four Regions shall have the same SCCC outer
+ *	code mode.
+ * @ATSCMH_SCCC_BLK_RES:
+ *	Reserved. Shouldn't be used.
+ */
+enum atscmh_sccc_block_mode {
+	ATSCMH_SCCC_BLK_SEP      = 0,
+	ATSCMH_SCCC_BLK_COMB     = 1,
+	ATSCMH_SCCC_BLK_RES      = 2,
+};
+
+/**
+ * enum atscmh_sccc_code_mode - Type of Series Concatenated Convolutional
+ *				Code Rate.
+ *
+ * @ATSCMH_SCCC_CODE_HLF:
+ *	The outer code rate of a SCCC Block is 1/2 rate.
+ * @ATSCMH_SCCC_CODE_QTR:
+ *	The outer code rate of a SCCC Block is 1/4 rate.
+ * @ATSCMH_SCCC_CODE_RES:
+ *	Reserved. Should not be used.
+ */
+enum atscmh_sccc_code_mode {
+	ATSCMH_SCCC_CODE_HLF     = 0,
+	ATSCMH_SCCC_CODE_QTR     = 1,
+	ATSCMH_SCCC_CODE_RES     = 2,
+};
+
+/**
+ * enum atscmh_rs_frame_ensemble - Reed Solomon(RS) frame ensemble.
+ *
+ * @ATSCMH_RSFRAME_ENS_PRI:	Primary Ensemble.
+ * @ATSCMH_RSFRAME_ENS_SEC:	Secondary Ensemble.
+ */
+enum atscmh_rs_frame_ensemble {
+	ATSCMH_RSFRAME_ENS_PRI   = 0,
+	ATSCMH_RSFRAME_ENS_SEC   = 1,
+};
+
+/**
+ * enum atscmh_rs_frame_mode - Reed Solomon (RS) frame mode.
+ *
+ * @ATSCMH_RSFRAME_PRI_ONLY:
+ *	Single Frame: There is only a primary RS Frame for all Group
+ *	Regions.
+ * @ATSCMH_RSFRAME_PRI_SEC:
+ *	Dual Frame: There are two separate RS Frames: Primary RS Frame for
+ *	Group Region A and B and Secondary RS Frame for Group Region C and
+ *	D.
+ * @ATSCMH_RSFRAME_RES:
+ *	Reserved. Shouldn't be used.
+ */
+enum atscmh_rs_frame_mode {
+	ATSCMH_RSFRAME_PRI_ONLY  = 0,
+	ATSCMH_RSFRAME_PRI_SEC   = 1,
+	ATSCMH_RSFRAME_RES       = 2,
+};
+
+/**
+ * enum atscmh_rs_code_mode - ATSC-M/H Reed Solomon modes
+ * @ATSCMH_RSCODE_211_187:	Reed Solomon code (211,187).
+ * @ATSCMH_RSCODE_223_187:	Reed Solomon code (223,187).
+ * @ATSCMH_RSCODE_235_187:	Reed Solomon code (235,187).
+ * @ATSCMH_RSCODE_RES:		Reserved. Shouldn't be used.
+ */
+enum atscmh_rs_code_mode {
+	ATSCMH_RSCODE_211_187    = 0,
+	ATSCMH_RSCODE_223_187    = 1,
+	ATSCMH_RSCODE_235_187    = 2,
+	ATSCMH_RSCODE_RES        = 3,
+};
+
+#define NO_STREAM_ID_FILTER	(~0U)
+#define LNA_AUTO            (~0U)
+#define MODCODE_ALL         (~0U)
+
+/**
+ * enum common_fecap_scale_params - scale types for the quality parameters.
+ *
+ * @COMMON_FE_SCALE_NOT_AVAILABLE: That QoS measure is not available. That
+ *			    could indicate a temporary or a permanent
+ *			    condition.
+ * @COMMON_FE_SCALE_DECIBEL: The scale is measured in 0.001 dB steps, typically
+ *		      used on signal measures.
+ * @COMMON_FE_SCALE_RELATIVE: The scale is a relative percentual measure,
+ *		       ranging from 0 (0%) to 0xffff (100%).
+ * @COMMON_FE_SCALE_COUNTER: The scale counts the occurrence of an event, like
+ *		      bit error, block error, lapsed time.
+ */
+enum common_fecap_scale_params {
+	COMMON_FE_SCALE_NOT_AVAILABLE = 0,
+	COMMON_FE_SCALE_DECIBEL,
+	COMMON_FE_SCALE_RELATIVE,
+	COMMON_FE_SCALE_COUNTER
+};
+
+/**
+ * struct common_dtv_stats - Used for reading a COMMON_DTV status property
+ *
+ * @scale:
+ *	Filled with enum common_fecap_scale_params - the scale in usage
+ *	for that parameter
+ *
+ * @svalue:
+ *	integer value of the measure, for %FE_SCALE_DECIBEL,
+ *	used for dB measures. The unit is 0.001 dB.
+ *
+ * @uvalue:
+ *	unsigned integer value of the measure, used when @scale is
+ *	either %FE_SCALE_RELATIVE or %FE_SCALE_COUNTER.
+ *
+ * For most delivery systems, this will return a single value for each
+ * parameter.
+ *
+ * It should be noticed, however, that new OFDM delivery systems like
+ * ISDB can use different modulation types for each group of carriers.
+ * On such standards, up to 8 groups of statistics can be provided, one
+ * for each carrier group (called "layer" on ISDB).
+ *
+ * In order to be consistent with other delivery systems, the first
+ * value refers to the entire set of carriers ("global").
+ *
+ * @scale should use the value %FE_SCALE_NOT_AVAILABLE when
+ * the value for the entire group of carriers or from one specific layer
+ * is not provided by the hardware.
+ *
+ * @len should be filled with the latest filled status + 1.
+ *
+ * In other words, for ISDB, those values should be filled like::
+ *
+ *	u.st.stat.svalue[0] = global statistics;
+ *	u.st.stat.scale[0] = COMMON_FE_SCALE_DECIBEL;
+ *	u.st.stat.value[1] = layer A statistics;
+ *	u.st.stat.scale[1] = COMMON_FE_SCALE_NOT_AVAILABLE (if not available);
+ *	u.st.stat.svalue[2] = layer B statistics;
+ *	u.st.stat.scale[2] = COMMON_FE_SCALE_DECIBEL;
+ *	u.st.stat.svalue[3] = layer C statistics;
+ *	u.st.stat.scale[3] = COMMON_FE_SCALE_DECIBEL;
+ *	u.st.len = 4;
+ */
+struct common_dtv_stats {
+	__u8 scale;	/* enum common_fecap_scale_params type */
+	union {
+		__u64 uvalue;	/* for counters and relative scales */
+		__s64 svalue;	/* for 0.001 dB measures */
+	} __attribute__ ((packed));
+} __attribute__ ((packed));
+
+
+#define MAX_COMMON_DTV_STATS   4
+
+/**
+	 enum  common_dtv_fe_spectrum_method;
+	 Should be passed as integer parameter when setting COMMON_DTV_SPECTRUM property
+ **/
+enum neumo_dtv_fe_spectrum_method {
+	SPECTRUM_METHOD_SWEEP,
+	SPECTRUM_METHOD_FFT
+};
+
+enum neumo_dtv_fe_constellation_method {
+	CONSTELLATION_METHOD_DEFAULT,
+};
+
+struct neumo_spectral_peak_t {
+	__s32 freq; //frequency of current peak
+	__s32 symbol_rate; //estimated symbolrate of current peak
+	__s32 snr;
+	__s32 level;
+};
+
+/**
+ * struct common_dtv_pls_search_codes
+ * This is passed as an input to COMMON_FE_GET_PROPERTY
+ * The caller should initialise the fields as followed
+ * @num_codes: numver of elements prvided in codes
+ * @codes: data array provided by caller, codes will be read from this
+ *
+ */
+struct neumo_dtv_pls_search_list {
+	int num_codes;
+	__u32* codes;
+};
+
+/**
+ * struct common_dtv_fe_spectrum - decriptor for a spectrum scan buffer
+ * This is passed as an input to COMMON_FE_GET_PROPERTY
+ * The caller should initialise the fields as followed
+ * @spectrum_method: method to use for creating the spectrum
+ * @freq: buffer created by caller with num_freq elements; will be filled with data and should have
+ *  room for @num_freq elements
+ * @rf_level: buffer created by caller with num_freq elements; will be filled with data and should have
+ *  room for @num_freq elements
+ * @num_freq:	set by caller: length of the buffer, will be replaced on return with the true size,
+ * if the true size is smaller => num_freq should be set as an upper bound
+ * @scale: after return this will contain COMMON_FE_SCALE_DECIBEL or COMMON_FE_SCALE_RELATIVE
+ *
+ */
+struct neumo_dtv_fe_spectrum {
+	__u32 *freq;     //frequencies of spectrum will be returned in freq[num_freq]
+	__s32 *rf_level; //rf_level of spectrum  will be returned in rf_level[num_freq]
+	struct neumo_spectral_peak_t *candidates; //frequencies which were tried for locking are returned in candidate_frequencies[num_candidates]
+	__u32 num_freq;
+	__u32 num_candidates;
+	__u32 scale; //FE_SCALE_DECIBEL; or COMMON_FE_SCALE_RELATIVE
+	__u8 spectrum_method;
+};
+
+
+/**
+ * struct common_dtv_fe_stats - store Digital TV frontend statistics
+ *
+ * @len:	length of the statistics - if zero, stats is disabled.
+ * @stat:	array with digital TV statistics.
+ *
+ * On most standards, @len can either be 0 or 1. However, for ISDB, each
+ * layer is modulated in separate. So, each layer may have its own set
+ * of statistics. If so, stat[0] carries on a global value for the property.
+ * Indexes 1 to 3 means layer A to B.
+ */
+struct common_dtv_fe_stats {
+	__u8 len;
+	struct common_dtv_stats stat[MAX_COMMON_DTV_STATS];
+} __attribute__ ((packed));
+
+
+struct neumo_dtv_fe_constellation_sample {
+	__s16 real;
+	__s16 imag;
+};
+
+struct neumo_dtv_fe_constellation {
+	__u32 num_samples;
+	struct common_dtv_fe_constellation_sample *samples;
+	__u8 method;
+	__u8 constel_select;
+};
+
+struct neumo_dtv_matype_list {
+	__u32 num_entries;
+	__u16* matypes;
+};
+
+/**
+ * struct dvb_api_dtv_property - store one of frontend command and its value
+ *
+ * @cmd:		Digital TV command.
+ * @reserved:		Not used.
+ * @u:			Union with the values for the command.
+ * @u.data:		A unsigned 32 bits integer with command value.
+ * @u.buffer:		Struct to store bigger properties.
+ *			Currently unused.
+ * @u.buffer.data:	an unsigned 32-bits array.
+ * @u.buffer.len:	number of elements of the buffer.
+ * @u.buffer.reserved1:	Reserved.
+ * @u.buffer.reserved2:	Reserved.
+ * @u.st:		a &struct dtv_fe_stats array of statistics.
+ * @result:		Currently unused.
+ *
+ */
+struct dvb_api_dtv_property {
+	__u32 cmd;
+	__u32 reserved[3];
+	union {
+		__u32 data;
+		struct common_dtv_fe_stats st;
+		struct {
+			__u8 data[32];
+			__u32 len;
+			__u32 reserved1[3];
+			void *reserved2;
+		} buffer;
+	} u;
+	int result;
+} __attribute__ ((packed));
+
+
+/**
+ * struct neumo_dtv_property - store one of frontend command and its value
+ *
+ * @cmd:		Digital TV command.
+ * @reserved:		Not used.
+ * @u:			Union with the values for the command.
+ * @u.data:		A unsigned 32 bits integer with command value.
+ * @u.buffer:		Struct to store bigger properties.
+ *			Currently unused.
+ * @u.buffer.data:	an unsigned 32-bits array.
+ * @u.buffer.len:	number of elements of the buffer.
+ * @u.buffer.reserved1:	Reserved.
+ * @u.buffer.reserved2:	Reserved.
+ * @u.st:		a &struct common_dtv_fe_stats array of statistics.
+ * @result:		Currently unused.
+ *
+ */
+struct neumo_dtv_property {
+	__u32 cmd;
+	__u32 reserved[3];
+	union {
+		__u32 data;
+		struct common_dtv_fe_stats st;
+		struct neumo_dtv_fe_spectrum spectrum;
+		struct neumo_dtv_fe_constellation constellation;
+		struct neumo_dtv_matype_list matype_list;
+		struct neumo_dtv_pls_search_list pls_search_codes;
+		struct {
+			__u8 data[32];
+			__u32 len;
+			__u32 reserved1[3];
+			void *reserved2;
+		} buffer;
+	} u;
+	int result;
+} __attribute__ ((packed));
+
+/* num of properties cannot exceed COMMON_DTV_IOCTL_MAX_MSGS per ioctl */
+#define COMMON_DTV_IOCTL_MAX_MSGS 64
+
+
+/**
+ * struct common_dtv_properties - a set of command/value pairs.
+ *
+ * @num:	amount of commands stored at the struct.
+ * @props:	a pointer to &struct dtv_property.
+ */
+struct dvb_api_dtv_properties {
+	__u32 num;
+	struct dvb_api_dtv_property *props;
+};
+
+/**
+ * struct neumo_dtv_properties - a set of command/value pairs.
+ *
+ * @num:	amount of commands stored at the struct.
+ * @props:	a pointer to &struct common_dtv_property.
+ */
+struct neumo_dtv_properties {
+	__u32 num;
+	struct neumo_dtv_property *props;
+};
+
+/**
+ * struct neumo_dtv_algo_ctrl - control a long running algorithm and/or get its state.
+ *
+ */
+struct neumo_dtv_algo_ctrl {
+	__u32 cmd;
+	__u32 reserved[3];
+};
+
+enum common_fe_ioctl_result {
+	COMMON_FE_RESERVATION_MASTER = 0,
+	COMMON_FE_RESERVATION_SLAVE = 1,
+	COMMON_FE_RESERVATION_RETRY = 2,
+	COMMON_FE_RESERVATION_UNCHANGED = 3,
+	COMMON_FE_RESERVATION_RELEASED = 4,
+	COMMON_FE_RESERVATION_NOT_SUPPORTED = 5,
+	COMMON_FE_UNICABLE_DISEQC_RETRY = 10, //another frontend has started a unicable command. Retry later
+	COMMON_FE_RESERVATION_FAILED = -1,
+	COMMON_FE_RESERVATION_EINVAL = -EINVAL,
+};
+
+enum common_fe_reservation_mode {
+	COMMON_FE_RESERVATION_MODE_MASTER_OR_SLAVE = 0, //driver will decide if caller can control voltage/tone/switches
+	COMMON_FE_RESERVATION_MODE_MASTER = 1, //caller needs to control voltage/tone/switches
+	COMMON_FE_RESERVATION_MODE_SLAVE = 2, //caller does not want to control voltage/tone/switches
+};
+
+struct common_fe_rf_input_control {
+	pid_t owner;
+	__s32 config_id;
+	__s8 unicable_mode; //allow slave reservations to perform unicable related voltage changes and diseqc commands
+	__s8 reserved;
+	__s16 rf_in;
+	enum common_fe_reservation_mode mode;
+};
+
+enum common_api_type {
+	API_TYPE_DVB_API,
+	API_TYPE_NEUMO,
+};
+
+struct common_dvb_select_api {
+	enum common_api_type api_type; /*specifies the desired api type on it, but returns a different one when
+																	the desired one is not abailable. API remains in dvb_api mode as long
+																	as no api is specifically selected*/
+	__u32 api_version; /* returns  the interface version of the driver*/
+};
+
+
+/*
+ * When set, this flag will disable any zigzagging or other "normal" tuning
+ * behavior. Additionally, there will be no automatic monitoring of the lock
+ * status, and hence no frontend events will be generated. If a frontend device
+ * is closed, this flag will be automatically turned off when the device is
+ * reopened read-write.
+ */
+#define COMMON_FE_TUNE_MODE_ONESHOT 0x01
+
+/* Digital TV Frontend API calls */
+
+#define COMMON_FE_GET_INFO		   _IOR('o', 61, struct common_dvb_frontend_info)
+
+#define COMMON_FE_DISEQC_RESET_OVERLOAD   _IO('o', 62)
+#define COMMON_FE_DISEQC_SEND_MASTER_CMD  _IOW('o', 63, struct common_dvb_diseqc_master_cmd)
+#define COMMON_FE_DISEQC_RECV_SLAVE_REPLY _IOR('o', 64, struct common_dvb_diseqc_slave_reply)
+#define COMMON_FE_DISEQC_SEND_BURST       _IO('o', 65)  /* common_fe_sec_mini_cmd_t */
+
+#define COMMON_FE_SET_TONE		   _IO('o', 66)  /* common_fe_sec_tone_mode_t */
+#define COMMON_FE_SET_VOLTAGE		   _IO('o', 67)  /* common_fe_sec_voltage_t */
+#define COMMON_FE_ENABLE_HIGH_LNB_VOLTAGE _IO('o', 68)  /* int */
+
+#define COMMON_FE_READ_STATUS		   _IOR('o', 69, common_fe_status_t)
+#define COMMON_FE_READ_BER		   _IOR('o', 70, __u32)
+#define COMMON_FE_READ_SIGNAL_STRENGTH    _IOR('o', 71, __u16)
+#define COMMON_FE_READ_SNR		   _IOR('o', 72, __u16)
+#define COMMON_FE_READ_UNCORRECTED_BLOCKS _IOR('o', 73, __u32)
+
+#define COMMON_FE_SET_FRONTEND_TUNE_MODE  _IO('o', 81) /* unsigned int */
+#define COMMON_FE_GET_EVENT		   _IOR('o', 78, struct common_dvb_frontend_event)
+
+#define COMMON_FE_DISHNETWORK_SEND_LEGACY_CMD _IO('o', 80) /* unsigned int */
+
+#define DVB_API_FE_SET_PROPERTY		   _IOW('o', 82, struct dvb_api_dtv_properties)
+#define DVB_API_FE_GET_PROPERTY		   _IOR('o', 83, struct dvb_api_dtv_properties)
+
+#define NEUMO_FE_SELECT_API		             _IOWR('o', 100, struct neumo_dvb_select_api)
+#define NEUMO_FE_SET_PROPERTY		   _IOW('o', 182, struct neumo_dtv_properties)
+#define NEUMO_FE_GET_PROPERTY		   _IOR('o', 183, struct neumo_dtv_properties)
+#define NEUMO_FE_ALGO_CTRL		       _IOW('o', 184, struct neumo_dtv_algo_ctrl)
+#define NEUMO_FE_SET_RF_INPUT		   _IOW('o', 185, struct neumo_fe_rf_input_control)
+#define NEUMO_FE_GET_EXTENDED_INFO	 _IOR('o', 186, struct neumo_dvb_frontend_extended_info)
+#define NEUMO_FE_DISEQC_SEND_LONG_MASTER_CMD  _IOW('o', 187, struct neumo_dvb_diseqc_long_master_cmd)
+
+#if defined(__DVB_CORE__) || !defined(__KERNEL__)
+
+/*
+ * DEPRECATED: Everything below is deprecated in favor of DVBv5 API
+ *
+ * The DVBv3 only ioctls, structs and enums should not be used on
+ * newer programs, as it doesn't support the second generation of
+ * digital TV standards, nor supports newer delivery systems.
+ * They also don't support modern frontends with usually support multiple
+ * delivery systems.
+ *
+ * Drivers shouldn't use them.
+ *
+ * New applications should use DVBv5 delivery system instead
+ */
+
+/*
+ */
+
+enum common_fe_bandwidth {
+	BANDWIDTH_8_MHZ,
+	BANDWIDTH_7_MHZ,
+	BANDWIDTH_6_MHZ,
+	BANDWIDTH_AUTO,
+	BANDWIDTH_5_MHZ,
+	BANDWIDTH_10_MHZ,
+	BANDWIDTH_1_712_MHZ,
+};
+
+/* This is kept for legacy userspace support */
+typedef enum common_fe_sec_voltage common_fe_sec_voltage_t;
+typedef enum common_fe_caps common_fe_caps_t;
+typedef enum common_fe_type common_fe_type_t;
+typedef enum common_fe_sec_tone_mode common_fe_sec_tone_mode_t;
+typedef enum common_fe_sec_mini_cmd common_fe_sec_mini_cmd_t;
+typedef enum common_fe_status common_fe_status_t;
+typedef enum common_fe_spectral_inversion common_fe_spectral_inversion_t;
+typedef enum common_fe_code_rate common_fe_code_rate_t;
+typedef enum common_fe_modulation common_fe_modulation_t;
+typedef enum common_fe_transmit_mode common_fe_transmit_mode_t;
+typedef enum common_fe_bandwidth common_fe_bandwidth_t;
+typedef enum fe_guard_interval fe_guard_interval_t;
+typedef enum fe_hierarchy fe_hierarchy_t;
+typedef enum common_fe_pilot common_fe_pilot_t;
+typedef enum common_fe_rolloff common_fe_rolloff_t;
+typedef enum common_fe_delivery_system common_fe_delivery_system_t;
+typedef enum common_fe_algorithm common_fe_algorithm_t;
+
+/* DVBv3 structs */
+
+struct dvb_qpsk_parameters {
+	__u32		symbol_rate;  /* symbol rate in Symbols per second */
+	common_fe_code_rate_t	fec_inner;    /* forward error correction (see above) */
+};
+
+struct dvb_qam_parameters {
+	__u32		symbol_rate; /* symbol rate in Symbols per second */
+	common_fe_code_rate_t	fec_inner;   /* forward error correction (see above) */
+	common_fe_modulation_t	modulation;  /* modulation type (see above) */
+};
+
+struct dvb_vsb_parameters {
+	common_fe_modulation_t	modulation;  /* modulation type (see above) */
+};
+
+struct dvb_ofdm_parameters {
+	common_fe_bandwidth_t      bandwidth;
+	common_fe_code_rate_t      code_rate_HP;  /* high priority stream code rate */
+	common_fe_code_rate_t      code_rate_LP;  /* low priority stream code rate */
+	common_fe_modulation_t     constellation; /* modulation type (see above) */
+	common_fe_transmit_mode_t  transmission_mode;
+	fe_guard_interval_t guard_interval;
+	fe_hierarchy_t      hierarchy_information;
+};
+
+struct common_dvb_frontend_parameters {
+	__u32 frequency;  /* (absolute) frequency in Hz for DVB-C/DVB-T/ATSC */
+			  /* intermediate frequency in kHz for DVB-S */
+	common_fe_spectral_inversion_t inversion;
+	union {
+		struct dvb_qpsk_parameters qpsk;	/* DVB-S */
+		struct dvb_qam_parameters  qam;		/* DVB-C */
+		struct dvb_ofdm_parameters ofdm;	/* DVB-T */
+		struct dvb_vsb_parameters vsb;		/* ATSC */
+	} u;
+};
+
+struct common_dvb_frontend_event {
+	common_fe_status_t status;
+	struct common_dvb_frontend_parameters parameters;
+};
+
+/* DVBv3 API calls */
+
+#define COMMON_FE_SET_FRONTEND		   _IOW('o', 76, struct common_dvb_frontend_parameters)
+#define COMMON_FE_GET_FRONTEND		   _IOR('o', 77, struct common_dvb_frontend_parameters)
+
+#endif
+
+struct ecp3_info
+{
+	__u8 reg;
+	__u32 data;
+};
+
+struct mcu24cxx_info
+{
+	__u32 bassaddr;
+	__u8 reg;
+	__u32 data;
+};
+
+struct usbi2c_access
+{
+	__u8 chip_addr;
+	__u8 reg;
+	__u8 num;
+	__u8 buf[8];
+};
+
+struct eeprom_info
+{
+	__u8 reg;
+	__u8 data;
+};
+
+#define COMMON_FE_ECP3FW_READ    _IOR('o', 90, struct ecp3_info)
+#define COMMON_FE_ECP3FW_WRITE   _IOW('o', 91, struct ecp3_info)
+
+#define COMMON_FE_24CXX_READ    _IOR('o', 92, struct mcu24cxx_info)
+#define COMMON_FE_24CXX_WRITE   _IOW('o', 93, struct mcu24cxx_info)
+
+#define COMMON_FE_REGI2C_READ    _IOR('o', 94, struct usbi2c_access)
+#define COMMON_FE_REGI2C_WRITE   _IOW('o', 95, struct usbi2c_access)
+
+#define COMMON_FE_EEPROM_READ    _IOR('o', 96, struct eeprom_info)
+#define COMMON_FE_EEPROM_WRITE   _IOW('o', 97, struct eeprom_info)
+
+#define COMMON_FE_READ_TEMP	  _IOR('o', 98, __s16)

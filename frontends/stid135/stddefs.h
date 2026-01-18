@@ -45,6 +45,10 @@ Description : Contains a number of generic type declarations and defines.
 
 
 /* Includes ---------------------------------------------------------------- */
+#ifdef HOST_PC
+	#include <linux/types.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -52,26 +56,26 @@ extern "C" {
 /* Exported Types ---------------------------------------------------------- */
 
 /* Common unsigned types */
-typedef /*uint8_t */unsigned char  U8;
-typedef /*uint16_t*/ unsigned short U16;
-typedef /*uint32_t*/ unsigned int   U32;
-typedef /*uint64_t*/ unsigned long long U64;
+typedef uint8_t /*unsigned char*/  U8;
+typedef uint16_t /*unsigned short*/ U16;
+typedef uint32_t /*unsigned int*/   U32;
+typedef uint64_t /*unsigned long long*/ U64;
 
-typedef /*uint8_t*/ unsigned char  u8;
-typedef /*uint16_t*/ unsigned short u16;
-typedef /*uint32_t*/ unsigned int   u32;
-typedef /*uint64_t*/ unsigned long long u64;
+typedef uint8_t /*unsigned char*/  u8;
+typedef uint16_t /*unsigned short*/ u16;
+typedef uint32_t /*unsigned int*/   u32;
+typedef uint64_t /*unsigned long long*/ u64;
 
 /* Common signed types */
-typedef /*int8_t */ signed char S8;
-typedef /*sint16_t*/ signed short S16;
-typedef /*int32_t*/ signed int   S32;
-typedef /*int64_t */long long    S64;
+typedef int8_t /*signed char*/  S8;
+typedef int16_t /*signed short*/ S16;
+typedef int32_t /*signed int*/   S32;
+typedef int64_t /*long long*/    S64;
 
-typedef /*int8_t*/ signed char  s8;
-typedef /*int16_t */signed short s16;
-typedef /*int32_t */signed int  s32;
-typedef /*int64_t */long long    s64;
+typedef int8_t /*signed char*/  s8;
+typedef int16_t /*signed short*/ s16;
+typedef int32_t /*signed int*/   s32;
+typedef int64_t /*long long*/    s64;
 
 /* Boolean type (values should be among TRUE and FALSE constants only) */
 typedef int BOOL;

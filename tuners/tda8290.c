@@ -47,7 +47,7 @@ struct tda8290_priv {
 
 /*---------------------------------------------------------------------*/
 
-static int tda8290_i2c_bridge(struct dvb_frontend *fe, int close)
+static int tda8290_i2c_bridge(struct neumo_dvb_frontend *fe, int close)
 {
 	struct tda8290_priv *priv = fe->analog_demod_priv;
 
@@ -68,7 +68,7 @@ static int tda8290_i2c_bridge(struct dvb_frontend *fe, int close)
 	return 0;
 }
 
-static int tda8295_i2c_bridge(struct dvb_frontend *fe, int close)
+static int tda8295_i2c_bridge(struct neumo_dvb_frontend *fe, int close)
 {
 	struct tda8290_priv *priv = fe->analog_demod_priv;
 
@@ -100,7 +100,7 @@ static int tda8295_i2c_bridge(struct dvb_frontend *fe, int close)
 
 /*---------------------------------------------------------------------*/
 
-static void set_audio(struct dvb_frontend *fe,
+static void set_audio(struct neumo_dvb_frontend *fe,
 		      struct analog_parameters *params)
 {
 	struct tda8290_priv *priv = fe->analog_demod_priv;
@@ -161,7 +161,7 @@ static struct {
 	{ { 0x14, 0x00} },	/* disable auto mute if no video */
 };
 
-static void tda8290_set_params(struct dvb_frontend *fe,
+static void tda8290_set_params(struct neumo_dvb_frontend *fe,
 			       struct analog_parameters *params)
 {
 	struct tda8290_priv *priv = fe->analog_demod_priv;
@@ -299,7 +299,7 @@ static void tda8290_set_params(struct dvb_frontend *fe,
 
 /*---------------------------------------------------------------------*/
 
-static void tda8295_power(struct dvb_frontend *fe, int enable)
+static void tda8295_power(struct neumo_dvb_frontend *fe, int enable)
 {
 	struct tda8290_priv *priv = fe->analog_demod_priv;
 	unsigned char buf[] = { 0x30, 0x00 }; /* clb_stdbt */
@@ -314,7 +314,7 @@ static void tda8295_power(struct dvb_frontend *fe, int enable)
 	tuner_i2c_xfer_send(&priv->i2c_props, buf, 2);
 }
 
-static void tda8295_set_easy_mode(struct dvb_frontend *fe, int enable)
+static void tda8295_set_easy_mode(struct neumo_dvb_frontend *fe, int enable)
 {
 	struct tda8290_priv *priv = fe->analog_demod_priv;
 	unsigned char buf[] = { 0x01, 0x00 };
@@ -329,7 +329,7 @@ static void tda8295_set_easy_mode(struct dvb_frontend *fe, int enable)
 	tuner_i2c_xfer_send(&priv->i2c_props, buf, 2);
 }
 
-static void tda8295_set_video_std(struct dvb_frontend *fe)
+static void tda8295_set_video_std(struct neumo_dvb_frontend *fe)
 {
 	struct tda8290_priv *priv = fe->analog_demod_priv;
 	unsigned char buf[] = { 0x00, priv->tda8290_easy_mode };
@@ -343,7 +343,7 @@ static void tda8295_set_video_std(struct dvb_frontend *fe)
 
 /*---------------------------------------------------------------------*/
 
-static void tda8295_agc1_out(struct dvb_frontend *fe, int enable)
+static void tda8295_agc1_out(struct neumo_dvb_frontend *fe, int enable)
 {
 	struct tda8290_priv *priv = fe->analog_demod_priv;
 	unsigned char buf[] = { 0x02, 0x00 }; /* DIV_FUNC */
@@ -358,7 +358,7 @@ static void tda8295_agc1_out(struct dvb_frontend *fe, int enable)
 	tuner_i2c_xfer_send(&priv->i2c_props, buf, 2);
 }
 
-static void tda8295_agc2_out(struct dvb_frontend *fe, int enable)
+static void tda8295_agc2_out(struct neumo_dvb_frontend *fe, int enable)
 {
 	struct tda8290_priv *priv = fe->analog_demod_priv;
 	unsigned char set_gpio_cf[]    = { 0x44, 0x00 };
@@ -379,7 +379,7 @@ static void tda8295_agc2_out(struct dvb_frontend *fe, int enable)
 	tuner_i2c_xfer_send(&priv->i2c_props, set_gpio_val, 2);
 }
 
-static int tda8295_has_signal(struct dvb_frontend *fe, u16 *signal)
+static int tda8295_has_signal(struct neumo_dvb_frontend *fe, u16 *signal)
 {
 	struct tda8290_priv *priv = fe->analog_demod_priv;
 
@@ -393,7 +393,7 @@ static int tda8295_has_signal(struct dvb_frontend *fe, u16 *signal)
 
 /*---------------------------------------------------------------------*/
 
-static void tda8295_set_params(struct dvb_frontend *fe,
+static void tda8295_set_params(struct neumo_dvb_frontend *fe,
 			       struct analog_parameters *params)
 {
 	struct tda8290_priv *priv = fe->analog_demod_priv;
@@ -437,7 +437,7 @@ static void tda8295_set_params(struct dvb_frontend *fe,
 
 /*---------------------------------------------------------------------*/
 
-static int tda8290_has_signal(struct dvb_frontend *fe, u16 *signal)
+static int tda8290_has_signal(struct neumo_dvb_frontend *fe, u16 *signal)
 {
 	struct tda8290_priv *priv = fe->analog_demod_priv;
 
@@ -452,7 +452,7 @@ static int tda8290_has_signal(struct dvb_frontend *fe, u16 *signal)
 
 /*---------------------------------------------------------------------*/
 
-static void tda8290_standby(struct dvb_frontend *fe)
+static void tda8290_standby(struct neumo_dvb_frontend *fe)
 {
 	struct tda8290_priv *priv = fe->analog_demod_priv;
 
@@ -472,14 +472,14 @@ static void tda8290_standby(struct dvb_frontend *fe)
 	tuner_i2c_xfer_send(&priv->i2c_props, tda8290_standby, 2);
 }
 
-static void tda8295_standby(struct dvb_frontend *fe)
+static void tda8295_standby(struct neumo_dvb_frontend *fe)
 {
 	tda8295_agc1_out(fe, 0); /* Put AGC in tri-state */
 
 	tda8295_power(fe, 0);
 }
 
-static void tda8290_init_if(struct dvb_frontend *fe)
+static void tda8290_init_if(struct neumo_dvb_frontend *fe)
 {
 	struct tda8290_priv *priv = fe->analog_demod_priv;
 
@@ -495,7 +495,7 @@ static void tda8290_init_if(struct dvb_frontend *fe)
 	tuner_i2c_xfer_send(&priv->i2c_props, set_VS, 2);
 }
 
-static void tda8295_init_if(struct dvb_frontend *fe)
+static void tda8295_init_if(struct neumo_dvb_frontend *fe)
 {
 	struct tda8290_priv *priv = fe->analog_demod_priv;
 
@@ -524,7 +524,7 @@ static void tda8295_init_if(struct dvb_frontend *fe)
 	tda8295_agc2_out(fe, 0);
 }
 
-static void tda8290_init_tuner(struct dvb_frontend *fe)
+static void tda8290_init_tuner(struct neumo_dvb_frontend *fe)
 {
 	struct tda8290_priv *priv = fe->analog_demod_priv;
 	static unsigned char tda8275_init[]  =
@@ -547,7 +547,7 @@ static void tda8290_init_tuner(struct dvb_frontend *fe)
 
 /*---------------------------------------------------------------------*/
 
-static void tda829x_release(struct dvb_frontend *fe)
+static void tda829x_release(struct neumo_dvb_frontend *fe)
 {
 	struct tda8290_priv *priv = fe->analog_demod_priv;
 
@@ -565,7 +565,7 @@ static struct tda18271_config tda829x_tda18271_config = {
 	.gate    = TDA18271_GATE_ANALOG,
 };
 
-static int tda829x_find_tuner(struct dvb_frontend *fe)
+static int tda829x_find_tuner(struct neumo_dvb_frontend *fe)
 {
 	struct tda8290_priv *priv = fe->analog_demod_priv;
 	int i, ret, tuners_found;
@@ -727,7 +727,7 @@ static const struct analog_demod_ops tda8295_ops = {
 	.i2c_gate_ctrl  = tda8295_i2c_bridge,
 };
 
-struct dvb_frontend *tda829x_attach(struct dvb_frontend *fe,
+struct neumo_dvb_frontend *tda829x_attach(struct neumo_dvb_frontend *fe,
 				    struct i2c_adapter *i2c_adap, u8 i2c_addr,
 				    struct tda829x_config *cfg)
 {
@@ -871,3 +871,6 @@ EXPORT_SYMBOL_GPL(tda829x_probe);
 MODULE_DESCRIPTION("Philips/NXP TDA8290/TDA8295 analog IF demodulator driver");
 MODULE_AUTHOR("Gerd Knorr, Hartmut Hackmann, Michael Krufky");
 MODULE_LICENSE("GPL");
+
+//check for incorrect include files
+#include "linux/media/neumo-check.h"

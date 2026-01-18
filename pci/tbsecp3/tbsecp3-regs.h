@@ -80,7 +80,7 @@
 #define SPI_RD_DATA     	 0x1c
 #define SPI_ENABLE       	 0x1c
 
-/* ASI */ 
+/* ASI */
 #define ASI0_BASEADDRESS  0x4000
 #define ASI_CHIP_RST  	0x00
 #define ASI_SPI_CONFIG  0x04

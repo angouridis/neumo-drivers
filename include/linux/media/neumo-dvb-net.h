@@ -3,6 +3,7 @@
  *
  * Copyright (C) 2001 Ralph Metzler for convergence integrated media GmbH
  *
+ * Copyright (C) 2025-2026 Deep Thought <deeptho@gmail.com>
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
  * as published by the Free Software Foundation; either version 2.1
@@ -15,12 +16,11 @@
  *
  */
 
-#ifndef _DVB_NET_H_
-#define _DVB_NET_H_
+#pragma once
 
 #include <linux/module.h>
 
-#include <media/dvbdev.h>
+#include <media/neumo-dvbdev.h>
 
 struct net_device;
 
@@ -37,7 +37,7 @@ struct net_device;
  *			different than zero means that the interface is
  *			in usage.
  * @exit:		flag to indicate when the device is being removed.
- * @demux:		pointer to &struct dmx_demux.
+ * @demux:		pointer to &struct neumo_dmx_demux.
  * @ioctl_mutex:	protect access to this struct.
  * @remove_mutex:	mutex that avoids a race condition between a callback
  *			called when the hardware is disconnected and the
@@ -52,7 +52,7 @@ struct dvb_net {
 	struct net_device *device[DVB_NET_DEVICES_MAX];
 	int state[DVB_NET_DEVICES_MAX];
 	unsigned int exit:1;
-	struct dmx_demux *demux;
+	struct neumo_dmx_demux *demux;
 	struct mutex ioctl_mutex;
 	struct mutex remove_mutex;
 };
@@ -62,10 +62,10 @@ struct dvb_net {
  *
  * @adap:	pointer to &struct dvb_adapter.
  * @dvbnet:	pointer to &struct dvb_net.
- * @dmxdemux:	pointer to &struct dmx_demux.
+ * @dmxdemux:	pointer to &struct neumo_dmx_demux.
  */
 int dvb_net_init(struct dvb_adapter *adap, struct dvb_net *dvbnet,
-		  struct dmx_demux *dmxdemux);
+		  struct neumo_dmx_demux *dmxdemux);
 
 /**
  * dvb_net_release - releases a digital TV network device and unregisters it.
@@ -85,11 +85,9 @@ static inline void dvb_net_release(struct dvb_net *dvbnet)
 }
 
 static inline int dvb_net_init(struct dvb_adapter *adap,
-			       struct dvb_net *dvbnet, struct dmx_demux *dmx)
+			       struct dvb_net *dvbnet, struct neumo_dmx_demux *dmx)
 {
 	return 0;
 }
 
 #endif /* ifdef CONFIG_DVB_NET */
-
-#endif

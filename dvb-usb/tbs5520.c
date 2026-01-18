@@ -171,7 +171,7 @@ static int tbs5520_i2c_transfer(struct i2c_adapter *adap,
 
 			//msleep(3);
 			break;
-			
+
 		case (TBS5520_RC_QUERY):
 			tbs5520_op_rw(d->udev, 0xb8, 0, 0,
 					buf6, 4, TBS5520_READ_MSG);
@@ -244,7 +244,7 @@ return 0;
 				eepromline[i%16] = ibuf[0];
 				eeprom[i] = ibuf[0];
 			}
-			
+
 			if ((i % 16) == 15) {
 				deb_xfer("%02x: ", i - 15);
 				debug_dump(eepromline, 16, deb_xfer);
@@ -267,7 +267,7 @@ static int tbs5520_frontend_attach(struct dvb_usb_adapter *d)
 
 	if (dvb_attach(r848_attach, d->fe_adap->fe, &r848_config,
 			&d->dev->i2c_adap) == NULL) {
-		dvb_frontend_detach(d->fe_adap->fe);
+		neumo_dvb_frontend_detach(d->fe_adap->fe);
 		d->fe_adap->fe = NULL;
 		printk("TBS5520: tuner attach failed\n");
 		goto err;

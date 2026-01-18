@@ -1,4 +1,4 @@
-// // SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * Silicon Labs Si2146/2147/2148/2157/2158 silicon tuner driver
  *
@@ -7,7 +7,10 @@
 
 #include "si2157_priv.h"
 
-static const struct dvb_tuner_ops si2157_ops;
+#define dprintk(fmt, arg...)																					\
+	printk(KERN_DEBUG pr_fmt("%s:%d " fmt),  __func__, __LINE__, ##arg)
+
+static const struct neumo_dvb_tuner_ops si2157_ops;
 
 static int tuner_lock_debug;
 module_param(tuner_lock_debug, int, 0644);
@@ -89,7 +92,7 @@ static const struct si2157_tuner_info si2157_tuners[] = {
 	{ SI2177, 0x50, false, SI2177_50_FIRMWARE, SI2157_A30_FIRMWARE },
 };
 
-static int si2157_load_firmware(struct dvb_frontend *fe,
+static int si2157_load_firmware(struct neumo_dvb_frontend *fe,
 				const char *fw_name)
 {
 	struct i2c_client *client = fe->tuner_priv;
@@ -137,7 +140,7 @@ err_release_firmware:
 	return ret;
 }
 
-static int si2157_find_and_load_firmware(struct dvb_frontend *fe)
+static int si2157_find_and_load_firmware(struct neumo_dvb_frontend *fe)
 {
 	struct i2c_client *client = fe->tuner_priv;
 	struct si2157_dev *dev = i2c_get_clientdata(client);
@@ -213,9 +216,9 @@ static int si2157_find_and_load_firmware(struct dvb_frontend *fe)
 	return ret;
 }
 
-static int si2157_init(struct dvb_frontend *fe)
+static int si2157_init(struct neumo_dvb_frontend *fe)
 {
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct i2c_client *client = fe->tuner_priv;
 	struct si2157_dev *dev = i2c_get_clientdata(client);
 	unsigned int xtal_trim;
@@ -225,7 +228,7 @@ static int si2157_init(struct dvb_frontend *fe)
 	dev_dbg(&client->dev, "\n");
 
 	if (dev->active)
-		return 0;	
+		return 0;
 
 	/* Try to get Xtal trim property, to verify tuner still running */
 	memcpy(cmd.args, "\x15\x00\x02\x04", 4);
@@ -327,7 +330,7 @@ err:
 	return ret;
 }
 
-static int si2157_sleep(struct dvb_frontend *fe)
+static int si2157_sleep(struct neumo_dvb_frontend *fe)
 {
 	struct i2c_client *client = fe->tuner_priv;
 	struct si2157_dev *dev = i2c_get_clientdata(client);
@@ -442,11 +445,11 @@ err_mutex_unlock:
 	return ret;
 }
 
-static int si2157_set_params(struct dvb_frontend *fe)
+static int si2157_set_params(struct neumo_dvb_frontend *fe)
 {
 	struct i2c_client *client = fe->tuner_priv;
 	struct si2157_dev *dev = i2c_get_clientdata(client);
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret;
 	struct si2157_cmd cmd;
 	u8 bw, delivery_system;
@@ -486,25 +489,32 @@ static int si2157_set_params(struct dvb_frontend *fe)
 		break;
 	case SYS_DVBT:
 	case SYS_DVBT2: /* it seems DVB-T and DVB-T2 both are 0x20 here */
-		delivery_system = 0x20;
+		delivery_system = 0x20; //DVBT
 		break;
 	case SYS_DVBC_ANNEX_A:
 	case SYS_DVBC_ANNEX_B:
 	case SYS_DVBC_ANNEX_C:
-		delivery_system = 0x30;
+		delivery_system = 0x30; //DVBC
+		break;
 		break;
 	case SYS_ISDBT:
-		delivery_system = 0x40;
+		delivery_system = 0x40; //ISDB_T
 		break;
 	case SYS_DTMB:
-		delivery_system = 0x60;
+		delivery_system = 0x60; //DTMB
 		break;
 	default:
+		dprintk("ERROR");
 		ret = -EINVAL;
 		goto err;
 	}
 
-	memcpy(cmd.args, "\x14\x00\x03\x07\x00\x00", 6);
+	memcpy(cmd.args, "\x14\x00\x03\x07\x00\x00", 6); /*0x14: set property reserved=0x00 prop=0x0307 data=0x0000
+																										 0x0307 = DTV_MODE
+																										 next byte = (bandwidth&0xf) | ((modulation&0xf) <<4)
+																										 last_byte = spectral_inversion&1
+																										*/
+
 	cmd.args[4] = delivery_system | bw;
 	if (dev->inversion)
 		cmd.args[5] = 0x01;
@@ -518,7 +528,9 @@ static int si2157_set_params(struct dvb_frontend *fe)
 	if (dev->part_id == SI2146)
 		memcpy(cmd.args, "\x14\x00\x02\x07\x00\x01", 6);
 	else
-		memcpy(cmd.args, "\x14\x00\x02\x07\x00\x00", 6);
+		memcpy(cmd.args, "\x14\x00\x02\x07\x00\x00", 6); /*0x14: set property reserved=0x00 prop=0x0207 data=0x0000
+																											0207 = DTV_CONFIG_IF_PORT
+																											*/
 	cmd.args[4] = dev->if_port;
 	cmd.wlen = 6;
 	cmd.rlen = 4;
@@ -538,7 +550,8 @@ static int si2157_set_params(struct dvb_frontend *fe)
 
 	/* set digital if frequency if needed */
 	if (if_frequency != dev->if_frequency) {
-		memcpy(cmd.args, "\x14\x00\x06\x07", 4);
+		memcpy(cmd.args, "\x14\x00\x06\x07", 4); /*0x14: set property reserved=0x00 prop=0x0607 data=....
+																							*/
 		cmd.args[4] = (if_frequency / 1000) & 0xff;
 		cmd.args[5] = ((if_frequency / 1000) >> 8) & 0xff;
 		cmd.wlen = 6;
@@ -547,11 +560,15 @@ static int si2157_set_params(struct dvb_frontend *fe)
 		if (ret)
 			goto err;
 
-		dev->if_frequency = if_frequency;
+		dev->if_frequency = if_frequency; //5Mhz or 3.25Mhz
 	}
 
 	/* set digital frequency */
-	memcpy(cmd.args, "\x41\x00\x00\x00\x00\x00\x00\x00", 8);
+	memcpy(cmd.args, "\x41\x00\x00\x00\x00\x00\x00\x00", 8); /*0x41 = TUNER_TUNE_FREQ_CMD
+																														 0x00: mode =0x0 (=digital; 1=analog)
+																														 0x0000: 0
+																														 [4-7] frequency
+																														*/
 	cmd.args[4] = (c->frequency >>  0) & 0xff;
 	cmd.args[5] = (c->frequency >>  8) & 0xff;
 	cmd.args[6] = (c->frequency >> 16) & 0xff;
@@ -576,7 +593,7 @@ err:
 	return ret;
 }
 
-static int si2157_set_analog_params(struct dvb_frontend *fe,
+static int si2157_set_analog_params(struct neumo_dvb_frontend *fe,
 				    struct analog_parameters *params)
 {
 	struct i2c_client *client = fe->tuner_priv;
@@ -773,7 +790,7 @@ err:
 	return ret;
 }
 
-static int si2157_get_frequency(struct dvb_frontend *fe, u32 *frequency)
+static int si2157_get_frequency(struct neumo_dvb_frontend *fe, u32 *frequency)
 {
 	struct i2c_client *client = fe->tuner_priv;
 	struct si2157_dev *dev = i2c_get_clientdata(client);
@@ -783,7 +800,7 @@ static int si2157_get_frequency(struct dvb_frontend *fe, u32 *frequency)
 	return 0;
 }
 
-static int si2157_get_bandwidth(struct dvb_frontend *fe, u32 *bandwidth)
+static int si2157_get_bandwidth(struct neumo_dvb_frontend *fe, u32 *bandwidth)
 {
 	struct i2c_client *client = fe->tuner_priv;
 	struct si2157_dev *dev = i2c_get_clientdata(client);
@@ -793,7 +810,7 @@ static int si2157_get_bandwidth(struct dvb_frontend *fe, u32 *bandwidth)
 	return 0;
 }
 
-static int si2157_get_if_frequency(struct dvb_frontend *fe, u32 *frequency)
+static int si2157_get_if_frequency(struct neumo_dvb_frontend *fe, u32 *frequency)
 {
 	struct i2c_client *client = fe->tuner_priv;
 	struct si2157_dev *dev = i2c_get_clientdata(client);
@@ -803,10 +820,10 @@ static int si2157_get_if_frequency(struct dvb_frontend *fe, u32 *frequency)
 	return 0;
 }
 
-static int si2157_get_rf_strength(struct dvb_frontend *fe, u16 *rssi)
+static int si2157_get_rf_strength(struct neumo_dvb_frontend *fe, u16 *rssi)
 {
 	struct i2c_client *client = fe->tuner_priv;
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct si2157_cmd cmd;
 	int ret;
 	int strength;
@@ -820,6 +837,7 @@ static int si2157_get_rf_strength(struct dvb_frontend *fe, u16 *rssi)
 	if (ret)
 		goto err;
 
+	c->strength.len = 1;
 	c->strength.stat[0].scale = FE_SCALE_DECIBEL;
 	c->strength.stat[0].svalue = (s8)cmd.args[3] * 1000;
 
@@ -839,7 +857,11 @@ err:
 	return ret;
 }
 
-static const struct dvb_tuner_ops si2157_ops = {
+static void si2157_release(struct neumo_dvb_frontend *fe)
+{
+}
+
+static const struct neumo_dvb_tuner_ops si2157_ops = {
 	.info = {
 		.name             = "Silicon Labs Si2141/Si2146/2147/2148/2157/2158",
 		.frequency_min_hz =  42 * MHz,
@@ -848,6 +870,8 @@ static const struct dvb_tuner_ops si2157_ops = {
 
 	.init = si2157_init,
 	.sleep = si2157_sleep,
+	.release = si2157_release,
+
 	.set_params = si2157_set_params,
 	.set_analog_params = si2157_set_analog_params,
 	.get_frequency     = si2157_get_frequency,
@@ -860,9 +884,9 @@ static const struct dvb_tuner_ops si2157_ops = {
 static void si2157_stat_work(struct work_struct *work)
 {
 	struct si2157_dev *dev = container_of(work, struct si2157_dev, stat_work.work);
-	struct dvb_frontend *fe = dev->fe;
+	struct neumo_dvb_frontend *fe = dev->fe;
 	struct i2c_client *client = fe->tuner_priv;
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct si2157_cmd cmd;
 	int ret;
 
@@ -889,21 +913,15 @@ err:
 	c->strength.stat[0].scale = FE_SCALE_NOT_AVAILABLE;
 	dev_dbg(&client->dev, "failed=%d\n", ret);
 }
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6,3,0)
-static int si2157_probe(struct i2c_client *client,
-			const struct i2c_device_id *id)
-{
-#else
+
 static int si2157_probe(struct i2c_client *client)
 {
 	const struct i2c_device_id *id = i2c_client_get_device_id(client);
-#endif	
 	struct si2157_config *cfg = client->dev.platform_data;
-	struct dvb_frontend *fe = cfg->fe;
+	struct neumo_dvb_frontend *fe = cfg->fe;
 	struct si2157_dev *dev;
 	struct si2157_cmd cmd;
 	int ret;
-
 	dev = kzalloc(sizeof(*dev), GFP_KERNEL);
 	if (!dev) {
 		ret = -ENOMEM;
@@ -928,7 +946,7 @@ static int si2157_probe(struct i2c_client *client)
 	if (ret && ret != -EAGAIN)
 		goto err_kfree;
 
-	memcpy(&fe->ops.tuner_ops, &si2157_ops, sizeof(struct dvb_tuner_ops));
+	memcpy(&fe->ops.tuner_ops, &si2157_ops, sizeof(struct neumo_dvb_tuner_ops));
 	fe->tuner_priv = client;
 
 #ifdef CONFIG_MEDIA_CONTROLLER
@@ -970,14 +988,11 @@ err:
 	dev_dbg(&client->dev, "failed=%d\n", ret);
 	return ret;
 }
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6,1,0)
-static int si2157_remove(struct i2c_client *client)
-#else
+
 static void si2157_remove(struct i2c_client *client)
-#endif
 {
 	struct si2157_dev *dev = i2c_get_clientdata(client);
-	struct dvb_frontend *fe = dev->fe;
+	struct neumo_dvb_frontend *fe = dev->fe;
 
 	dev_dbg(&client->dev, "\n");
 
@@ -985,16 +1000,15 @@ static void si2157_remove(struct i2c_client *client)
 	cancel_delayed_work_sync(&dev->stat_work);
 
 #ifdef CONFIG_MEDIA_CONTROLLER_DVB
-	if (dev->mdev)
+	if (dev && dev->mdev)
 		media_device_unregister_entity(&dev->ent);
 #endif
+	if(dev)
+		kfree(dev);
+	i2c_set_clientdata(client, NULL);
 
-	memset(&fe->ops.tuner_ops, 0, sizeof(struct dvb_tuner_ops));
+	memset(&fe->ops.tuner_ops, 0, sizeof(struct neumo_dvb_tuner_ops));
 	fe->tuner_priv = NULL;
-	kfree(dev);
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6,1,0)
-	return 0;
-#endif	
 }
 
 /*
@@ -1040,3 +1054,6 @@ MODULE_FIRMWARE(SI2157_50_FIRMWARE);
 MODULE_FIRMWARE(SI2158_50_FIRMWARE);
 MODULE_FIRMWARE(SI2158_51_FIRMWARE);
 MODULE_FIRMWARE(SI2177_50_FIRMWARE);
+
+//check for incorrect include files
+#include "linux/media/neumo-check.h"

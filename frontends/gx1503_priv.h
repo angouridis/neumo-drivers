@@ -1,11 +1,12 @@
 #ifndef GX1503_PRIV_H
 #define GX1503_PRIV_H
 
-#include <media/dvb_frontend.h>
+#include <media/neumo-dvb-frontend.h>
 #include "gx1503.h"
 #include <linux/firmware.h>
 #include <linux/i2c-mux.h>
 #include <linux/regmap.h>
+#include <linux/version.h>
 
 #define GX1503_FIRMWARE "dvb-demod-gx1503B.fw"
 
@@ -18,14 +19,14 @@ struct gx1503_dev {
 	struct i2c_adapter *tuner_adapter;
 	struct regmap *regmap;
 	u16 i2c_wr_max;
-	
-	struct dvb_frontend fe;
+
+	struct neumo_dvb_frontend fe;
 	int ts_mode;
-	int ts_config;	
+	int ts_config;
 	int clk_freq;
 	bool fw_loaded;
 	bool active;
-	
+
 };
 
 /*-- Register Address Definition begin ---------------*/
@@ -35,14 +36,14 @@ struct gx1503_dev {
 #define		SYSCLK_DIV2_M				0x06
 #define		SYSCLK_DIV2_H				0x07
 #define		IF_FREQ_L					0x08
-#define		IF_FREQ_H					0x09		
+#define		IF_FREQ_H					0x09
 #define		ALL_OK						0x03
 #define		AUTO_TPS0					0x0B
 #define		AUTO_TPS1					0x0C
 #define		H_POW_L						0x10
 #define		H_POW_H						0x11
 #define  	NOISE_L						0x12
-#define		NOISE_H						0x13	
+#define		NOISE_H						0x13
 #define		INT_FREQ_L					0x14
 #define		INT_FREQ_M					0x15
 #define		INT_FREQ_H	    			0x16
@@ -57,8 +58,8 @@ struct gx1503_dev {
 #define		PKT_SUM_PAR					0xD8
 #define		CHIP_ADDR					0xF0
 #define		I2C_RPT						0xF7
-#define 	DevAddr	   					0x60		
-#define   	CHIP_ID    					0x45    
+#define 	DevAddr	   					0x60
+#define   	CHIP_ID    					0x45
 #define 	CHIP_ID_ADDR				0xf0
 #define 	RFAddr_si248				0xC0
 

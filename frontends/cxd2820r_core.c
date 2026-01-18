@@ -43,11 +43,11 @@ error:
 	return ret;
 }
 
-int cxd2820r_gpio(struct dvb_frontend *fe, u8 *gpio)
+int cxd2820r_gpio(struct neumo_dvb_frontend *fe, u8 *gpio)
 {
 	struct cxd2820r_priv *priv = fe->demodulator_priv;
 	struct i2c_client *client = priv->client[0];
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret, i;
 	u8 tmp0, tmp1;
 
@@ -101,11 +101,11 @@ error:
 	return ret;
 }
 
-static int cxd2820r_set_frontend(struct dvb_frontend *fe)
+static int cxd2820r_set_frontend(struct neumo_dvb_frontend *fe)
 {
 	struct cxd2820r_priv *priv = fe->demodulator_priv;
 	struct i2c_client *client = priv->client[0];
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret;
 
 	dev_dbg(&client->dev, "delivery_system=%d\n", c->delivery_system);
@@ -144,11 +144,11 @@ err:
 	return ret;
 }
 
-static int cxd2820r_read_status(struct dvb_frontend *fe, enum fe_status *status)
+static int cxd2820r_read_status(struct neumo_dvb_frontend *fe, enum fe_status *status)
 {
 	struct cxd2820r_priv *priv = fe->demodulator_priv;
 	struct i2c_client *client = priv->client[0];
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret;
 
 	dev_dbg(&client->dev, "delivery_system=%d\n", c->delivery_system);
@@ -174,12 +174,12 @@ static int cxd2820r_read_status(struct dvb_frontend *fe, enum fe_status *status)
 	return ret;
 }
 
-static int cxd2820r_get_frontend(struct dvb_frontend *fe,
-				 struct dtv_frontend_properties *p)
+static int cxd2820r_get_frontend(struct neumo_dvb_frontend *fe,
+				 struct neumo_driver_dtv_frontend_properties *p)
 {
 	struct cxd2820r_priv *priv = fe->demodulator_priv;
 	struct i2c_client *client = priv->client[0];
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret;
 
 	dev_dbg(&client->dev, "delivery_system=%d\n", c->delivery_system);
@@ -204,11 +204,11 @@ static int cxd2820r_get_frontend(struct dvb_frontend *fe,
 	return ret;
 }
 
-static int cxd2820r_read_ber(struct dvb_frontend *fe, u32 *ber)
+static int cxd2820r_read_ber(struct neumo_dvb_frontend *fe, u32 *ber)
 {
 	struct cxd2820r_priv *priv = fe->demodulator_priv;
 	struct i2c_client *client = priv->client[0];
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 
 	dev_dbg(&client->dev, "delivery_system=%d\n", c->delivery_system);
 
@@ -218,11 +218,11 @@ static int cxd2820r_read_ber(struct dvb_frontend *fe, u32 *ber)
 	return 0;
 }
 
-static int cxd2820r_read_signal_strength(struct dvb_frontend *fe, u16 *strength)
+static int cxd2820r_read_signal_strength(struct neumo_dvb_frontend *fe, u16 *strength)
 {
 	struct cxd2820r_priv *priv = fe->demodulator_priv;
 	struct i2c_client *client = priv->client[0];
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 
 	dev_dbg(&client->dev, "delivery_system=%d\n", c->delivery_system);
 
@@ -234,11 +234,11 @@ static int cxd2820r_read_signal_strength(struct dvb_frontend *fe, u16 *strength)
 	return 0;
 }
 
-static int cxd2820r_read_snr(struct dvb_frontend *fe, u16 *snr)
+static int cxd2820r_read_snr(struct neumo_dvb_frontend *fe, u16 *snr)
 {
 	struct cxd2820r_priv *priv = fe->demodulator_priv;
 	struct i2c_client *client = priv->client[0];
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 
 	dev_dbg(&client->dev, "delivery_system=%d\n", c->delivery_system);
 
@@ -250,11 +250,11 @@ static int cxd2820r_read_snr(struct dvb_frontend *fe, u16 *snr)
 	return 0;
 }
 
-static int cxd2820r_read_ucblocks(struct dvb_frontend *fe, u32 *ucblocks)
+static int cxd2820r_read_ucblocks(struct neumo_dvb_frontend *fe, u32 *ucblocks)
 {
 	struct cxd2820r_priv *priv = fe->demodulator_priv;
 	struct i2c_client *client = priv->client[0];
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 
 	dev_dbg(&client->dev, "delivery_system=%d\n", c->delivery_system);
 
@@ -263,16 +263,16 @@ static int cxd2820r_read_ucblocks(struct dvb_frontend *fe, u32 *ucblocks)
 	return 0;
 }
 
-static int cxd2820r_init(struct dvb_frontend *fe)
+static int cxd2820r_init(struct neumo_dvb_frontend *fe)
 {
 	return 0;
 }
 
-static int cxd2820r_sleep(struct dvb_frontend *fe)
+static int cxd2820r_sleep(struct neumo_dvb_frontend *fe)
 {
 	struct cxd2820r_priv *priv = fe->demodulator_priv;
 	struct i2c_client *client = priv->client[0];
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret;
 
 	if (priv->set_lock_led)
@@ -297,12 +297,12 @@ static int cxd2820r_sleep(struct dvb_frontend *fe)
 	return ret;
 }
 
-static int cxd2820r_get_tune_settings(struct dvb_frontend *fe,
-				      struct dvb_frontend_tune_settings *s)
+static int cxd2820r_get_tune_settings(struct neumo_dvb_frontend *fe,
+				      struct neumo_dvb_frontend_tune_settings *s)
 {
 	struct cxd2820r_priv *priv = fe->demodulator_priv;
 	struct i2c_client *client = priv->client[0];
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret;
 
 	dev_dbg(&client->dev, "delivery_system=%d\n", c->delivery_system);
@@ -324,11 +324,11 @@ static int cxd2820r_get_tune_settings(struct dvb_frontend *fe,
 	return ret;
 }
 
-static enum dvbfe_search cxd2820r_search(struct dvb_frontend *fe)
+static enum neumo_dvbfe_search cxd2820r_search(struct neumo_dvb_frontend *fe)
 {
 	struct cxd2820r_priv *priv = fe->demodulator_priv;
 	struct i2c_client *client = priv->client[0];
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret, i;
 	enum fe_status status = 0;
 
@@ -397,12 +397,12 @@ error:
 	return DVBFE_ALGO_SEARCH_ERROR;
 }
 
-static enum dvbfe_algo cxd2820r_get_frontend_algo(struct dvb_frontend *fe)
+static enum neumo_dvbfe_algo cxd2820r_get_frontend_algo(struct neumo_dvb_frontend *fe)
 {
 	return DVBFE_ALGO_CUSTOM;
 }
 
-static void cxd2820r_release(struct dvb_frontend *fe)
+static void cxd2820r_release(struct neumo_dvb_frontend *fe)
 {
 	struct cxd2820r_priv *priv = fe->demodulator_priv;
 	struct i2c_client *client = priv->client[0];
@@ -417,7 +417,7 @@ static void cxd2820r_release(struct dvb_frontend *fe)
 	return;
 }
 
-static int cxd2820r_i2c_gate_ctrl(struct dvb_frontend *fe, int enable)
+static int cxd2820r_i2c_gate_ctrl(struct neumo_dvb_frontend *fe, int enable)
 {
 	struct cxd2820r_priv *priv = fe->demodulator_priv;
 	struct i2c_client *client = priv->client[0];
@@ -443,10 +443,38 @@ static int cxd2820r_gpio_direction_output(struct gpio_chip *chip, unsigned nr,
 	return cxd2820r_gpio(&priv->fe, gpio);
 }
 
+#ifdef UNUSED
+static void cxd2820r_gpio_set(struct gpio_chip *chip, unsigned nr, int val)
+{
+	struct cxd2820r_priv *priv = gpiochip_get_data(chip);
+	struct i2c_client *client = priv->client[0];
+	u8 gpio[GPIO_COUNT];
 
+	dev_dbg(&client->dev, "nr=%u val=%d\n", nr, val);
+
+	memcpy(gpio, priv->gpio, sizeof(gpio));
+	gpio[nr] = CXD2820R_GPIO_E | CXD2820R_GPIO_O | (val << 2);
+
+	(void) cxd2820r_gpio(&priv->fe, gpio);
+
+	return;
+}
 #endif
 
-static const struct dvb_frontend_ops cxd2820r_ops = {
+#ifdef UNUSED
+static int cxd2820r_gpio_get(struct gpio_chip *chip, unsigned nr)
+{
+	struct cxd2820r_priv *priv = gpiochip_get_data(chip);
+	struct i2c_client *client = priv->client[0];
+
+	dev_dbg(&client->dev, "nr=%u\n", nr);
+
+	return (priv->gpio[nr] >> 2) & 0x01;
+}
+#endif
+#endif
+
+static const struct neumo_dvb_frontend_ops cxd2820r_ops = {
 	.delsys = { SYS_DVBT, SYS_DVBT2, SYS_DVBC_ANNEX_A },
 	/* default: DVB-T/T2 */
 	.info = {
@@ -497,7 +525,7 @@ static const struct dvb_frontend_ops cxd2820r_ops = {
  * proper I2C client for legacy media attach binding.
  * New users must use I2C client binding directly!
  */
-struct dvb_frontend *cxd2820r_attach(const struct cxd2820r_config *config,
+struct neumo_dvb_frontend *cxd2820r_attach(const struct cxd2820r_config *config,
 				     struct i2c_adapter *adapter,
 				     int *gpio_chip_base)
 {
@@ -523,9 +551,9 @@ struct dvb_frontend *cxd2820r_attach(const struct cxd2820r_config *config,
 
 	return pdata.get_dvb_frontend(client);
 }
-EXPORT_SYMBOL_GPL(cxd2820r_attach);
+EXPORT_SYMBOL(cxd2820r_attach);
 
-static struct dvb_frontend *cxd2820r_get_dvb_frontend(struct i2c_client *client)
+static struct neumo_dvb_frontend *cxd2820r_get_dvb_frontend(struct i2c_client *client)
 {
 	struct cxd2820r_priv *priv = i2c_get_clientdata(client);
 
@@ -715,7 +743,7 @@ static void cxd2820r_remove(struct i2c_client *client)
 	kfree(priv);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(6,1,0)
 	return 0;
-#endif	
+#endif
 }
 
 static const struct i2c_device_id cxd2820r_id_table[] = {
@@ -739,3 +767,6 @@ module_i2c_driver(cxd2820r_driver);
 MODULE_AUTHOR("Antti Palosaari <crope@iki.fi>");
 MODULE_DESCRIPTION("Sony CXD2820R demodulator driver");
 MODULE_LICENSE("GPL");
+
+//check for incorrect include files
+#include "linux/media/neumo-check.h"

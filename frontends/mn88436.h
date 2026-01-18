@@ -1,6 +1,6 @@
 #ifndef MN88436_H
 #define MN88436_H
-#include <linux/dvb/frontend.h>
+#include <dvb/neumo-frontend.h>
 
 struct mndmd_config {
 //	u8 slvadr;
@@ -10,10 +10,8 @@ struct mndmd_config {
 //	int (*tbs6704_ctl2)(struct tbs_pcie_dev *dev, int a, int b);
 };
 
-
-extern struct dvb_frontend* mndmd_attach(
+extern struct neumo_dvb_frontend* mndmd_attach(
 	struct mndmd_config* config,
 	struct i2c_adapter* i2c);
-
 
 #endif

@@ -45,7 +45,7 @@ typedef	char*	  DMD_text_t;
 #define bmpBERR		0x04
 #define bmpACK		0x02
 #define bmpDONE		0x01
-#define WAIT_SEND 0x80		
+#define WAIT_SEND 0x80
 #define LAST_WAIT 0x53
 #define LAST_400 0x13
 
@@ -413,7 +413,7 @@ typedef enum {
 } DMD_SYSTEM_t;
 
 /* RF Frequency Unit */
-typedef enum 
+typedef enum
 {
 	DMD_E_MHZ,
 	DMD_E_KHZ,
@@ -455,14 +455,14 @@ typedef enum {
 
 /* '11/08/29 : OKAMOTO	Select TS output. */
 typedef enum {
-	DMD_E_TSOUT_PARALLEL_BRTG_MODE = 0, //default. Variable clock, DEN,CLK always "High" when data invalid 
-	DMD_E_TSOUT_PARALLEL_SMOOTH_MODE = 1, //Fixed clock, DEN,CLK always "High" when data invalid 
-	DMD_E_TSOUT_PARALLEL_BURST_GATED_MODE = 2,//Fixed clock, DEN,CLK always "Low" when data invalid 
-	DMD_E_TSOUT_PARALLEL_BURST_CONTINUOUS_MODE = 3,//Fixed clock, DEN "Low" + CLK "High", when data invalid 
-	DMD_E_TSOUT_SERIAL_BRTG_MODE = 0x10, //Variable clock, DEN,CLK always "High" when data invalid 
-	DMD_E_TSOUT_SERIAL_SMOOTH_MODE = 0x11, //Fixed clock, DEN,CLK always "High" when data invalid 
-	DMD_E_TSOUT_SERIAL_BURST_GATED_MODE = 0x12,//Fixed clock, DEN,CLK always "Low" when data invalid 
-	DMD_E_TSOUT_SERIAL_BURST_CONTINUOUS_MODE = 0x13,//Fixed clock, DEN "Low" + CLK "High", when data invalid 	
+	DMD_E_TSOUT_PARALLEL_BRTG_MODE = 0, //default. Variable clock, DEN,CLK always "High" when data invalid
+	DMD_E_TSOUT_PARALLEL_SMOOTH_MODE = 1, //Fixed clock, DEN,CLK always "High" when data invalid
+	DMD_E_TSOUT_PARALLEL_BURST_GATED_MODE = 2,//Fixed clock, DEN,CLK always "Low" when data invalid
+	DMD_E_TSOUT_PARALLEL_BURST_CONTINUOUS_MODE = 3,//Fixed clock, DEN "Low" + CLK "High", when data invalid
+	DMD_E_TSOUT_SERIAL_BRTG_MODE = 0x10, //Variable clock, DEN,CLK always "High" when data invalid
+	DMD_E_TSOUT_SERIAL_SMOOTH_MODE = 0x11, //Fixed clock, DEN,CLK always "High" when data invalid
+	DMD_E_TSOUT_SERIAL_BURST_GATED_MODE = 0x12,//Fixed clock, DEN,CLK always "Low" when data invalid
+	DMD_E_TSOUT_SERIAL_BURST_CONTINUOUS_MODE = 0x13,//Fixed clock, DEN "Low" + CLK "High", when data invalid
 } DMD_TSOUT_MODE;
 //20140512, troy.wangyx, added TS output mode and TS clk polarity selection.
 typedef enum {
@@ -502,7 +502,7 @@ typedef struct {
 	DMD_u32_t	info[DMD_INFORMATION_MAX];			//!<Demodulator Information
     /* '11/08/29 : OKAMOTO	Select TS output. */
 	DMD_TSOUT_MODE	ts_out;
-	DMD_ECHO_PERFORMANCE_SET echo_set; //troy.wangyx, 120801, to enhance "Single static echo MINUS delay"'s performance, 
+	DMD_ECHO_PERFORMANCE_SET echo_set; //troy.wangyx, 120801, to enhance "Single static echo MINUS delay"'s performance,
 } DMD_PARAMETER_t;
 
 
@@ -510,26 +510,26 @@ typedef struct {
 /* DMD Information */
 /* **************************************************** */
 /*! common information enum */
-typedef	enum	{	DMD_E_INFO_ALL	=0	,	
-			DMD_E_INFO_REGREV	=1	,	
-			DMD_E_INFO_PSEQREV	=2	,	
-			DMD_E_INFO_SYSTEM	=3	,	
-			DMD_E_INFO_LOCK	=4	,	
-			DMD_E_INFO_AGC	=5	,	
-			DMD_E_INFO_BERRNUM	=6	,	
-			DMD_E_INFO_BITNUM	=7	,	
-			DMD_E_INFO_CNR_INT	=8	,	
-			DMD_E_INFO_CNR_DEC	=9	,	
-			DMD_E_INFO_PERRNUM	=10	,	
-			DMD_E_INFO_PACKETNUM	=11	,	
+typedef	enum	{	DMD_E_INFO_ALL	=0	,
+			DMD_E_INFO_REGREV	=1	,
+			DMD_E_INFO_PSEQREV	=2	,
+			DMD_E_INFO_SYSTEM	=3	,
+			DMD_E_INFO_LOCK	=4	,
+			DMD_E_INFO_AGC	=5	,
+			DMD_E_INFO_BERRNUM	=6	,
+			DMD_E_INFO_BITNUM	=7	,
+			DMD_E_INFO_CNR_INT	=8	,
+			DMD_E_INFO_CNR_DEC	=9	,
+			DMD_E_INFO_PERRNUM	=10	,
+			DMD_E_INFO_PACKETNUM	=11	,
 			DMD_E_INFO_STATUS	=12	,
 			DMD_E_INFO_ERRORFREE = 13,
 			DMD_E_INFO_COMMON_END_OF_INFORMATION
-}	
+}
 	DMD_INFO_t;
 /*! DVBT information enum */
-typedef	enum	{	DMD_E_INFO_DVBT_ALL	=0	,	
-			DMD_E_INFO_DVBT_REGREV	=1	,	
+typedef	enum	{	DMD_E_INFO_DVBT_ALL	=0	,
+			DMD_E_INFO_DVBT_REGREV	=1	,
 			DMD_E_INFO_DVBT_PSEQRV	=2	,
 			DMD_E_INFO_DVBT_SYSTEM	=3	,
 			DMD_E_INFO_DVBT_LOCK	=4	,
@@ -556,8 +556,8 @@ typedef	enum	{	DMD_E_INFO_DVBT_ALL	=0	,
 			DMD_E_INFO_DVBT_END_OF_INFORMATION
 		}	DMD_INFO_DVBT_t;
 /*! DVBT2 information enum */
-typedef	enum	{	DMD_E_INFO_DVBT2_ALL	=0	,	
-			DMD_E_INFO_DVBT2_REGREV	=1	,	
+typedef	enum	{	DMD_E_INFO_DVBT2_ALL	=0	,
+			DMD_E_INFO_DVBT2_REGREV	=1	,
 			DMD_E_INFO_DVBT2_PSEQRV	=2	,
 			DMD_E_INFO_DVBT2_SYSTEM	=3	,
 			DMD_E_INFO_DVBT2_LOCK	=4	,
@@ -649,8 +649,8 @@ typedef	enum	{	DMD_E_INFO_DVBT2_ALL	=0	,
 			DMD_E_INFO_DVBT2_END_OF_INFORMATION
 	} DMD_INFO_DVBT2_t;
 /*! DVBC information enum */
-typedef	enum	{	DMD_E_INFO_DVBC_ALL	=0	,	
-			DMD_E_INFO_DVBC_REGREV	=1	,	
+typedef	enum	{	DMD_E_INFO_DVBC_ALL	=0	,
+			DMD_E_INFO_DVBC_REGREV	=1	,
 			DMD_E_INFO_DVBC_PSEQRV	=2	,
 			DMD_E_INFO_DVBC_SYSTEM	=3	,
 			DMD_E_INFO_DVBC_LOCK	=4	,
@@ -666,8 +666,8 @@ typedef	enum	{	DMD_E_INFO_DVBC_ALL	=0	,
 			DMD_E_INFO_DVBC_END_OF_INFORMATION
 		} DMD_INFO_DVBC_t;
 /*! ISDBT information enum */
-typedef	enum	{	DMD_E_INFO_ISDBT_ALL	=0	,	
-			DMD_E_INFO_ISDBT_REGREV	=1	,	
+typedef	enum	{	DMD_E_INFO_ISDBT_ALL	=0	,
+			DMD_E_INFO_ISDBT_REGREV	=1	,
 			DMD_E_INFO_ISDBT_PSEQRV	=2	,
 			DMD_E_INFO_ISDBT_SYSTEM	=3	,
 			DMD_E_INFO_ISDBT_LOCK	=4	,
@@ -711,8 +711,8 @@ typedef	enum	{	DMD_E_INFO_ISDBT_ALL	=0	,
 			DMD_E_INFO_ISDBT_END_OF_INFORMATION
 		} DMD_INFO_ISDBT_t;
 /*! ISDBS information enum */
-typedef	enum	{	DMD_E_INFO_ISDBS_ALL	=0	,	
-			DMD_E_INFO_ISDBS_REGREV	=1	,	
+typedef	enum	{	DMD_E_INFO_ISDBS_ALL	=0	,
+			DMD_E_INFO_ISDBS_REGREV	=1	,
 			DMD_E_INFO_ISDBS_PSEQRV	=2	,
 			DMD_E_INFO_ISDBS_SYSTEM	=3	,
 			DMD_E_INFO_ISDBS_LOCK	=4	,
@@ -811,8 +811,8 @@ typedef	enum	{	DMD_E_INFO_ISDBS_ALL	=0	,
 		} DMD_INFO_ISDBS_t;
 
 /*! ATSC information enum */
-typedef	enum	{	DMD_E_INFO_ATSC_ALL	=0	,	
-			DMD_E_INFO_ATSC_REGREV	=1	,	
+typedef	enum	{	DMD_E_INFO_ATSC_ALL	=0	,
+			DMD_E_INFO_ATSC_REGREV	=1	,
 			DMD_E_INFO_ATSC_PSEQRV	=2	,
 			DMD_E_INFO_ATSC_SYSTEM	=3	,
 			DMD_E_INFO_ATSC_LOCK	=4	,
@@ -828,8 +828,8 @@ typedef	enum	{	DMD_E_INFO_ATSC_ALL	=0	,
 			DMD_E_INFO_ATSC_END_OF_INFORMATION
 		} DMD_INFO_ATSC_t;
 /*! QAM information enum */
-typedef	enum	{	DMD_E_INFO_QAM_ALL	=0	,	
-			DMD_E_INFO_QAM_REGREV	=1	,	
+typedef	enum	{	DMD_E_INFO_QAM_ALL	=0	,
+			DMD_E_INFO_QAM_REGREV	=1	,
 			DMD_E_INFO_QAM_PSEQRV	=2	,
 			DMD_E_INFO_QAM_SYSTEM	=3	,
 			DMD_E_INFO_QAM_LOCK	=4	,
@@ -845,8 +845,8 @@ typedef	enum	{	DMD_E_INFO_QAM_ALL	=0	,
 			DMD_E_INFO_QAM_END_OF_INFORMATION
 		} DMD_INFO_QAM_t;
 /*! ANALOG information enum */
-typedef	enum	{	DMD_E_INFO_ANALOG_ALL	=0	,	
-			DMD_E_INFO_ANALOG_REGREV	=1	,	
+typedef	enum	{	DMD_E_INFO_ANALOG_ALL	=0	,
+			DMD_E_INFO_ANALOG_REGREV	=1	,
 			DMD_E_INFO_ANALOG_PSEQRV	=2	,
 			DMD_E_INFO_ANALOG_SYSTEM	=3	,
 			DMD_E_INFO_ANALOG_LOCK	=4	,
@@ -868,10 +868,10 @@ typedef enum{	DMD_E_ERRORFREE_ERROR=0,	DMD_E_ERRORFREE_ERRORFREE	}	DMD_ERRORFREE
 //DVBT
 typedef enum{	DMD_E_DVBT_HIER_SEL_LP=0,	DMD_E_DVBT_HIER_SEL_HP	}	DMD_DVBT_HIER_SEL_t;
 typedef enum{	DMD_E_DVBT_TPS_OBTAIN_NG=0,	DMD_E_DVBT_TPS_OBTAIN_OK	}	DMD_DVBT_TPS_OBTAIN_t;
-typedef enum{	DMD_E_DVBT_MODE_2K=0,	DMD_E_DVBT_MODE_8K,	DMD_E_DVBT_MODE_4K , DMD_E_DVBT_MODE_NOT_DEFINED	}	DMD_DVBT_MODE_t;		
-typedef enum{	DMD_E_DVBT_GI_1_32=0,	DMD_E_DVBT_GI_1_16,	DMD_E_DVBT_GI_1_8,	DMD_E_DVBT_GI_1_4 , DMD_E_DVBT_GI_NOT_DEFINED	}	DMD_DVBT_GI_t;	
-typedef enum{	DMD_E_DVBT_CONST_QPSK=0,	DMD_E_DVBT_CONST_16QAM,	DMD_E_DVBT_CONST_64QAM	}	DMD_DVBT_CONST_t;		
-typedef enum{	DMD_E_DVBT_HIERARCHY_NO=0,	DMD_E_DVBT_HIERARCHY_ALPHA_1,	DMD_E_DVBT_HIERARCHY_ALPHA_2,	DMD_E_DVBT_HIERARCHY_ALPHA_4	}	DMD_DVBT_HIERARCHY_t;	
+typedef enum{	DMD_E_DVBT_MODE_2K=0,	DMD_E_DVBT_MODE_8K,	DMD_E_DVBT_MODE_4K , DMD_E_DVBT_MODE_NOT_DEFINED	}	DMD_DVBT_MODE_t;
+typedef enum{	DMD_E_DVBT_GI_1_32=0,	DMD_E_DVBT_GI_1_16,	DMD_E_DVBT_GI_1_8,	DMD_E_DVBT_GI_1_4 , DMD_E_DVBT_GI_NOT_DEFINED	}	DMD_DVBT_GI_t;
+typedef enum{	DMD_E_DVBT_CONST_QPSK=0,	DMD_E_DVBT_CONST_16QAM,	DMD_E_DVBT_CONST_64QAM	}	DMD_DVBT_CONST_t;
+typedef enum{	DMD_E_DVBT_HIERARCHY_NO=0,	DMD_E_DVBT_HIERARCHY_ALPHA_1,	DMD_E_DVBT_HIERARCHY_ALPHA_2,	DMD_E_DVBT_HIERARCHY_ALPHA_4	}	DMD_DVBT_HIERARCHY_t;
 typedef enum{	DMD_E_DVBT_CR_1_2=0,	DMD_E_DVBT_CR_2_3,	DMD_E_DVBT_CR_3_4,	DMD_E_DVBT_CR_5_6,	DMD_E_DVBT_CR_7_8	}	DMD_DVBT_CR_t;
 //DVBT2
 typedef enum{	DMD_E_DVBT2_MODE_1K=0,	DMD_E_DVBT2_MODE_2K,	DMD_E_DVBT2_MODE_4K,	DMD_E_DVBT2_MODE_8K,	DMD_E_DVBT2_MODE_16K,	DMD_E_DVBT2_MODE_32K	}			DMD_DVBT2_MODE_t;
@@ -887,14 +887,14 @@ typedef enum{	DMD_E_DVBT2_PLP_TYPE_COM=0,	DMD_E_DVBT2_PLP_TYPE_DAT1,	DMD_E_DVBT2
 typedef enum{	DMD_E_DVBT2_PLP_PAYLOAD_GFPS=0,	DMD_E_DVBT2_PLP_PAYLOAD_GCS,	DMD_E_DVBT2_PLP_PAYLOAD_GSE,	DMD_E_DVBT2_PLP_PAYLOAD_TS	}					DMD_DVBT2_PLP_PAYLOAD_t;
 typedef enum{	DMD_E_DVBT2_PLP_MOD_QPSK=0,	DMD_E_DVBT2_PLP_MOD_16QAM,	DMD_E_DVBT2_PLP_MOD_64QAM,	DMD_E_DVBT2_PLP_MOD_256QAM	}					DMD_DVBT2_PLP_MOD_t;
 //ISDBT
-typedef enum{	DMD_E_ISDBT_MODE1=0,	DMD_E_ISDBT_MODE2,	DMD_E_ISDBT_MODE3	}	DMD_ISDBT_MODE_t;	
+typedef enum{	DMD_E_ISDBT_MODE1=0,	DMD_E_ISDBT_MODE2,	DMD_E_ISDBT_MODE3	}	DMD_ISDBT_MODE_t;
 typedef	enum{	DMD_E_ISDBT_GI_1_32=0,	DMD_E_ISDBT_GI_1_16,DMD_E_ISDBT_GI_1_8,	DMD_E_ISDBT_GI_1_4	}	DMD_ISDBT_GI_t;
-typedef	enum{	DMD_E_ISDBT_SYS_ISDB_T=0,DMD_E_ISDBT_SYS_ISDBT_SB	}	DMD_ISDBT_SYS_t;			
-typedef	enum{	DMD_E_ISDBT_PART_NO_PART=0,	DMD_E_ISDBT_PART_PART	}	DMD_ISDBT_PART_t;	
-typedef	enum{	DMD_E_ISDBT_CONST_DQPSK=0,	DMD_E_ISDBT_CONST_QPSK,	DMD_E_ISDBT_CONST_16QAM	,DMD_E_ISDBT_CONST_64QAM	}	DMD_ISDBT_CONST_t;	
+typedef	enum{	DMD_E_ISDBT_SYS_ISDB_T=0,DMD_E_ISDBT_SYS_ISDBT_SB	}	DMD_ISDBT_SYS_t;
+typedef	enum{	DMD_E_ISDBT_PART_NO_PART=0,	DMD_E_ISDBT_PART_PART	}	DMD_ISDBT_PART_t;
+typedef	enum{	DMD_E_ISDBT_CONST_DQPSK=0,	DMD_E_ISDBT_CONST_QPSK,	DMD_E_ISDBT_CONST_16QAM	,DMD_E_ISDBT_CONST_64QAM	}	DMD_ISDBT_CONST_t;
 typedef	enum{	DMD_E_ISDBT_CR_1_2=0,		DMD_E_ISDBT_CR_2_3,	DMD_E_ISDBT_CR_3_4,	DMD_E_ISDBT_CR_5_6,	DMD_E_ISDBT_CR_7_8	}	DMD_ISDBT_CR_t;
 //ISDBS
-typedef enum{	DMD_E_ISDB_S_MOD_BPSK_1_2=0,	
+typedef enum{	DMD_E_ISDB_S_MOD_BPSK_1_2=0,
 				DMD_E_ISDB_S_MOD_QPSK_1_2,
 				DMD_E_ISDB_S_MOD_QPSK_2_3,
 				DMD_E_ISDB_S_MOD_QPSK_3_4,
@@ -905,4 +905,3 @@ typedef enum{	DMD_E_ISDB_S_MOD_BPSK_1_2=0,
 
 
 #endif
-

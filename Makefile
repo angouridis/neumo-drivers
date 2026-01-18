@@ -1,10 +1,13 @@
 # --- Variables ---
 # Use ?= to allow environment overrides
 
-kernelver ?= $(shell uname -r)
-KDIR	?= /lib/modules/$(kernelver)/build
+KVER ?= $(shell uname -r)
+KDIR	?= /lib/modules/$(KVER)/build
 PWD	:= $(shell pwd)
 MDIR	?=
+
+ROOT_DIR :=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+# does not work export KBUILD_EXTMOD_OUTPUT = /tmp/build
 
 # --- Module Configurations ---
 MODDEFS := CONFIG_DVB_CORE=m \
@@ -61,8 +64,6 @@ MODDEFS := CONFIG_DVB_CORE=m \
 	CONFIG_DVB_USB_TBS5931=m \
 	CONFIG_DVB_USB_TBS5530=m CONFIG_DVB_NET=y
 
-
-# --- Compilation Flags ---
 EXTRA_CFLAGS += --include=$(PWD)/include/kernel_compat.h
 EXTRA_CFLAGS += -I$(PWD)/include \
                 -I$(PWD)/include/linux \
@@ -76,8 +77,17 @@ EXTRA_CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
 .PHONY: all install clean dep
 
 # Build modules using Kbuild M= syntax
-all: 
+all:
+	$(MAKE) $(ROOT_DIR)/include/linux/dvb/neumo-frontend.h $(ROOT_DIR)/include/linux/dvb/neumo-dmx.h
 	$(MAKE) -C $(KDIR) M=$(PWD) $(MODDEFS) NOSTDINC_FLAGS="$(EXTRA_CFLAGS)" modules
+
+$(ROOT_DIR)/include/linux/dvb/neumo-frontend.h: $(ROOT_DIR)/templates/common-frontend.h
+	sed -s -e 's/common_//g'  -e 's/neumo_//g'  -e 's/COMMON_//g' \
+	-e 's/NEUMO_//g' < $< > $@
+
+$(ROOT_DIR)/include/linux/dvb/neumo-dmx.h: $(ROOT_DIR)/templates/common-dmx.h
+	sed -s -e 's/common_//g'  -e 's/neumo_//g'  -e 's/COMMON_//g' \
+	-e 's/NEUMO_//g' < $< > $@
 
 dep:
 	$(MAKE) -C $(KDIR) M=$(PWD) dep
@@ -86,9 +96,9 @@ install: all
 	$(MAKE) -C $(KDIR) M=$(PWD) INSTALL_MOD_PATH=$(MDIR) modules_install
 	@echo "Updating module dependencies..."
 	@if [ -n "$(MDIR)" ]; then \
-		depmod -b "$(MDIR)" -a $(kernelver); \
+		depmod -b "$(MDIR)" -a $(KVER); \
 	else \
-		depmod -a $(kernelver); \
+		depmod -a $(KVER); \
 	fi
 
 clean:

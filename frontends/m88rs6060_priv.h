@@ -1,6 +1,31 @@
-#ifndef _M88RS6060_PRIV_H_
-#define _M88RS6060_PRIV_H_
-#include <media/dvb_frontend.h>
+/*
+ * Driver
+ *
+ * Copyright (C) Deep Thought 2020-2026 <deeptho@gmail.com> - blindscan, spectrum and constellation scan
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * version 2 only, as published by the Free Software Foundation.
+ *
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * 02110-1301, USA
+ * Or, point your browser to http://www.gnu.org/copyleft/gpl.html
+ */
+
+#pragma once
+#include <media/neumo-dvb-frontend.h>
+#include <linux/dvb/neumo-frontend.h>
+#include <linux/timekeeping.h>
+#include <media/neumo-scan.h>
 
 #include <linux/regmap.h>
 #include <linux/firmware.h>
@@ -23,6 +48,71 @@
 /*set frequency offset to tuner when symbol rate <5000KSs*/
 #define FREQ_OFFSET_AT_SMALL_SYM_RATE_KHz  3000
 
+extern int verbose;
+
+
+
+struct m88rs6060_isi_struct_t
+{
+	u32 isi_bitset[8]; //bitset; 1 bit indicates corresponding ISI is in use
+};
+typedef  struct m88rs6060_isi_struct_t  m88rs6060_isi_struct;
+
+
+struct m88rs6060_state {
+	int nr;
+	struct i2c_client *demod_client;	//demod
+	struct i2c_client *tuner_client;
+	struct regmap* demod_regmap;	//demod
+	enum fe_status fe_status;
+	struct neumo_dvb_frontend fe;
+	struct m88rs6060_cfg config;
+	int adapterno; //number of adapter on card, starting at 0
+
+	bool TsClockChecked;  //clock retio
+	//bool warm;		// for the init and download fw
+	s32 mclk;		/*main mclk */
+	s32 detected_pls_code;
+	s32 detected_pls_mode;
+	enum fe_delivery_system detected_delivery_system;
+	bool pls_active;
+	bool is_mis;
+	s32 active_stream_id;
+
+	u32 dvbv3_ber;		/* for old DVBv3 API read_ber */
+	s32 tuned_frequency;    //khz
+	s32 center_freq_offset; //khz
+	u64 pre_bit_error;
+	u64 pre_bit_count;
+	u64 last_pre_bit_error;
+	u64 last_pre_bit_count;
+	ktime_t last_per_time;
+	bool satellite_scan;
+	s32 scan_next_frequency;
+	s32 scan_end_frequency;
+
+	void (*write_properties)(struct i2c_adapter * i2c, u8 reg, u32 buf);
+	void (*read_properties)(struct i2c_adapter * i2c, u8 reg, u32 * buf);
+	void (*write_eeprom) (struct i2c_adapter *i2c,u8 reg, u8 buf);
+	void (*read_eeprom) (struct i2c_adapter *i2c,u8 reg, u8 *buf);
+
+	//for si5351
+	u32 plla_freq;
+	u32 pllb_freq;
+	bool newTP;
+	bool fec_locked;
+	bool demod_locked;
+	bool        has_signal;   /*tuning has finished*/
+	bool        has_carrier;  /*Some dvbs or dvbs2 signal was found*/
+	bool        has_viterbi;
+	bool        has_timing_lock;
+	bool        has_sync;
+	bool        has_timedout;
+	bool        has_lock;
+	m88rs6060_isi_struct isi_list;
+	struct spectrum_scan_state spectrum_scan_state;
+	struct constellation_scan_state constellation_scan_state;
+};
 
 struct m88rs6060_reg_val {
 	u8 reg;
@@ -68,6 +158,55 @@ static const struct m88rs6060_reg_val rs6060_reg_tbl_def[] = {
 	{0xbe, 0xa1}
 };
 
+/*register setting for blind scan*/
+static const struct m88rs6060_reg_val rs6060_reg_tbl_bs_def[] =
+{
+	{0x04, 0x00},
+
+	{0x8a, 0x01},
+	{0x16, 0xa7},
+
+	{0x30, 0x88},
+	{0x4a, 0x80},
+	{0x4d, 0x91},
+	{0x63, 0x60},
+	{0x64, 0x30},
+	{0x65, 0x40},
+	{0x68, 0x26},
+	{0x69, 0x4c},
+	{0xae, 0x09},
+	{0x22, 0x01},
+	{0x23, 0x00},
+	{0x24, 0x00},
+	{0x27, 0x07},
+	{0x9c, 0x31},
+	{0x9d, 0xc1},
+	{0xc3, 0x10},
+	{0xc4, 0x08},
+	{0xc5, 0xf0},
+	{0xc6, 0x40},
+	{0xcb, 0xf4},
+	{0xca, 0x00},
+	{0x85, 0x08},
+	//for s2 mode ts out en
+	{0x08, 0x47},
+	{0xf0, 0x03},
+
+	{0xfa, 0x01},
+	{0xf2, 0x00},
+	{0xfa, 0x00},
+	{0xe6, 0x00},
+	{0xe7, 0x03},
+
+	//for s mode vtb code rate all en
+	{0x08, 0x43},
+	{0xe0, 0xf8},
+	{0x00, 0x00},
+	{0xbd, 0x83},
+	{0xbe, 0xa1}
+};
+
+
 struct MT_FE_PLS_INFO {
 	u8 iPLSCode;
 	bool bValid;
@@ -92,199 +231,14 @@ struct MT_FE_CHAN_INFO_DVBS2 {
 	s8 iFrameLength;	/*0: Normal; 1: Short; 2: Medium */
 };
 
-
-//for si5351
-/* Define definitions */
-
-#define SI5351_BUS_BASE_ADDR				0x60
-#define SI5351_XTAL_FREQ					27000000
-#define SI5351_PLL_FIXED					900000000
-
-#define SI5351_PLL_VCO_MIN					600000000
-#define SI5351_PLL_VCO_MAX					900000000
-#define SI5351_MULTISYNTH_MIN_FREQ			1000000
-#define SI5351_MULTISYNTH_DIVBY4_FREQ		150000000
-#define SI5351_MULTISYNTH_MAX_FREQ			160000000
-#define SI5351_MULTISYNTH67_MAX_FREQ		SI5351_MULTISYNTH_DIVBY4_FREQ
-#define SI5351_CLKOUT_MIN_FREQ				8000
-#define SI5351_CLKOUT_MAX_FREQ				SI5351_MULTISYNTH_MAX_FREQ
-#define SI5351_CLKOUT67_MAX_FREQ			SI5351_MULTISYNTH67_MAX_FREQ
-
-#define SI5351_PLL_A_MIN					15
-#define SI5351_PLL_A_MAX					90
-#define SI5351_PLL_B_MAX					(SI5351_PLL_C_MAX-1)
-#define SI5351_PLL_C_MAX					1048575
-#define SI5351_MULTISYNTH_A_MIN				6
-#define SI5351_MULTISYNTH_A_MAX				1800
-#define SI5351_MULTISYNTH67_A_MAX			254
-#define SI5351_MULTISYNTH_B_MAX				(SI5351_MULTISYNTH_C_MAX-1)
-#define SI5351_MULTISYNTH_C_MAX				1048575
-#define SI5351_MULTISYNTH_P1_MAX			((1<<18)-1)
-#define SI5351_MULTISYNTH_P2_MAX			((1<<20)-1)
-#define SI5351_MULTISYNTH_P3_MAX			((1<<20)-1)
-
-#define SI5351_DEVICE_STATUS				0
-#define SI5351_INTERRUPT_STATUS				1
-#define SI5351_INTERRUPT_MASK				2
-#define  SI5351_STATUS_SYS_INIT				(1<<7)
-#define  SI5351_STATUS_LOL_B				(1<<6)
-#define  SI5351_STATUS_LOL_A				(1<<5)
-#define  SI5351_STATUS_LOS					(1<<4)
-#define SI5351_OUTPUT_ENABLE_CTRL			3
-#define SI5351_OEB_PIN_ENABLE_CTRL			9
-#define SI5351_PLL_INPUT_SOURCE				15
-#define  SI5351_CLKIN_DIV_MASK				(3<<6)
-#define  SI5351_CLKIN_DIV_1					(0<<6)
-#define  SI5351_CLKIN_DIV_2					(1<<6)
-#define  SI5351_CLKIN_DIV_4					(2<<6)
-#define  SI5351_CLKIN_DIV_8					(3<<6)
-#define  SI5351_PLLB_SOURCE					(1<<3)
-#define  SI5351_PLLA_SOURCE					(1<<2)
-
-#define SI5351_CLK0_CTRL					16
-#define SI5351_CLK1_CTRL					17
-#define SI5351_CLK2_CTRL					18
-#define SI5351_CLK3_CTRL					19
-#define SI5351_CLK4_CTRL					20
-#define SI5351_CLK5_CTRL					21
-#define SI5351_CLK6_CTRL					22
-#define SI5351_CLK7_CTRL					23
-#define  SI5351_CLK_POWERDOWN				(1<<7)
-#define  SI5351_CLK_INTEGER_MODE			(1<<6)
-#define  SI5351_CLK_PLL_SELECT				(1<<5)
-#define  SI5351_CLK_INVERT					(1<<4)
-#define  SI5351_CLK_INPUT_MASK				(3<<2)
-#define  SI5351_CLK_INPUT_XTAL				(0<<2)
-#define  SI5351_CLK_INPUT_CLKIN				(1<<2)
-#define  SI5351_CLK_INPUT_MULTISYNTH_0_4	(2<<2)
-#define  SI5351_CLK_INPUT_MULTISYNTH_N		(3<<2)
-#define  SI5351_CLK_DRIVE_STRENGTH_MASK		(3<<0)
-#define  SI5351_CLK_DRIVE_STRENGTH_2MA		(0<<0)
-#define  SI5351_CLK_DRIVE_STRENGTH_4MA		(1<<0)
-#define  SI5351_CLK_DRIVE_STRENGTH_6MA		(2<<0)
-#define  SI5351_CLK_DRIVE_STRENGTH_8MA		(3<<0)
-
-#define SI5351_CLK3_0_DISABLE_STATE			24
-#define SI5351_CLK7_4_DISABLE_STATE			25
-#define  SI5351_CLK_DISABLE_STATE_MASK		3
-#define  SI5351_CLK_DISABLE_STATE_LOW		0
-#define  SI5351_CLK_DISABLE_STATE_HIGH		1
-#define  SI5351_CLK_DISABLE_STATE_FLOAT		2
-#define  SI5351_CLK_DISABLE_STATE_NEVER		3
-
-#define SI5351_PARAMETERS_LENGTH			8
-#define SI5351_PLLA_PARAMETERS				26
-#define SI5351_PLLB_PARAMETERS				34
-#define SI5351_CLK0_PARAMETERS				42
-#define SI5351_CLK1_PARAMETERS				50
-#define SI5351_CLK2_PARAMETERS				58
-#define SI5351_CLK3_PARAMETERS				66
-#define SI5351_CLK4_PARAMETERS				74
-#define SI5351_CLK5_PARAMETERS				82
-#define SI5351_CLK6_PARAMETERS				90
-#define SI5351_CLK7_PARAMETERS				91
-#define SI5351_CLK6_7_OUTPUT_DIVIDER		92
-#define  SI5351_OUTPUT_CLK_DIV_MASK			(7 << 4)
-#define  SI5351_OUTPUT_CLK6_DIV_MASK		(7 << 0)
-#define  SI5351_OUTPUT_CLK_DIV_SHIFT		4
-#define  SI5351_OUTPUT_CLK_DIV6_SHIFT		0
-#define  SI5351_OUTPUT_CLK_DIV_1			0
-#define  SI5351_OUTPUT_CLK_DIV_2			1
-#define  SI5351_OUTPUT_CLK_DIV_4			2
-#define  SI5351_OUTPUT_CLK_DIV_8			3
-#define  SI5351_OUTPUT_CLK_DIV_16			4
-#define  SI5351_OUTPUT_CLK_DIV_32			5
-#define  SI5351_OUTPUT_CLK_DIV_64			6
-#define  SI5351_OUTPUT_CLK_DIV_128			7
-#define  SI5351_OUTPUT_CLK_DIVBY4			(3<<2)
-
-#define SI5351_SSC_PARAM0					149
-#define SI5351_SSC_PARAM1					150
-#define SI5351_SSC_PARAM2					151
-#define SI5351_SSC_PARAM3					152
-#define SI5351_SSC_PARAM4					153
-#define SI5351_SSC_PARAM5					154
-#define SI5351_SSC_PARAM6					155
-#define SI5351_SSC_PARAM7					156
-#define SI5351_SSC_PARAM8					157
-#define SI5351_SSC_PARAM9					158
-#define SI5351_SSC_PARAM10					159
-#define SI5351_SSC_PARAM11					160
-#define SI5351_SSC_PARAM12					161
-
-#define SI5351_VXCO_PARAMETERS_LOW			162
-#define SI5351_VXCO_PARAMETERS_MID			163
-#define SI5351_VXCO_PARAMETERS_HIGH			164
-
-#define SI5351_CLK0_PHASE_OFFSET			165
-#define SI5351_CLK1_PHASE_OFFSET			166
-#define SI5351_CLK2_PHASE_OFFSET			167
-#define SI5351_CLK3_PHASE_OFFSET			168
-#define SI5351_CLK4_PHASE_OFFSET			169
-#define SI5351_CLK5_PHASE_OFFSET			170
-
-#define SI5351_PLL_RESET					177
-#define  SI5351_PLL_RESET_B				(1<<7)
-#define  SI5351_PLL_RESET_A				(1<<5)
-
-#define SI5351_CRYSTAL_LOAD				183
-#define  SI5351_CRYSTAL_LOAD_MASK		(3<<6)
-#define  SI5351_CRYSTAL_LOAD_6PF		(1<<6)
-#define  SI5351_CRYSTAL_LOAD_8PF		(2<<6)
-#define  SI5351_CRYSTAL_LOAD_10PF		(3<<6)
-
-#define SI5351_FANOUT_ENABLE			187
-#define  SI5351_CLKIN_ENABLE			(1<<7)
-#define  SI5351_XTAL_ENABLE				(1<<6)
-#define  SI5351_MULTISYNTH_ENABLE		(1<<4)
-
-/* Enum definitions */
-
-/*
- * enum si5351_variant - SiLabs Si5351 chip variant
- * @SI5351_VARIANT_A: Si5351A (8 output clocks, XTAL input)
- * @SI5351_VARIANT_A3: Si5351A MSOP10 (3 output clocks, XTAL input)
- * @SI5351_VARIANT_B: Si5351B (8 output clocks, XTAL/VXCO input)
- * @SI5351_VARIANT_C: Si5351C (8 output clocks, XTAL/CLKIN input)
- */
-enum si5351_variant {
-	SI5351_VARIANT_A = 1,
-	SI5351_VARIANT_A3 = 2,
-	SI5351_VARIANT_B = 3,
-	SI5351_VARIANT_C = 4,
-};
-
-enum si5351_clock {SI5351_CLK0, SI5351_CLK1, SI5351_CLK2, SI5351_CLK3,
-	SI5351_CLK4, SI5351_CLK5, SI5351_CLK6, SI5351_CLK7};
-
-enum si5351_pll {SI5351_PLLA, SI5351_PLLB};
-
-enum si5351_drive {SI5351_DRIVE_2MA, SI5351_DRIVE_4MA, SI5351_DRIVE_6MA, SI5351_DRIVE_8MA};
-
-/* Struct definitions */
-
-struct Si5351RegSet
-{
-	u32 p1;
-	u32 p2;
-	u32 p3;
-};
-
-struct Si5351Status
-{
-	u8 SYS_INIT;
-	u8 LOL_B;
-	u8 LOL_A;
-	u8 LOS;
-	u8 REVID;
-};
-
-struct Si5351IntStatus
-{
-	u8 SYS_INIT_STKY;
-	u8 LOL_B_STKY;
-	u8 LOL_A_STKY;
-	u8 LOS_STKY;
-};
-//
-#endif
+void m88rs6060_tuner_select_mclk(struct m88rs6060_state *dev, u32 freq_mhz, u32 symbol_rate, bool blind);
+void m88rs6060_set_mclk_according_to_symbol_rate(struct m88rs6060_state* state, u32 freq_mhz, u32 symbol_rate_kSs, u32 mclk, bool blind);
+void m88rs6060_set_default_mclk(struct m88rs6060_state* state);
+void m88rs6060_select_mclk(struct m88rs6060_state *dev, u32 freq_mhz, u32 symbol_rate, bool blind);
+void m88rs6060_set_ts_mclk(struct m88rs6060_state *dev, u32 mclk);
+int m88rs6060_set_tuner(struct m88rs6060_state* state, u32 tuner_freq_mhz, u32 symbol_rate_kss, s32 lpf_offset_khz);
+int m88rs6060_set_carrier_offset(struct m88rs6060_state* state, s32 carrier_offset_khz);
+int m88rs6060_get_spectrum_scan_fft(struct neumo_dvb_frontend *fe,
+																		unsigned int *delay, enum fe_status *status);
+int m88rs6060_get_gain(struct m88rs6060_state *dev, u32 freq_mhz, s32 * p_gain);
+bool m88rs6060_wait_for_analog_agc_lock(struct m88rs6060_state* state);

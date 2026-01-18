@@ -10,7 +10,7 @@
 
 #include <linux/firmware.h>
 
-struct dvb_frontend;
+struct neumo_dvb_frontend;
 struct i2c_adapter;
 
 #define XC5000A 1
@@ -44,11 +44,11 @@ struct xc5000_config {
  */
 
 #if IS_REACHABLE(CONFIG_MEDIA_TUNER_XC5000)
-extern struct dvb_frontend *xc5000_attach(struct dvb_frontend *fe,
+extern struct neumo_dvb_frontend *xc5000_attach(struct neumo_dvb_frontend *fe,
 					  struct i2c_adapter *i2c,
 					  const struct xc5000_config *cfg);
 #else
-static inline struct dvb_frontend *xc5000_attach(struct dvb_frontend *fe,
+static inline struct neumo_dvb_frontend *xc5000_attach(struct neumo_dvb_frontend *fe,
 						 struct i2c_adapter *i2c,
 						 const struct xc5000_config *cfg)
 {

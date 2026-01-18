@@ -9,7 +9,7 @@
 
 #include "si2168_priv.h"
 
-static const struct dvb_frontend_ops si2168_ops;
+static const struct neumo_dvb_frontend_ops si2168_ops;
 
 static void cmd_init(struct si2168_cmd *cmd, const u8 *buf, int wlen, int rlen)
 {
@@ -80,7 +80,7 @@ err_mutex_unlock:
 	return ret;
 }
 
-static int si2168_ts_bus_ctrl(struct dvb_frontend *fe, int acquire)
+static int si2168_ts_bus_ctrl(struct neumo_dvb_frontend *fe, int acquire)
 {
 	struct i2c_client *client = fe->demodulator_priv;
 	struct si2168_dev *dev = i2c_get_clientdata(client);
@@ -111,11 +111,11 @@ static int si2168_ts_bus_ctrl(struct dvb_frontend *fe, int acquire)
 	return ret;
 }
 
-static int si2168_read_status(struct dvb_frontend *fe, enum fe_status *status)
+static int si2168_read_status(struct neumo_dvb_frontend *fe, enum fe_status *status)
 {
 	struct i2c_client *client = fe->demodulator_priv;
 	struct si2168_dev *dev = i2c_get_clientdata(client);
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret, i;
 	unsigned int utmp, utmp1, utmp2;
 	struct si2168_cmd cmd;
@@ -236,9 +236,9 @@ err:
 	return ret;
 }
 
-static int si2168_read_snr(struct dvb_frontend *fe, u16 *snr)
+static int si2168_read_snr(struct neumo_dvb_frontend *fe, u16 *snr)
 {
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int i;
 
 	*snr = 0;
@@ -248,9 +248,9 @@ static int si2168_read_snr(struct dvb_frontend *fe, u16 *snr)
 	return 0;
 }
 
-static int si2168_read_signal_strength(struct dvb_frontend *fe, u16 *strength)
+static int si2168_read_signal_strength(struct neumo_dvb_frontend *fe, u16 *strength)
 {
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int i;
 
 	*strength = 0;
@@ -264,13 +264,13 @@ static int si2168_read_signal_strength(struct dvb_frontend *fe, u16 *strength)
 	return 0;
 }
 
-static int si2168_read_ber(struct dvb_frontend *fe, u32 *ber)
+static int si2168_read_ber(struct neumo_dvb_frontend *fe, u32 *ber)
 {
 	struct i2c_client *client = fe->demodulator_priv;
 	struct si2168_dev *dev = i2c_get_clientdata(client);
 	struct si2168_cmd cmd;
 	int ret;
-	
+
 	if (dev->fe_status & FE_HAS_LOCK) {
 		memcpy(cmd.args, "\x82\x00", 2);
 		cmd.wlen = 2;
@@ -289,13 +289,13 @@ err:
 	return ret;
 }
 
-static int si2168_read_ucblocks(struct dvb_frontend *fe, u32 *ucblocks)
+static int si2168_read_ucblocks(struct neumo_dvb_frontend *fe, u32 *ucblocks)
 {
 	struct i2c_client *client = fe->demodulator_priv;
 	struct si2168_dev *dev = i2c_get_clientdata(client);
 	struct si2168_cmd cmd;
 	int ret;
-	
+
 	if (dev->stat_resp & 0x10) {
 		memcpy(cmd.args, "\x84\x00", 2);
 		cmd.wlen = 2;
@@ -315,11 +315,11 @@ err:
 	return ret;
 }
 
-static int si2168_set_frontend(struct dvb_frontend *fe)
+static int si2168_set_frontend(struct neumo_dvb_frontend *fe)
 {
 	struct i2c_client *client = fe->demodulator_priv;
 	struct si2168_dev *dev = i2c_get_clientdata(client);
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret;
 	struct si2168_cmd cmd;
 	u8 bandwidth, delivery_system;
@@ -341,7 +341,7 @@ static int si2168_set_frontend(struct dvb_frontend *fe)
 		if( c->modulation==QAM_256)
 			 c->symbol_rate=5361000;
 		if( c->modulation==QAM_64)
-			 c->symbol_rate=5057000;	
+			 c->symbol_rate=5057000;
 		break;
 	case SYS_DVBT:
 		delivery_system = 0x20;
@@ -517,19 +517,19 @@ err:
 	return ret;
 }
 
-static int si2168_init(struct dvb_frontend *fe)
+static int si2168_init(struct neumo_dvb_frontend *fe)
 {
 	struct i2c_client *client = fe->demodulator_priv;
 	struct si2168_dev *dev = i2c_get_clientdata(client);
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret, len, remaining;
 	const struct firmware *fw;
 	struct si2168_cmd cmd;
 
 	dev_dbg(&client->dev, "\n");
-	
+
 	if (dev->active)
-		return 0;	
+		return 0;
 
 	/* initialize */
 	cmd_init(&cmd, "\xc0\x12\x00\x0c\x00\x0d\x16\x00\x00\x00\x00\x00\x00",
@@ -629,7 +629,7 @@ static int si2168_init(struct dvb_frontend *fe)
 	cmd.rlen = 12;
 	cmd.args[1] = (dev->fef_inv & 1) << 3 | (dev->fef_pin & 7);
 	dev_dbg(&client->dev, "args=%*ph\n", cmd.wlen, cmd.args);
-	
+
 	ret = si2168_cmd_execute(client, &cmd);
 	if (ret) {
 		dev_err(&client->dev, "err set fef pip\n");
@@ -655,7 +655,7 @@ static int si2168_init(struct dvb_frontend *fe)
 		break;
 	}
 	dev_dbg(&client->dev, "args=%*ph\n", cmd.wlen, cmd.args);
-	
+
 	ret = si2168_cmd_execute(client, &cmd);
 	if (ret) {
 		dev_err(&client->dev, "err set mp defaults\n");
@@ -701,7 +701,7 @@ err:
 	return ret;
 }
 
-static int si2168_resume(struct dvb_frontend *fe)
+static int si2168_resume(struct neumo_dvb_frontend *fe)
 {
 	struct i2c_client *client = fe->demodulator_priv;
 	struct si2168_dev *dev = i2c_get_clientdata(client);
@@ -721,7 +721,7 @@ static int si2168_resume(struct dvb_frontend *fe)
 	return 0;
 }
 
-static int si2168_sleep(struct dvb_frontend *fe)
+static int si2168_sleep(struct neumo_dvb_frontend *fe)
 {
 	struct i2c_client *client = fe->demodulator_priv;
 	struct si2168_dev *dev = i2c_get_clientdata(client);
@@ -752,8 +752,8 @@ err:
 	return ret;
 }
 
-static int si2168_get_tune_settings(struct dvb_frontend *fe,
-	struct dvb_frontend_tune_settings *s)
+static int si2168_get_tune_settings(struct neumo_dvb_frontend *fe,
+	struct neumo_dvb_frontend_tune_settings *s)
 {
 	s->min_delay_ms = 900;
 
@@ -796,7 +796,7 @@ err:
 	return ret;
 }
 
-static const struct dvb_frontend_ops si2168_ops = {
+static const struct neumo_dvb_frontend_ops si2168_ops = {
 	.delsys = {SYS_DVBT, SYS_DVBT2, SYS_DVBC_ANNEX_A, SYS_DVBC_ANNEX_B},
 	.info = {
 		.name = "Silicon Labs Si2168",
@@ -918,16 +918,12 @@ static int si2168_probe(struct i2c_client *client)
 		goto err_kfree;
 	}
 	dev->muxc->priv = client;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 10, 0)
-	return i2c_mux_add_adapter(dev->muxc, 0, 0);
-#else
-	return i2c_mux_add_adapter(dev->muxc, 0, 0,0);
-#endif	
+	ret = i2c_mux_add_adapter(dev->muxc, 0, 0);
 	if (ret)
 		goto err_kfree;
 
 	/* create dvb_frontend */
-	memcpy(&dev->fe.ops, &si2168_ops, sizeof(struct dvb_frontend_ops));
+	memcpy(&dev->fe.ops, &si2168_ops, sizeof(struct neumo_dvb_frontend_ops));
 	dev->fe.demodulator_priv = client;
 	*config->i2c_adapter = dev->muxc->adapter[0];
 	*config->fe = &dev->fe;
@@ -1005,3 +1001,6 @@ MODULE_FIRMWARE(SI2168_A20_FIRMWARE);
 MODULE_FIRMWARE(SI2168_A30_FIRMWARE);
 MODULE_FIRMWARE(SI2168_B40_FIRMWARE);
 MODULE_FIRMWARE(SI2168_D60_FIRMWARE);
+
+//check for incorrect include files
+#include "linux/media/neumo-check.h"

@@ -47,3 +47,5 @@ int dvb_usb_i2c_exit(struct dvb_usb_device *d)
 	d->state &= ~DVB_USB_STATE_I2C;
 	return 0;
 }
+
+#include<media/neumo-check.h>

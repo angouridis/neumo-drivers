@@ -12,8 +12,8 @@
 #include <linux/module.h>
 #include <linux/mm.h>
 
-#include <media/dvbdev.h>
-#include <media/dvb_vb2.h>
+#include <media/neumo-dvbdev.h>
+#include <media/neumo-dvb-vb2.h>
 
 #define DVB_V2_MAX_SIZE		(4096 * 188)
 

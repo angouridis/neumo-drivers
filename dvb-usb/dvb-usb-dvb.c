@@ -13,7 +13,7 @@
 #undef CONFIG_MEDIA_CONTROLLER_DVB
 
 /* does the complete input transfer handling */
-static int dvb_usb_ctrl_feed(struct dvb_demux_feed *dvbdmxfeed, int onoff)
+static int dvb_usb_ctrl_feed(struct neumo_dvb_demux_feed *dvbdmxfeed, int onoff)
 {
 	struct dvb_usb_adapter *adap = dvbdmxfeed->demux->priv;
 	int newfeedcount, ret;
@@ -85,14 +85,14 @@ static int dvb_usb_ctrl_feed(struct dvb_demux_feed *dvbdmxfeed, int onoff)
 	return 0;
 }
 
-static int dvb_usb_start_feed(struct dvb_demux_feed *dvbdmxfeed)
+static int dvb_usb_start_feed(struct neumo_dvb_demux_feed *dvbdmxfeed)
 {
 	deb_ts("start pid: 0x%04x, feedtype: %d\n", dvbdmxfeed->pid,
 	       dvbdmxfeed->type);
 	return dvb_usb_ctrl_feed(dvbdmxfeed, 1);
 }
 
-static int dvb_usb_stop_feed(struct dvb_demux_feed *dvbdmxfeed)
+static int dvb_usb_stop_feed(struct neumo_dvb_demux_feed *dvbdmxfeed)
 {
 	deb_ts("stop pid: 0x%04x, feedtype: %d\n", dvbdmxfeed->pid, dvbdmxfeed->type);
 	return dvb_usb_ctrl_feed(dvbdmxfeed, 0);
@@ -183,16 +183,16 @@ int dvb_usb_adapter_dvb_init(struct dvb_usb_adapter *adap, short *adapter_nums)
 	adap->demux.start_feed       = dvb_usb_start_feed;
 	adap->demux.stop_feed        = dvb_usb_stop_feed;
 	adap->demux.write_to_decoder = NULL;
-	if ((ret = dvb_dmx_init(&adap->demux)) < 0) {
-		err("dvb_dmx_init failed: error %d", ret);
+	if ((ret = neumo_dvb_dmx_init(&adap->demux)) < 0) {
+		err("neumo_dvb_dmx_init failed: error %d", ret);
 		goto err_dmx;
 	}
 
 	adap->dmxdev.filternum       = adap->demux.filternum;
 	adap->dmxdev.demux           = &adap->demux.dmx;
 	adap->dmxdev.capabilities    = 0;
-	if ((ret = dvb_dmxdev_init(&adap->dmxdev, &adap->dvb_adap)) < 0) {
-		err("dvb_dmxdev_init failed: error %d", ret);
+	if ((ret = neumo_dvb_dmxdev_init(&adap->dmxdev, &adap->dvb_adap)) < 0) {
+		err("neumo_dvb_dmxdev_init failed: error %d", ret);
 		goto err_dmx_dev;
 	}
 
@@ -206,9 +206,9 @@ int dvb_usb_adapter_dvb_init(struct dvb_usb_adapter *adap, short *adapter_nums)
 	return 0;
 
 err_net_init:
-	dvb_dmxdev_release(&adap->dmxdev);
+	neumo_dvb_dmxdev_release(&adap->dmxdev);
 err_dmx_dev:
-	dvb_dmx_release(&adap->demux);
+	neumo_dvb_dmx_release(&adap->demux);
 err_dmx:
 	dvb_usb_media_device_unregister(adap);
 err_mc:
@@ -223,8 +223,8 @@ int dvb_usb_adapter_dvb_exit(struct dvb_usb_adapter *adap)
 		deb_info("unregistering DVB part\n");
 		dvb_net_release(&adap->dvb_net);
 		adap->demux.dmx.close(&adap->demux.dmx);
-		dvb_dmxdev_release(&adap->dmxdev);
-		dvb_dmx_release(&adap->demux);
+		neumo_dvb_dmxdev_release(&adap->dmxdev);
+		neumo_dvb_dmx_release(&adap->demux);
 		dvb_usb_media_device_unregister(adap);
 		dvb_unregister_adapter(&adap->dvb_adap);
 		adap->state &= ~DVB_USB_ADAP_STATE_DVB;
@@ -232,7 +232,7 @@ int dvb_usb_adapter_dvb_exit(struct dvb_usb_adapter *adap)
 	return 0;
 }
 
-static int dvb_usb_set_active_fe(struct dvb_frontend *fe, int onoff)
+static int dvb_usb_set_active_fe(struct neumo_dvb_frontend *fe, int onoff)
 {
 	struct dvb_usb_adapter *adap = fe->dvb->priv;
 
@@ -249,7 +249,7 @@ static int dvb_usb_set_active_fe(struct dvb_frontend *fe, int onoff)
 	return 0;
 }
 
-static int dvb_usb_fe_wakeup(struct dvb_frontend *fe)
+static int dvb_usb_fe_wakeup(struct neumo_dvb_frontend *fe)
 {
 	struct dvb_usb_adapter *adap = fe->dvb->priv;
 
@@ -263,7 +263,7 @@ static int dvb_usb_fe_wakeup(struct dvb_frontend *fe)
 	return 0;
 }
 
-static int dvb_usb_fe_sleep(struct dvb_frontend *fe)
+static int dvb_usb_fe_sleep(struct neumo_dvb_frontend *fe)
 {
 	struct dvb_usb_adapter *adap = fe->dvb->priv;
 
@@ -307,9 +307,9 @@ int dvb_usb_adapter_frontend_init(struct dvb_usb_adapter *adap)
 		adap->fe_adap[i].fe_sleep = adap->fe_adap[i].fe->ops.sleep;
 		adap->fe_adap[i].fe->ops.sleep = dvb_usb_fe_sleep;
 
-		if (dvb_register_frontend(&adap->dvb_adap, adap->fe_adap[i].fe)) {
+		if (neumo_dvb_register_frontend(&adap->dvb_adap, adap->fe_adap[i].fe)) {
 			err("Frontend %d registration failed.", i);
-			dvb_frontend_detach(adap->fe_adap[i].fe);
+			neumo_dvb_frontend_detach(adap->fe_adap[i].fe);
 			adap->fe_adap[i].fe = NULL;
 			/* In error case, do not try register more FEs,
 			 * still leaving already registered FEs alive. */
@@ -320,9 +320,9 @@ int dvb_usb_adapter_frontend_init(struct dvb_usb_adapter *adap)
 		}
 
 		if(adap->fe_adap[i].fe2!=NULL){
-			if (dvb_register_frontend(&adap->dvb_adap, adap->fe_adap[i].fe2)) {
+			if (neumo_dvb_register_frontend(&adap->dvb_adap, adap->fe_adap[i].fe2)) {
 				err("Frontend %d registration failed.", i);
-				dvb_frontend_detach(adap->fe_adap[i].fe2);
+				neumo_dvb_frontend_detach(adap->fe_adap[i].fe2);
 				adap->fe_adap[i].fe2 = NULL;
 				/* In error case, do not try register more FEs,
 				 * still leaving already registered FEs alive. */
@@ -334,7 +334,7 @@ int dvb_usb_adapter_frontend_init(struct dvb_usb_adapter *adap)
 
 
 		}
-			
+
 		/* only attach the tuner if the demod is there */
 		if (adap->props.fe[i].tuner_attach != NULL)
 			adap->props.fe[i].tuner_attach(adap);
@@ -358,15 +358,17 @@ int dvb_usb_adapter_frontend_exit(struct dvb_usb_adapter *adap)
 	/* unregister all given adapter frontends */
 	for (; i >= 0; i--) {
 		if (adap->fe_adap[i].fe != NULL) {
-			dvb_unregister_frontend(adap->fe_adap[i].fe);
-			dvb_frontend_detach(adap->fe_adap[i].fe);
+			neumo_dvb_unregister_frontend(adap->fe_adap[i].fe);
+			neumo_dvb_frontend_detach(adap->fe_adap[i].fe);
 		}
 		if (adap->fe_adap[i].fe2 != NULL) {
-			dvb_unregister_frontend(adap->fe_adap[i].fe2);
-			dvb_frontend_detach(adap->fe_adap[i].fe2);
+			neumo_dvb_unregister_frontend(adap->fe_adap[i].fe2);
+			neumo_dvb_frontend_detach(adap->fe_adap[i].fe2);
 		}
 	}
 	adap->num_frontends_initialized = 0;
 
 	return 0;
 }
+
+#include<media/neumo-check.h>

@@ -21,9 +21,8 @@
 #ifndef AV201X_H
 #define AV201X_H
 
-
 #include <linux/kconfig.h>
-#include <media/dvb_frontend.h>
+#include <media/neumo-dvb-frontend.h>
 
 typedef enum av201x_id {
 	ID_AV2011,
@@ -42,9 +41,7 @@ struct av201x_config {
 };
 
 
-struct dvb_frontend *av201x_attach(struct dvb_frontend *fe,
+extern struct neumo_dvb_frontend *av201x_attach(struct neumo_dvb_frontend *fe,
 		struct av201x_config *cfg, struct i2c_adapter *i2c);
-
-
 
 #endif /* AV201X_H */

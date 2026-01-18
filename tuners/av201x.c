@@ -21,6 +21,10 @@
 #include "av201x.h"
 #include "av201x_priv.h"
 
+#define dprintk(fmt, arg...)																					\
+	printk(KERN_DEBUG pr_fmt("%s:%d " fmt), __func__, __LINE__, ##arg)
+
+
 /* write multiple (continuous) registers */
 static int av201x_wrm(struct av201x_priv *priv, u8 *buf, int len)
 {
@@ -110,16 +114,15 @@ static int av201x_wrtable(struct av201x_priv *priv,
 	return 0;
 }
 
-static void av201x_release(struct dvb_frontend *fe)
+static void av201x_release(struct neumo_dvb_frontend *fe)
 {
 	struct av201x_priv *priv = fe->tuner_priv;
 	dev_dbg(&priv->i2c->dev, "%s()\n", __func__);
-
 	kfree(fe->tuner_priv);
 	fe->tuner_priv = NULL;
 }
 
-static int av201x_init(struct dvb_frontend *fe)
+static int av201x_init(struct neumo_dvb_frontend *fe)
 {
 	struct av201x_priv *priv = fe->tuner_priv;
 	int ret;
@@ -152,7 +155,7 @@ static int av201x_init(struct dvb_frontend *fe)
 	return ret;
 }
 
-static int av201x_sleep(struct dvb_frontend *fe)
+static int av201x_sleep(struct neumo_dvb_frontend *fe)
 {
 	struct av201x_priv *priv = fe->tuner_priv;
 	int ret;
@@ -164,17 +167,18 @@ static int av201x_sleep(struct dvb_frontend *fe)
 	return ret;
 }
 
-static int av201x_set_params(struct dvb_frontend *fe)
+//frequency in kHz;
+static int av201x_set_frequency(struct neumo_dvb_frontend *fe, u32 frequency)
 {
 	struct av201x_priv *priv = fe->tuner_priv;
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
-	u32 n, bw, bf;
 	u8 buf[5];
-	int ret;
-
-	dev_dbg(&priv->i2c->dev, "%s() delivery_system=%d frequency=%d " \
-			"symbol_rate=%d\n", __func__,
-			c->delivery_system, c->frequency, c->symbol_rate);
+	int ret=0;
+	//u32 n;
+	//u32 n1;
+	int Int;
+  int Frac;
+	int RF;
+	dev_dbg(&priv->i2c->dev, "%s() frequency=%d\n", __func__, frequency);
 
 	/*
 	   ** PLL setup **
@@ -184,31 +188,42 @@ static int av201x_set_params(struct dvb_frontend *fe)
 	   REG_FN = pll_M<24:0>
 	*/
 	buf[0] = REG_FN;
-	n = DIV_ROUND_CLOSEST(c->frequency, priv->cfg->xtal_freq);
-	buf[1] = (n > 0xff) ? 0xff : (u8) n;
-	n = DIV_ROUND_CLOSEST((c->frequency / 1000) << 17, priv->cfg->xtal_freq / 1000);
-	buf[2] = (u8) (n >> 9);
-	buf[3] = (u8) (n >> 1);
-	buf[4] = (u8) (((n << 7) & 0x80) | 0x50);
+
+	Int  =   DIV_ROUND_CLOSEST(frequency, priv->cfg->xtal_freq); //27000
+  Frac = (((s32)frequency -  Int*(s32)priv->cfg->xtal_freq  )<<17)/(s32)(priv->cfg->xtal_freq);
+  RF = (Int*(s32)priv->cfg->xtal_freq) + ((Frac*(s32)priv->cfg->xtal_freq)>>17);
+	buf[1] = (Int > 0xff) ? 0xff : (u8) Int;
+	//dprintk("xxx freq=%d Int=%d Frac=%d RF=%d", frequency, Int, Frac, RF);
+	buf[2] = (u8) (Frac >> 9);
+	buf[3] = (u8) (Frac >> 1);
+	buf[4] = (u8) (((Frac << 7) & 0x80) | 0x50);
 	ret = av201x_wrm(priv, buf, 5);
 	if (ret)
 		goto exit;
+ exit:
+	if (ret)
+		dev_dbg(&priv->i2c->dev, "%s() failed\n", __func__);
+	return ret;
+}
 
-	msleep(20);
 
-	/* set bandwidth */
-	bw = (c->symbol_rate / 1000) * 135/200;
-	if (c->symbol_rate < 6500000)
-		bw += 6000;
-	bw += 2000;
-	bw *= 108/100;
-
-	/* check limits (4MHz < bw < 40MHz) */
-	if (bw > 40000)
+// bw in kHz; returns the actual set bandwidth, which may be different than requested; negative on error
+static int av201x_set_bandwith(struct neumo_dvb_frontend *fe, u32 bandwidth)
+{
+	struct av201x_priv *priv = fe->tuner_priv;
+	int ret=0;
+	u32 bf;
+	u32 bw = bandwidth;
+	/* check limits (4MHz < bandwidth < 40MHz) */
+	if (bw > 40000) {
+		dprintk("Bandwidth %dkHz too large! reduced to 40000\n", bw);
 		bw = 40000;
-	else if (bw < 4000)
+	}
+	else if (bw < 4000) {
+		dprintk("Bandwidth %dkHz too small! increased to 4000\n", bw); //official limit is 4000 (but 500 is possible)
 		bw = 4000;
-
+	}
+	dprintk("Setting bandwidth %dkHz\n", bw);
 	/* bandwidth step = 211kHz */
 	bf = DIV_ROUND_CLOSEST(bw * 127, 21100);
 	ret = av201x_wr(priv, REG_BWFILTER, (u8) bf);
@@ -217,46 +232,85 @@ static int av201x_set_params(struct dvb_frontend *fe)
 	ret |= av201x_wr(priv, REG_FT_CTRL, AV201X_FT_EN | AV201X_FT_BLK);
 
 	ret |= av201x_wr(priv, REG_TUNER_CTRL, 0x96);
-	msleep(20);
-exit:
-	if (ret)
+
+	if (ret) {
 		dev_dbg(&priv->i2c->dev, "%s() failed\n", __func__);
+		return -1;
+	}
+	return bw;
+}
+
+//frequency and bandwith in kHz
+static int av201x_set_frequency_and_bandwidth(struct neumo_dvb_frontend *fe, u32 frequency, u32 bandwidth)
+{
+	struct av201x_priv *priv = fe->tuner_priv;
+	int ret = 0;
+	dev_dbg(&priv->i2c->dev, "%s() frequency=%d \n", __func__, frequency);
+
+	ret= av201x_set_frequency(fe, frequency);
+	if(ret)
+		return ret;
+	msleep(20);
+	ret = av201x_set_bandwith(fe, bandwidth);
+	if (ret>0)
+		ret =0;
 	return ret;
 }
 
-static  int   AV201x_agc         [] = {     0,  82,   100,  116,  140,  162,  173,  187,  210,  223,  254,  255};
-static  int   AV201x_level_dBm_10[] = {    90, -50,  -263, -361, -463, -563, -661, -761, -861, -891, -904, -910};
-
-static int av201x_get_rf_strength(struct dvb_frontend *fe, u16 *st)
+static int av201x_set_params(struct neumo_dvb_frontend *fe)
 {
-	struct av201x_priv *priv = fe->tuner_priv;
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
-	int   if_agc, index, table_length, slope, *x, *y;
+	u32 bw;
+	int ret=0;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 
-	if_agc = *st;
-	x = AV201x_agc;
-	y = AV201x_level_dBm_10;
-	table_length = sizeof(AV201x_agc)/sizeof(int);
+	/* set bandwidth */
+	bw = (c->symbol_rate / 1000) * 135/200;
+	if (c->symbol_rate < 6500000)
+		bw += 6000;
+	bw += 2000;
+	bw *= 108/100;
 
-	
-	/* Finding in which segment the if_agc value is */
-	for (index = 0; index < table_length; index ++)
-		if (x[index] > if_agc ) break;
 
-	/* Computing segment slope */
-	slope =  ((y[index]-y[index-1])*1000)/(x[index]-x[index-1]);
-	/* Linear approximation of rssi value in segment (rssi values will be in 0.1dBm unit: '-523' means -52.3 dBm) */
-	*st = 1000 + ((y[index-1] + ((if_agc - x[index-1])*slope + 500)/1000))/10;
+	ret = av201x_set_frequency_and_bandwidth(fe, c->frequency, bw);
+	msleep(20);
+	if(ret)
+		dprintk("ERROR: ret=%d", ret);
+	return ret;
+}
 
+static int av201x_agc_to_gain_dbm(struct neumo_dvb_frontend *fe, s32 if_agc)
+{
+	int dbm = 0;
+	if((if_agc>2000)&&(if_agc<=4096))
+		dbm=(-((if_agc*1000-2000000)/140)-79000);
+	else if((if_agc>1500)&&(if_agc<=2000))
+		dbm=(-((if_agc*1000-1500000)/55)-69000);
+	else if((if_agc>1000)&&(if_agc<=1500))
+		dbm=(-((if_agc*1000-1000000)/25)-48000);
+	else if((if_agc>800)&&(if_agc<=1000))
+		dbm=(-((if_agc*1000-800000)/20)-37000);
+	else if((if_agc>260)&&(if_agc<=800))
+		dbm=(-((if_agc*1000-260000)/16)-0);
+	else
+		dbm=0;
+	return dbm + 7500;
+}
+
+static int av201x_get_rf_strength(struct neumo_dvb_frontend *fe, u16 *st)
+{
+	//struct av201x_priv *priv = fe->tuner_priv;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	s32 gain = av201x_agc_to_gain_dbm(fe, *st);
+	*st = 1000 + gain/1000;
 	c->strength.len = 1;
 	c->strength.stat[0].scale = FE_SCALE_DECIBEL;
-	c->strength.stat[0].svalue = ((y[index-1] + ((if_agc - x[index-1])*slope + 500)/1000)) * 100;
+	c->strength.stat[0].svalue = gain;
 
 	return 0;
 }
 
 
-static const struct dvb_tuner_ops av201x_tuner_ops = {
+static const struct neumo_dvb_tuner_ops av201x_tuner_ops = {
 	.info = {
 		.name           = "Airoha Technology AV201x",
 		.frequency_min_hz = 850 * MHz,
@@ -267,11 +321,15 @@ static const struct dvb_tuner_ops av201x_tuner_ops = {
 
 	.init = av201x_init,
 	.sleep = av201x_sleep,
+	.set_frequency_and_bandwidth = av201x_set_frequency_and_bandwidth,
+	.set_bandwidth     = av201x_set_bandwith,
+	.set_frequency     = av201x_set_frequency,
 	.set_params = av201x_set_params,
 	.get_rf_strength = av201x_get_rf_strength,
+	.agc_to_gain_dbm   = av201x_agc_to_gain_dbm,
 };
 
-struct dvb_frontend *av201x_attach(struct dvb_frontend *fe,
+struct neumo_dvb_frontend *av201x_attach(struct neumo_dvb_frontend *fe,
 		struct av201x_config *cfg, struct i2c_adapter *i2c)
 {
 	struct av201x_priv *priv = NULL;
@@ -290,7 +348,7 @@ struct dvb_frontend *av201x_attach(struct dvb_frontend *fe,
 		KBUILD_MODNAME);
 
 	memcpy(&fe->ops.tuner_ops, &av201x_tuner_ops,
-			sizeof(struct dvb_tuner_ops));
+			sizeof(struct neumo_dvb_tuner_ops));
 
 	fe->tuner_priv = priv;
 	return fe;
@@ -300,3 +358,6 @@ EXPORT_SYMBOL_GPL(av201x_attach);
 MODULE_DESCRIPTION("Airoha Technology AV201x silicon tuner driver");
 MODULE_AUTHOR("Luis Alves <ljalvs@gmail.com>");
 MODULE_LICENSE("GPL");
+
+//check for incorrect include files
+#include "linux/media/neumo-check.h"

@@ -1,4 +1,3 @@
-
 #include <linux/delay.h>
 #include <linux/errno.h>
 #include <linux/init.h>
@@ -6,7 +5,7 @@
 #include <linux/module.h>
 #include <linux/string.h>
 #include <linux/slab.h>
-#include <media/dvb_frontend.h>
+#include <media/neumo-dvb-frontend.h>
 #include "MN_DMD_API.h"
 #include "MXL603_API.h"
 #include "mn88436.h"
@@ -1075,10 +1074,10 @@ DMD_u8_t  MN88436_REG_AUTOCTRL[] = {
 	,0x72};
 
 /* MxLWare Driver version for MxL603 */
-UINT8 MxLWare603DrvVersion[] = {2, 1, 1, 3, 0}; 
+UINT8 MxLWare603DrvVersion[] = {2, 1, 1, 3, 0};
 
 
-MXL603_REG_CTRL_INFO_T MxL603_OverwriteDefaults[] = 
+MXL603_REG_CTRL_INFO_T MxL603_OverwriteDefaults[] =
 {
   {0x14, 0xFF, 0x13},
   {0x6D, 0xFF, 0x8A},
@@ -1107,7 +1106,7 @@ MXL603_REG_CTRL_INFO_T MxL603_OverwriteDefaults[] =
   {0,    0,    0}
 };
 
-MXL603_REG_CTRL_INFO_T MxL603_DigitalIsdbtAtsc[] = 
+MXL603_REG_CTRL_INFO_T MxL603_DigitalIsdbtAtsc[] =
 {
   {0x0C, 0xFF, 0x00},
   {0x13, 0xFF, 0x04},
@@ -1135,7 +1134,7 @@ MXL603_REG_CTRL_INFO_T MxL603_DigitalIsdbtAtsc[] =
   {0,    0,    0}
 };
 // Digital DVB-C application mode setting
-MXL603_REG_CTRL_INFO_T MxL603_DigitalDvbc[] = 
+MXL603_REG_CTRL_INFO_T MxL603_DigitalDvbc[] =
 {
   {0x0C, 0xFF, 0x00},
   {0x13, 0xFF, 0x04},
@@ -1166,7 +1165,7 @@ MXL603_REG_CTRL_INFO_T MxL603_DigitalDvbc[] =
   {0,    0,    0}
 };
 // Digital DVB-T 6MHz application mode setting
- MXL603_REG_CTRL_INFO_T MxL603_DigitalDvbt[] = 
+ MXL603_REG_CTRL_INFO_T MxL603_DigitalDvbt[] =
 {
   {0x0C, 0xFF, 0x00},
   {0x13, 0xFF, 0x04},
@@ -1224,7 +1223,7 @@ DMD_s32_t	logtbl[] = {
 996	,1000};
 
 /* Calculate Log10 */
-DMD_u32_t log10_easy( DMD_u32_t cnr )
+static DMD_u32_t log10_easy( DMD_u32_t cnr )
 {
 	DMD_u32_t	c;
 	DMD_s32_t	ret;
@@ -1245,14 +1244,14 @@ struct mndmd_state
 	/* Configuration settings */
 	const struct mndmd_config* config;
 
-	struct dvb_frontend frontend;
+	struct neumo_dvb_frontend frontend;
 
 };
 
 DMD_PARAMETER_t param;
 
 /*! Write 1byte */
-DMD_ERROR_t DMD_I2C_Write(struct dvb_frontend* fe,DMD_u8_t	slvadr , DMD_u8_t adr , DMD_u8_t data )
+static DMD_ERROR_t DMD_I2C_Write(struct neumo_dvb_frontend* fe,DMD_u8_t	slvadr , DMD_u8_t adr , DMD_u8_t data )
 {
 	//TODO:	Please call I2C 1byte Write API
 	struct mndmd_state *state = fe->demodulator_priv;
@@ -1278,7 +1277,7 @@ DMD_ERROR_t DMD_I2C_Write(struct dvb_frontend* fe,DMD_u8_t	slvadr , DMD_u8_t adr
 }
 
 /*! Read 1byte */
-DMD_ERROR_t DMD_I2C_Read(struct dvb_frontend* fe,DMD_u8_t	slvadr , DMD_u8_t adr , DMD_u8_t *data )
+static DMD_ERROR_t DMD_I2C_Read(struct neumo_dvb_frontend* fe,DMD_u8_t	slvadr , DMD_u8_t adr , DMD_u8_t *data )
 {
 	//TODO:	Please call I2C 1byte Write API
 	struct mndmd_state *state = fe->demodulator_priv;
@@ -1298,18 +1297,18 @@ DMD_ERROR_t DMD_I2C_Read(struct dvb_frontend* fe,DMD_u8_t	slvadr , DMD_u8_t adr 
 				.len = 1
 			}
 		};
-		
+
 		ret = i2c_transfer(state->i2c, msg, 2);
 		if (ret != 2)
 			printk(" readreg error (reg == 0x%02x, ret == %i)\n",
 					 adr, ret);
 
-	
+
 		return DMD_E_OK;
 }
 
 
-DMD_ERROR_t	DMD_I2C_MaskWrite(struct dvb_frontend* fe,DMD_u8_t	slvadr , DMD_u8_t adr , DMD_u8_t mask , DMD_u8_t  data )
+static DMD_ERROR_t	DMD_I2C_MaskWrite(struct neumo_dvb_frontend* fe,DMD_u8_t	slvadr , DMD_u8_t adr , DMD_u8_t mask , DMD_u8_t  data )
 {
 	DMD_u8_t	rd;
 	DMD_ERROR_t ret;
@@ -1321,7 +1320,7 @@ DMD_ERROR_t	DMD_I2C_MaskWrite(struct dvb_frontend* fe,DMD_u8_t	slvadr , DMD_u8_t
 	return ret;
 }
 
-DMD_ERROR_t DMD_send_registers(struct dvb_frontend* fe, DMD_u8_t* slaveset , DMD_u8_t* regset )
+static DMD_ERROR_t DMD_send_registers(struct neumo_dvb_frontend* fe, DMD_u8_t* slaveset , DMD_u8_t* regset )
 {
 	DMD_u32_t	i;
 	for(i=0;;)
@@ -1332,12 +1331,13 @@ DMD_ERROR_t DMD_send_registers(struct dvb_frontend* fe, DMD_u8_t* slaveset , DMD
 	}
 	return DMD_E_OK;
 }
-int MXL603_Write( struct mndmd_state *state , UINT8 RegAddr, UINT8 RegData)
+
+static int MXL603_Write( struct mndmd_state *state , UINT8 RegAddr, UINT8 RegData)
 {
 	int ret;
 
 	u8 buf1[]={RegAddr,RegData} ;
-	
+
 
 	struct i2c_msg msg= {
 		.addr= state->config->tuner_address,
@@ -1358,10 +1358,10 @@ int MXL603_Write( struct mndmd_state *state , UINT8 RegAddr, UINT8 RegData)
 
 //	return 0;
 
-	
+
 }
 
-int MXL603_Read(struct mndmd_state *state , UINT8 RegAddr , UINT8 *rdata )
+static int MXL603_Read(struct mndmd_state *state , UINT8 RegAddr , UINT8 *rdata )
 {
 	int ret;
 	u8 b0[2] = { 0xFB ,RegAddr};
@@ -1389,10 +1389,10 @@ int MXL603_Read(struct mndmd_state *state , UINT8 RegAddr , UINT8 *rdata )
 
 	return (ret != 2) ? 1 : 0;
 //	return 0;
-	
+
 }
 
-MXL_STATUS MxLWare603_OEM_WriteRegister(struct dvb_frontend *fe, UINT8 RegAddr, UINT8 RegData)
+static MXL_STATUS MxLWare603_OEM_WriteRegister(struct neumo_dvb_frontend *fe, UINT8 RegAddr, UINT8 RegData)
 {
 	int Status = 0;
 
@@ -1415,7 +1415,7 @@ MXL_STATUS MxLWare603_OEM_WriteRegister(struct dvb_frontend *fe, UINT8 RegAddr, 
 }
 
 
-MXL_STATUS MxLWare603_OEM_ReadRegister(struct dvb_frontend *fe, UINT8 RegAddr, UINT8 *DataPtr)
+static MXL_STATUS MxLWare603_OEM_ReadRegister(struct neumo_dvb_frontend *fe, UINT8 RegAddr, UINT8 *DataPtr)
 {
 	int Status = 0;
 	struct mndmd_state *state= fe->demodulator_priv;
@@ -1433,7 +1433,7 @@ MXL_STATUS MxLWare603_OEM_ReadRegister(struct dvb_frontend *fe, UINT8 RegAddr, U
 	return ( MXL_STATUS)Status;
 }
 
-MXL_STATUS MxL603_Ctrl_ProgramRegisters(struct dvb_frontend *fe,  PMXL603_REG_CTRL_INFO_T ctrlRegInfoPtr)
+static MXL_STATUS MxL603_Ctrl_ProgramRegisters(struct neumo_dvb_frontend *fe,  PMXL603_REG_CTRL_INFO_T ctrlRegInfoPtr)
 {
 	MXL_STATUS status = MXL_TRUE;
 	UINT16 i = 0;
@@ -1444,7 +1444,7 @@ MXL_STATUS MxL603_Ctrl_ProgramRegisters(struct dvb_frontend *fe,  PMXL603_REG_CT
 		if ((ctrlRegInfoPtr[i].regAddr == 0) && (ctrlRegInfoPtr[i].mask == 0) && (ctrlRegInfoPtr[i].data == 0)) break;
 
 		// Check if partial bits of register were updated
-		if (ctrlRegInfoPtr[i].mask != 0xFF)  
+		if (ctrlRegInfoPtr[i].mask != 0xFF)
 		{
 			status = MxLWare603_OEM_ReadRegister(fe,ctrlRegInfoPtr[i].regAddr, &tmp);
 			if (status != MXL_TRUE) break;;
@@ -1463,52 +1463,52 @@ MXL_STATUS MxL603_Ctrl_ProgramRegisters(struct dvb_frontend *fe,  PMXL603_REG_CT
 }
 /*------------------------------------------------------------------------------
 --| FUNCTION NAME : MxLWare603_API_CfgDevSoftReset
---| 
+--|
 --| AUTHOR        : Mahendra Kondur
 --|
---| DATE CREATED  : 12/10/2011  
+--| DATE CREATED  : 12/10/2011
 --|
 --| DESCRIPTION   : This API is used to reset MxL603 tuner device. After reset,
---|                 all the device regiaters and modules will be set to power-on  
---|                 default state. 
+--|                 all the device regiaters and modules will be set to power-on
+--|                 default state.
 --|
---| RETURN VALUE  : MXL_SUCCESS, MXL_FAILED 
+--| RETURN VALUE  : MXL_SUCCESS, MXL_FAILED
 --|
 --|---------------------------------------------------------------------------*/
 
-MXL_STATUS MxLWare603_API_CfgDevSoftReset(struct dvb_frontend *fe)
+static MXL_STATUS MxLWare603_API_CfgDevSoftReset(struct neumo_dvb_frontend *fe)
 {
 	UINT8 status = MXL_SUCCESS;
 
-	//  MxL_DLL_DEBUG0("%s", __FUNCTION__); 
+	//  MxL_DLL_DEBUG0("%s", __FUNCTION__);
 
-	// Write 0xFF with 0 to reset tuner 
-	status = MxLWare603_OEM_WriteRegister(fe, AIC_RESET_REG, 0x00); 
+	// Write 0xFF with 0 to reset tuner
+	status = MxLWare603_OEM_WriteRegister(fe, AIC_RESET_REG, 0x00);
 
 	return (MXL_STATUS)status;
 }
 
 /*------------------------------------------------------------------------------
 --| FUNCTION NAME : MxLWare603_API_CfgDevOverwriteDefaults
---| 
+--|
 --| AUTHOR        : Mahendra Kondur
 --|
---| DATE CREATED  : 12/10/2011  
+--| DATE CREATED  : 12/10/2011
 --|
---| DESCRIPTION   : Register(s) that requires default values to be overwritten 
+--| DESCRIPTION   : Register(s) that requires default values to be overwritten
 --|                 during initialization
 --|
 --| RETURN VALUE  : MXL_SUCCESS, MXL_FAILED
 --|
 --|---------------------------------------------------------------------------*/
 
-MXL_STATUS MxLWare603_API_CfgDevOverwriteDefaults(struct dvb_frontend *fe, 
+static MXL_STATUS MxLWare603_API_CfgDevOverwriteDefaults(struct neumo_dvb_frontend *fe,
 															 MXL_BOOL singleSupply_3_3V)
 {
 	UINT8 status = MXL_SUCCESS;
 	UINT8 readData = 0;
 
-	//  MxL_DLL_DEBUG0("%s", __FUNCTION__); 
+	//  MxL_DLL_DEBUG0("%s", __FUNCTION__);
 
 	status |= MxL603_Ctrl_ProgramRegisters(fe, MxL603_OverwriteDefaults);
 
@@ -1529,35 +1529,35 @@ MXL_STATUS MxLWare603_API_CfgDevOverwriteDefaults(struct dvb_frontend *fe,
 
 /*------------------------------------------------------------------------------
 --| FUNCTION NAME : MxLWare603_API_CfgDevXtal
---| 
+--|
 --| AUTHOR        : Mahendra Kondur
 --|
---| DATE CREATED  : 12/10/2011  
+--| DATE CREATED  : 12/10/2011
 --|
 --| DESCRIPTION   : This API is used to configure XTAL settings of MxL603 tuner
---|                 device. XTAL settings include frequency, capacitance & 
+--|                 device. XTAL settings include frequency, capacitance &
 --|                 clock out
 --|
 --| RETURN VALUE  : MXL_SUCCESS, MXL_INVALID_PARAMETER, MXL_FAILED
 --|
 --|---------------------------------------------------------------------------*/
 
-MXL_STATUS MxLWare603_API_CfgDevXtal(struct dvb_frontend *fe,  MXL603_XTAL_SET_CFG_T xtalCfg)
+static MXL_STATUS MxLWare603_API_CfgDevXtal(struct neumo_dvb_frontend *fe,  MXL603_XTAL_SET_CFG_T xtalCfg)
 {
 	UINT8 status = MXL_SUCCESS;
 	UINT8 control = 0;
 
-	// MxL_DLL_DEBUG0("%s", __FUNCTION__); 
+	// MxL_DLL_DEBUG0("%s", __FUNCTION__);
 
-	// XTAL freq and cap setting, Freq set is located at bit<5>, cap bit<4:0> 
+	// XTAL freq and cap setting, Freq set is located at bit<5>, cap bit<4:0>
 	// and  XTAL clock out enable <0>
 	if ((xtalCfg.xtalFreqSel == MXL603_XTAL_16MHz) || (xtalCfg.xtalFreqSel == MXL603_XTAL_24MHz))
 	{
-		control = (UINT8)((xtalCfg.xtalFreqSel << 5) | (xtalCfg.xtalCap & 0x1F));  
+		control = (UINT8)((xtalCfg.xtalFreqSel << 5) | (xtalCfg.xtalCap & 0x1F));
 		control |= (xtalCfg.clkOutEnable << 7);
 		status = MxLWare603_OEM_WriteRegister(fe, XTAL_CAP_CTRL_REG, control);
 
-		// XTAL frequency div 4 setting <1> 
+		// XTAL frequency div 4 setting <1>
 		control = (0x01 & (UINT8)xtalCfg.clkOutDiv);
 
 		// XTAL sharing mode
@@ -1565,13 +1565,13 @@ MXL_STATUS MxLWare603_API_CfgDevXtal(struct dvb_frontend *fe,  MXL603_XTAL_SET_C
 		else control &= 0x01;
 
 		// program Clock out div & Xtal sharing
-		status |= MxLWare603_OEM_WriteRegister(fe, XTAL_ENABLE_DIV_REG, control); 
+		status |= MxLWare603_OEM_WriteRegister(fe, XTAL_ENABLE_DIV_REG, control);
 
 		// Main regulator re-program
 		if (MXL_ENABLE == xtalCfg.singleSupply_3_3V)
 			status |= MxLWare603_OEM_WriteRegister(fe, MAIN_REG_AMP, 0x14);
 	}
-	else 
+	else
 		status |= MXL_INVALID_PARAMETER;
 
 	return ( MXL_STATUS)status;
@@ -1579,22 +1579,22 @@ MXL_STATUS MxLWare603_API_CfgDevXtal(struct dvb_frontend *fe,  MXL603_XTAL_SET_C
 
 /*------------------------------------------------------------------------------
 --| FUNCTION NAME : MxLWare603_API_CfgDevPowerMode
---| 
+--|
 --| AUTHOR        : Mahendra Kondur
 --|
---| DATE CREATED  : 12/10/2011  
+--| DATE CREATED  : 12/10/2011
 --|
---| DESCRIPTION   : This function configures MxL603 power mode 
+--| DESCRIPTION   : This function configures MxL603 power mode
 --|
 --| RETURN VALUE  : MXL_SUCCESS, MXL_INVALID_PARAMETER, MXL_FAILED
 --|
 --|---------------------------------------------------------------------------*/
-
-MXL_STATUS MxLWare603_API_CfgDevPowerMode(struct dvb_frontend *fe, MXL603_PWR_MODE_E powerMode)
+#if 0 //unused
+static MXL_STATUS MxLWare603_API_CfgDevPowerMode(struct neumo_dvb_frontend *fe, MXL603_PWR_MODE_E powerMode)
 {
 	UINT8 status = MXL_SUCCESS;
 
-	// MxL_DLL_DEBUG0("%s", __FUNCTION__); 
+	// MxL_DLL_DEBUG0("%s", __FUNCTION__);
 
 	switch(powerMode)
 	{
@@ -1617,27 +1617,28 @@ MXL_STATUS MxLWare603_API_CfgDevPowerMode(struct dvb_frontend *fe, MXL603_PWR_MO
 
 	return (MXL_STATUS)status;
 }
+#endif
 
 /*------------------------------------------------------------------------------
 --| FUNCTION NAME : MxLWare603_API_CfgDevGPO
---| 
+--|
 --| AUTHOR        : Mahendra Kondur
 --|
---| DATE CREATED  : 12/10/2011  
+--| DATE CREATED  : 12/10/2011
 --|
 --| DESCRIPTION   : This API configures GPO pin of MxL603 tuner device.
---|                 There is only 1 GPO pin available in MxL603 device.  
+--|                 There is only 1 GPO pin available in MxL603 device.
 --|
 --| RETURN VALUE  : MXL_SUCCESS, MXL_INVALID_PARAMETER, MXL_FAILED
 --|
 --|---------------------------------------------------------------------------*/
-
-MXL_STATUS MxLWare603_API_CfgDevGPO(struct dvb_frontend *fe, MXL603_GPO_STATE_E gpoState)
+#if 0 //unused
+static MXL_STATUS MxLWare603_API_CfgDevGPO(struct neumo_dvb_frontend *fe, MXL603_GPO_STATE_E gpoState)
 {
 	UINT8 status = MXL_SUCCESS;
 	UINT8 regData = 0;
 
-	//  MxL_DLL_DEBUG0("%s", __FUNCTION__); 
+	//  MxL_DLL_DEBUG0("%s", __FUNCTION__);
 
 	switch(gpoState)
 	{
@@ -1650,7 +1651,7 @@ MXL_STATUS MxLWare603_API_CfgDevGPO(struct dvb_frontend *fe, MXL603_GPO_STATE_E 
 		else
 		{
 			regData &= 0xFC;
-			regData |= (UINT8)(0x01 | (gpoState << 1)); 
+			regData |= (UINT8)(0x01 | (gpoState << 1));
 		}
 
 		status |= MxLWare603_OEM_WriteRegister(fe, GPO_SETTING_REG, regData);
@@ -1662,13 +1663,14 @@ MXL_STATUS MxLWare603_API_CfgDevGPO(struct dvb_frontend *fe, MXL603_GPO_STATE_E 
 
 	return (MXL_STATUS)status;
 }
+#endif
 
 /*------------------------------------------------------------------------------
 --| FUNCTION NAME : MxLWare603_API_ReqDevVersionInfo
---| 
+--|
 --| AUTHOR        : Mahendra Kondur
 --|
---| DATE CREATED  : 12/10/2011  
+--| DATE CREATED  : 12/10/2011
 --|
 --| DESCRIPTION   : This function is used to get MxL603 version information.
 --|
@@ -1676,32 +1678,32 @@ MXL_STATUS MxLWare603_API_CfgDevGPO(struct dvb_frontend *fe, MXL603_GPO_STATE_E 
 --|
 --|---------------------------------------------------------------------------*/
 
-MXL_STATUS MxLWare603_API_ReqDevVersionInfo(struct dvb_frontend *fe, MXL603_VER_INFO_T* mxlDevVerInfoPtr)
-														
+static MXL_STATUS MxLWare603_API_ReqDevVersionInfo(struct neumo_dvb_frontend *fe, MXL603_VER_INFO_T* mxlDevVerInfoPtr)
+
 {
 	UINT8 status = MXL_SUCCESS;
 	UINT8 readBack = 0;
 	UINT8 k = 0;
 
 
-	// MxL_DLL_DEBUG0("%s", __FUNCTION__); 
+	// MxL_DLL_DEBUG0("%s", __FUNCTION__);
 
 	if (mxlDevVerInfoPtr)
 	{
 		status |= MxLWare603_OEM_ReadRegister(fe, CHIP_ID_REQ_REG, &readBack);
-		mxlDevVerInfoPtr->chipId = (readBack & 0xFF); 
+		mxlDevVerInfoPtr->chipId = (readBack & 0xFF);
 
 		status |= MxLWare603_OEM_ReadRegister(fe, CHIP_VERSION_REQ_REG, &readBack);
-		mxlDevVerInfoPtr->chipVersion = (readBack & 0xFF); 
+		mxlDevVerInfoPtr->chipVersion = (readBack & 0xFF);
 
-	//	printk("Chip ID = 0x%d, Version = 0x%d \n", mxlDevVerInfoPtr->chipId, 
+	//	printk("Chip ID = 0x%d, Version = 0x%d \n", mxlDevVerInfoPtr->chipId,
 	//		mxlDevVerInfoPtr->chipVersion);
 
 		// Get MxLWare version infromation
 		for (k = 0; k < MXL603_VERSION_SIZE; k++)
 			mxlDevVerInfoPtr->mxlwareVer[k] = MxLWare603DrvVersion[k];
 	}
-	else 
+	else
 		status = MXL_INVALID_PARAMETER;
 
 	return (MXL_STATUS)status;
@@ -1709,10 +1711,10 @@ MXL_STATUS MxLWare603_API_ReqDevVersionInfo(struct dvb_frontend *fe, MXL603_VER_
 
 /*------------------------------------------------------------------------------
 --| FUNCTION NAME : MxLWare603_API_ReqDevGPOStatus
---| 
+--|
 --| AUTHOR        : Mahendra Kondur
 --|
---| DATE CREATED  : 12/10/2011  
+--| DATE CREATED  : 12/10/2011
 --|
 --| DESCRIPTION   : This API is used to get GPO pin's status information from
 --|                 MxL603 tuner device.
@@ -1720,14 +1722,14 @@ MXL_STATUS MxLWare603_API_ReqDevVersionInfo(struct dvb_frontend *fe, MXL603_VER_
 --| RETURN VALUE  : MXL_SUCCESS, MXL_INVALID_PARAMETER, MXL_FAILED
 --|
 --|---------------------------------------------------------------------------*/
-
-MXL_STATUS MxLWare603_API_ReqDevGPOStatus(struct dvb_frontend *fe, 
+#if 0 //unused
+static MXL_STATUS MxLWare603_API_ReqDevGPOStatus(struct neumo_dvb_frontend *fe,
 													  MXL603_GPO_STATE_E* gpoStatusPtr)
 {
 	UINT8 status = MXL_SUCCESS;
 	UINT8 regData = 0;
 
-	//MxL_DLL_DEBUG0("%s", __FUNCTION__); 
+	//MxL_DLL_DEBUG0("%s", __FUNCTION__);
 
 	if (gpoStatusPtr)
 	{
@@ -1742,33 +1744,34 @@ MXL_STATUS MxLWare603_API_ReqDevGPOStatus(struct dvb_frontend *fe,
 
 	return (MXL_STATUS)status;
 }
+#endif
 
 /*------------------------------------------------------------------------------
 --| FUNCTION NAME : MxLWare603_API_CfgTunerMode
---| 
+--|
 --| AUTHOR        : Mahendra Kondur
 --|
---| DATE CREATED  : 12/10/2011  
+--| DATE CREATED  : 12/10/2011
 --|
---| DESCRIPTION   : This fucntion is used to configure MxL603 tuner's 
+--| DESCRIPTION   : This fucntion is used to configure MxL603 tuner's
 --|                 application modes like DVB-T, DVB-C, ISDB-T etc.
 --|
 --| RETURN VALUE  : MXL_SUCCESS, MXL_INVALID_PARAMETER, MXL_FAILED
 --|
 --|---------------------------------------------------------------------------*/
 
-MXL_STATUS MxLWare603_API_CfgTunerMode(struct dvb_frontend *fe, MXL603_TUNER_MODE_CFG_T tunerModeCfg)
-												   
+static MXL_STATUS MxLWare603_API_CfgTunerMode(struct neumo_dvb_frontend *fe, MXL603_TUNER_MODE_CFG_T tunerModeCfg)
+
 {
 	UINT8 status = MXL_SUCCESS;
 	UINT8 dfeRegData = 0;
 	//struct MXL603_REG_CTRL_INFO_T* tmpRegTable;
 
-////	printk(" Signal Mode = %d, IF Freq = %d, xtal = %d, IF Gain = %d", 
+////	printk(" Signal Mode = %d, IF Freq = %d, xtal = %d, IF Gain = %d",
 //		tunerModeCfg.signalMode,
 //		tunerModeCfg.ifOutFreqinKHz,
 //		tunerModeCfg.xtalFreqSel,
-//		tunerModeCfg.ifOutGainLevel); 
+//		tunerModeCfg.ifOutGainLevel);
 
 	switch(tunerModeCfg.signalMode)
 	{
@@ -1880,11 +1883,11 @@ MXL_STATUS MxLWare603_API_CfgTunerMode(struct dvb_frontend *fe, MXL603_TUNER_MOD
 		break;
 	}
 
-	if (status == MXL_SUCCESS)  
+	if (status == MXL_SUCCESS)
 	{
 		// XTAL calibration
-		status |= MxLWare603_OEM_WriteRegister(fe, XTAL_CALI_SET_REG, 0x00);   
-		status |= MxLWare603_OEM_WriteRegister(fe, XTAL_CALI_SET_REG, 0x01);   
+		status |= MxLWare603_OEM_WriteRegister(fe, XTAL_CALI_SET_REG, 0x00);
+		status |= MxLWare603_OEM_WriteRegister(fe, XTAL_CALI_SET_REG, 0x01);
 
 		// 50 ms sleep after XTAL calibration
 		msleep(50);
@@ -1895,10 +1898,10 @@ MXL_STATUS MxLWare603_API_CfgTunerMode(struct dvb_frontend *fe, MXL603_TUNER_MOD
 
 /*------------------------------------------------------------------------------
 --| FUNCTION NAME : MxLWare603_API_CfgTunerAGC
---| 
+--|
 --| AUTHOR        : Mahendra Kondur
 --|
---| DATE CREATED  : 12/10/2011  
+--| DATE CREATED  : 12/10/2011
 --|
 --| DESCRIPTION   : This function is used to configure AGC settings of MxL603
 --|                 tuner device.
@@ -1907,22 +1910,22 @@ MXL_STATUS MxLWare603_API_CfgTunerMode(struct dvb_frontend *fe, MXL603_TUNER_MOD
 --|
 --|---------------------------------------------------------------------------*/
 
-MXL_STATUS MxLWare603_API_CfgTunerAGC(struct dvb_frontend *fe, MXL603_AGC_CFG_T agcCfg)
+static MXL_STATUS MxLWare603_API_CfgTunerAGC(struct neumo_dvb_frontend *fe, MXL603_AGC_CFG_T agcCfg)
 {
 	UINT8 status = MXL_SUCCESS;
-	UINT8 regData = 0; 
+	UINT8 regData = 0;
 
-//	printk("%s, AGC sel = %d, attack point set = %d, Flip = %d \n", 
-//		__FUNCTION__, 
+//	printk("%s, AGC sel = %d, attack point set = %d, Flip = %d \n",
+//		__FUNCTION__,
 //		agcCfg.agcType,
-//		agcCfg.setPoint, 
+//		agcCfg.setPoint,
 //		agcCfg.agcPolarityInverstion);
 
-	if ((agcCfg.agcPolarityInverstion <= MXL_ENABLE) && 
+	if ((agcCfg.agcPolarityInverstion <= MXL_ENABLE) &&
 		(agcCfg.agcType <= MXL603_AGC_EXTERNAL))
 	{
 		// AGC selecton <3:2> and mode setting <0>
-		status |= MxLWare603_OEM_ReadRegister(fe, AGC_CONFIG_REG, &regData); 
+		status |= MxLWare603_OEM_ReadRegister(fe, AGC_CONFIG_REG, &regData);
 		regData &= 0xF2; // Clear bits <3:2> & <0>
 		regData = (UINT8) (regData | (agcCfg.agcType << 2) | 0x01);
 		status |= MxLWare603_OEM_WriteRegister(fe, AGC_CONFIG_REG, regData);
@@ -1947,10 +1950,10 @@ MXL_STATUS MxLWare603_API_CfgTunerAGC(struct dvb_frontend *fe, MXL603_AGC_CFG_T 
 
 /*------------------------------------------------------------------------------
 --| FUNCTION NAME : MxLWare603_API_CfgTunerLoopThrough
---| 
+--|
 --| AUTHOR        : Mahendra Kondur, Dong Liu
 --|
---| DATE CREATED  : 12/10/2011, 06/18/2012   
+--| DATE CREATED  : 12/10/2011, 06/18/2012
 --|
 --| DESCRIPTION   : This function is used to enable or disable Loop-Through
 --|                 settings of MxL603 tuner device.
@@ -1958,12 +1961,12 @@ MXL_STATUS MxLWare603_API_CfgTunerAGC(struct dvb_frontend *fe, MXL603_AGC_CFG_T 
 --| RETURN VALUE  : MXL_SUCCESS, MXL_INVALID_PARAMETER, MXL_FAILED
 --|
 --|---------------------------------------------------------------------------*/
-
-MXL_STATUS MxLWare603_API_CfgTunerLoopThrough(struct dvb_frontend *fe, MXL_BOOL loopThroughCtrl)
+#if 0 //unused
+static MXL_STATUS MxLWare603_API_CfgTunerLoopThrough(struct neumo_dvb_frontend *fe, MXL_BOOL loopThroughCtrl)
 {
 	UINT8 status = MXL_SUCCESS, regData;
 
-//	MxL_DLL_DEBUG0("%s", __FUNCTION__); 
+//	MxL_DLL_DEBUG0("%s", __FUNCTION__);
 
 	if (loopThroughCtrl <= MXL_ENABLE)
 	{
@@ -1972,9 +1975,9 @@ MXL_STATUS MxLWare603_API_CfgTunerLoopThrough(struct dvb_frontend *fe, MXL_BOOL 
 		status |= MxLWare603_OEM_ReadRegister(fe, DIG_ANA_GINJO_LT_REG, &regData);
 
 		if (loopThroughCtrl == MXL_ENABLE)
-			regData |= 0x10;  // Bit<4> = 1       
+			regData |= 0x10;  // Bit<4> = 1
 		else
-			regData &= 0xEF;  // Bit<4> = 0  
+			regData &= 0xEF;  // Bit<4> = 0
 		status |= MxLWare603_OEM_WriteRegister(fe, DIG_ANA_GINJO_LT_REG, regData);
 
 		status |= MxLWare603_OEM_WriteRegister(fe, PAGE_CHANGE_REG, 0x00);
@@ -1984,23 +1987,24 @@ MXL_STATUS MxLWare603_API_CfgTunerLoopThrough(struct dvb_frontend *fe, MXL_BOOL 
 
 	return (MXL_STATUS)status;
 }
+#endif
 
 /*------------------------------------------------------------------------------
 --| FUNCTION NAME : MxLWare603_API_CfgTunerChanTune
---| 
+--|
 --| AUTHOR        : Mahendra Kondur
 --|
---| DATE CREATED  : 12/10/2011  
+--| DATE CREATED  : 12/10/2011
 --|
---| DESCRIPTION   : This API configures RF channel frequency and bandwidth. 
+--| DESCRIPTION   : This API configures RF channel frequency and bandwidth.
 --|                 Radio Frequency unit is Hz, and Bandwidth is in MHz units.
 --|
 --| RETURN VALUE  : MXL_SUCCESS, MXL_INVALID_PARAMETER, MXL_FAILED
 --|
 --|---------------------------------------------------------------------------*/
 
-MXL_STATUS MxLWare603_API_CfgTunerChanTune(struct dvb_frontend *fe, MXL603_CHAN_TUNE_CFG_T chanTuneCfg)
-													   
+static MXL_STATUS MxLWare603_API_CfgTunerChanTune(struct neumo_dvb_frontend *fe, MXL603_CHAN_TUNE_CFG_T chanTuneCfg)
+
 {
 	UINT64 frequency;
 	UINT32 freq = 0;
@@ -2010,34 +2014,34 @@ MXL_STATUS MxLWare603_API_CfgTunerChanTune(struct dvb_frontend *fe, MXL603_CHAN_
 	UINT8 dfeTuneData = 0;
 	UINT8 dfeCdcData = 0;
 
-//	printk("%s, signal type = %d, Freq = %d, BW = %d, Xtal = %d \n",  
+//	printk("%s, signal type = %d, Freq = %d, BW = %d, Xtal = %d \n",
 //		__FUNCTION__,
-//		chanTuneCfg.signalMode, 
-//		chanTuneCfg.freqInHz, 
-//		chanTuneCfg.bandWidth, 
+//		chanTuneCfg.signalMode,
+//		chanTuneCfg.freqInHz,
+//		chanTuneCfg.bandWidth,
 //		chanTuneCfg.xtalFreqSel);
 
 	// Abort Tune
-	status |= MxLWare603_OEM_WriteRegister(fe, START_TUNE_REG, 0x00); 
+	status |= MxLWare603_OEM_WriteRegister(fe, START_TUNE_REG, 0x00);
 
 	if (chanTuneCfg.startTune == MXL_ENABLE)
 	{
-		if (chanTuneCfg.signalMode <= MXL603_DIG_J83B) 
+		if (chanTuneCfg.signalMode <= MXL603_DIG_J83B)
 		{
-			// RF Frequency VCO Band Settings 
-			if (chanTuneCfg.freqInHz < 700000000) 
+			// RF Frequency VCO Band Settings
+			if (chanTuneCfg.freqInHz < 700000000)
 			{
 				status |= MxLWare603_OEM_WriteRegister(fe, 0x7C, 0x1F);
-				if ((chanTuneCfg.signalMode == MXL603_DIG_DVB_C) || (chanTuneCfg.signalMode == MXL603_DIG_J83B)) 
+				if ((chanTuneCfg.signalMode == MXL603_DIG_DVB_C) || (chanTuneCfg.signalMode == MXL603_DIG_J83B))
 					regData = 0xC1;
 				else
 					regData = 0x81;
 
 			}
-			else 
+			else
 			{
 				status |= MxLWare603_OEM_WriteRegister(fe, 0x7C, 0x9F);
-				if ((chanTuneCfg.signalMode == MXL603_DIG_DVB_C) || (chanTuneCfg.signalMode == MXL603_DIG_J83B)) 
+				if ((chanTuneCfg.signalMode == MXL603_DIG_DVB_C) || (chanTuneCfg.signalMode == MXL603_DIG_J83B))
 					regData = 0xD1;
 				else
 					regData = 0x91;
@@ -2064,9 +2068,9 @@ MXL_STATUS MxLWare603_API_CfgTunerChanTune(struct dvb_frontend *fe, MXL603_CHAN_
 
 				/* Calculate RF Channel = DIV(64*RF(Hz), 1E6) */
 				frequency *= 64;
-				freq = (UINT32)(frequency / 1000000); 
+				freq = (UINT32)(frequency / 1000000);
 
-				// Set RF  
+				// Set RF
 				status |= MxLWare603_OEM_WriteRegister(fe, CHAN_TUNE_LOW_REG, (UINT8)(freq & 0xFF));
 				status |= MxLWare603_OEM_WriteRegister(fe, CHAN_TUNE_HI_REG, (UINT8)((freq >> 8 ) & 0xFF));
 				break;
@@ -2080,12 +2084,12 @@ MXL_STATUS MxLWare603_API_CfgTunerChanTune(struct dvb_frontend *fe, MXL603_CHAN_
 			status |= MxLWare603_OEM_WriteRegister(fe, TUNER_ENABLE_REG, 0x01);
 
 			// Start Sequencer settings
-			status |= MxLWare603_OEM_WriteRegister(fe, PAGE_CHANGE_REG, 0x01); 
+			status |= MxLWare603_OEM_WriteRegister(fe, PAGE_CHANGE_REG, 0x01);
 			status |= MxLWare603_OEM_ReadRegister(fe, DIG_ANA_GINJO_LT_REG, &regData);
-			status |= MxLWare603_OEM_WriteRegister(fe, PAGE_CHANGE_REG, 0x00); 
+			status |= MxLWare603_OEM_WriteRegister(fe, PAGE_CHANGE_REG, 0x00);
 
 			status |= MxLWare603_OEM_ReadRegister(fe, 0xB6, &agcData);
-			status |= MxLWare603_OEM_WriteRegister(fe, PAGE_CHANGE_REG, 0x01); 
+			status |= MxLWare603_OEM_WriteRegister(fe, PAGE_CHANGE_REG, 0x01);
 			status |= MxLWare603_OEM_ReadRegister(fe, 0x60, &dfeTuneData);
 			status |= MxLWare603_OEM_ReadRegister(fe, 0x5F, &dfeCdcData);
 
@@ -2119,20 +2123,20 @@ MXL_STATUS MxLWare603_API_CfgTunerChanTune(struct dvb_frontend *fe, MXL603_CHAN_
 				dfeCdcData |= 0x37;
 			}
 
-			status |= MxLWare603_OEM_WriteRegister(fe, 0x60, dfeTuneData); 
-			status |= MxLWare603_OEM_WriteRegister(fe, 0x5F, dfeCdcData); 
-			status |= MxLWare603_OEM_WriteRegister(fe, PAGE_CHANGE_REG, 0x00); 
-			status |= MxLWare603_OEM_WriteRegister(fe, 0xB6, agcData); 
+			status |= MxLWare603_OEM_WriteRegister(fe, 0x60, dfeTuneData);
+			status |= MxLWare603_OEM_WriteRegister(fe, 0x5F, dfeCdcData);
+			status |= MxLWare603_OEM_WriteRegister(fe, PAGE_CHANGE_REG, 0x00);
+			status |= MxLWare603_OEM_WriteRegister(fe, 0xB6, agcData);
 
 			// Bit <0> 1 : start , 0 : abort calibrations
-			status |= MxLWare603_OEM_WriteRegister(fe, START_TUNE_REG, 0x01); 
+			status |= MxLWare603_OEM_WriteRegister(fe, START_TUNE_REG, 0x01);
 
 			// Sleep 15 ms
 			msleep(15);
 
-			// dfe_agc_auto = 1 
+			// dfe_agc_auto = 1
 			agcData = (agcData | 0x40);
-			status |= MxLWare603_OEM_WriteRegister(fe, 0xB6, agcData); 
+			status |= MxLWare603_OEM_WriteRegister(fe, 0xB6, agcData);
 
 		}
 		else
@@ -2144,38 +2148,38 @@ MXL_STATUS MxLWare603_API_CfgTunerChanTune(struct dvb_frontend *fe, MXL603_CHAN_
 
 /*------------------------------------------------------------------------------
 --| FUNCTION NAME : MxLWare603_API_CfgTunerIFOutParam
---| 
+--|
 --| AUTHOR        : Mahendra Kondur
 --|
---| DATE CREATED  : 12/10/2011  
+--| DATE CREATED  : 12/10/2011
 --|
---| DESCRIPTION   : This function is used to configure IF out settings of MxL603 
+--| DESCRIPTION   : This function is used to configure IF out settings of MxL603
 --|                 tuner device.
 --|
 --| RETURN VALUE  : MXL_SUCCESS, MXL_INVALID_PARAMETER, MXL_FAILED
 --|
 --|---------------------------------------------------------------------------*/
 
-MXL_STATUS MxLWare603_API_CfgTunerIFOutParam(struct dvb_frontend *fe,  MXL603_IF_OUT_CFG_T ifOutCfg)
+static MXL_STATUS MxLWare603_API_CfgTunerIFOutParam(struct neumo_dvb_frontend *fe,  MXL603_IF_OUT_CFG_T ifOutCfg)
 {
 	UINT16 ifFcw;
 	UINT8 status = MXL_SUCCESS;
 	UINT8 readData = 0;
 	UINT8 control = 0;
 
-//	printk("%s, Manual set = %d \n", __FUNCTION__, ifOutCfg.manualFreqSet); 
+//	printk("%s, Manual set = %d \n", __FUNCTION__, ifOutCfg.manualFreqSet);
 
-	//Test only 
+	//Test only
 	MxLWare603_OEM_WriteRegister(fe, 0x10, 0x99);
 	MxLWare603_OEM_ReadRegister(fe, 0x10, &readData);
-//	printk("\n ----------- test Tuner I2C read out = 0x%x [ if 0x99, I2C OK!]-------------\n", readData); 
+//	printk("\n ----------- test Tuner I2C read out = 0x%x [ if 0x99, I2C OK!]-------------\n", readData);
 
-	// Read back register for manual IF Out 
+	// Read back register for manual IF Out
 	status = MxLWare603_OEM_ReadRegister(fe, IF_FREQ_SEL_REG, &readData);
 
 	if (ifOutCfg.manualFreqSet == MXL_ENABLE)
 	{
-		printk("%s, IF Freq = %d \n", __FUNCTION__, ifOutCfg.manualIFOutFreqInKHz); 
+		printk("%s, IF Freq = %d \n", __FUNCTION__, ifOutCfg.manualIFOutFreqInKHz);
 
 		// IF out manual setting : bit<5>
 		readData |= 0x20;
@@ -2183,15 +2187,15 @@ MXL_STATUS MxLWare603_API_CfgTunerIFOutParam(struct dvb_frontend *fe,  MXL603_IF
 
 		// Manual IF freq set
 		ifFcw = (UINT16)(ifOutCfg.manualIFOutFreqInKHz * 8192 / 216000);
-		control = (ifFcw & 0xFF); // Get low 8 bit 
-		status |= MxLWare603_OEM_WriteRegister(fe, IF_FCW_LOW_REG, control); 
+		control = (ifFcw & 0xFF); // Get low 8 bit
+		status |= MxLWare603_OEM_WriteRegister(fe, IF_FCW_LOW_REG, control);
 
-		control = ((ifFcw >> 8) & 0x0F); // Get high 4 bit 
+		control = ((ifFcw >> 8) & 0x0F); // Get high 4 bit
 		status |= MxLWare603_OEM_WriteRegister(fe, IF_FCW_HIGH_REG, control);
 	}
 	else if (ifOutCfg.manualFreqSet == MXL_DISABLE)
 	{
-		// bit<5> = 0, use IF frequency from IF frequency table  
+		// bit<5> = 0, use IF frequency from IF frequency table
 		readData &= 0xC0;
 
 		// IF Freq <4:0>
@@ -2203,18 +2207,18 @@ MXL_STATUS MxLWare603_API_CfgTunerIFOutParam(struct dvb_frontend *fe,  MXL603_IF
 
 	if (status == MXL_SUCCESS)
 	{
-		// Set spectrum invert, gain level and IF path 
+		// Set spectrum invert, gain level and IF path
 		// Spectrum invert indication is bit<7:6>
 		if (ifOutCfg.ifInversion <= MXL_ENABLE)
 		{
 			control = 0;
 			if (MXL_ENABLE == ifOutCfg.ifInversion) control = 0x3 << 6;
 
-			// Gain level is bit<3:0> 
+			// Gain level is bit<3:0>
 			control += (ifOutCfg.gainLevel & 0x0F);
 			control |= (0x20); // Enable IF out
 			status |= MxLWare603_OEM_WriteRegister(fe, IF_PATH_GAIN_REG, control);
-		} 
+		}
 		else
 			status |= MXL_INVALID_PARAMETER;
 	}
@@ -2224,18 +2228,18 @@ MXL_STATUS MxLWare603_API_CfgTunerIFOutParam(struct dvb_frontend *fe,  MXL603_IF
 
 /*------------------------------------------------------------------------------
 --| FUNCTION NAME : MxLWare603_API_ReqTunerAGCLock
---| 
+--|
 --| AUTHOR        : Mahendra Kondur
 --|
---| DATE CREATED  : 12/10/2011  
+--| DATE CREATED  : 12/10/2011
 --|
 --| DESCRIPTION   : This function returns AGC Lock status of MxL603 tuner.
 --|
 --| RETURN VALUE  : MXL_SUCCESS, MXL_INVALID_PARAMETER, MXL_FAILED
 --|
 --|---------------------------------------------------------------------------*/
-
-MXL_STATUS MxLWare603_API_ReqTunerAGCLock(struct dvb_frontend *fe, MXL_BOOL* agcLockStatusPtr)
+#if 0 //unused
+static MXL_STATUS MxLWare603_API_ReqTunerAGCLock(struct neumo_dvb_frontend *fe, MXL_BOOL* agcLockStatusPtr)
 {
 	 MXL_STATUS status = MXL_SUCCESS;
 	UINT8 regData = 0;
@@ -2243,25 +2247,26 @@ MXL_STATUS MxLWare603_API_ReqTunerAGCLock(struct dvb_frontend *fe, MXL_BOOL* agc
 
 	if (agcLockStatusPtr)
 	{
-		status = MxLWare603_OEM_ReadRegister(fe, AGC_SAGCLOCK_STATUS_REG, &regData);  
+		status = MxLWare603_OEM_ReadRegister(fe, AGC_SAGCLOCK_STATUS_REG, &regData);
 		if ((regData & 0x08) == 0x08) lockStatus = MXL_LOCKED;
 
 		*agcLockStatusPtr =  lockStatus;
 
-		//printk(" Agc lock = %d", (UINT8)*agcLockStatusPtr); 
+		//printk(" Agc lock = %d", (UINT8)*agcLockStatusPtr);
 	}
 	else
 		status = MXL_INVALID_PARAMETER;
 
 	return status;
 }
+#endif
 
 /*------------------------------------------------------------------------------
 --| FUNCTION NAME : MxLWare603_API_ReqTunerLockStatus
---| 
+--|
 --| AUTHOR        : Mahendra Kondur
 --|
---| DATE CREATED  : 12/10/2011  
+--| DATE CREATED  : 12/10/2011
 --|
 --| DESCRIPTION   : This function returns Tuner Lock status of MxL603 tuner.
 --|
@@ -2269,7 +2274,7 @@ MXL_STATUS MxLWare603_API_ReqTunerAGCLock(struct dvb_frontend *fe, MXL_BOOL* agc
 --|
 --|---------------------------------------------------------------------------*/
 
-MXL_STATUS MxLWare603_API_ReqTunerLockStatus(struct dvb_frontend *fe,  MXL_BOOL* rfLockPtr, 
+static MXL_STATUS MxLWare603_API_ReqTunerLockStatus(struct neumo_dvb_frontend *fe,  MXL_BOOL* rfLockPtr,
 														 	 MXL_BOOL* refLockPtr)
 {
 	MXL_STATUS status = MXL_SUCCESS;
@@ -2281,7 +2286,7 @@ MXL_STATUS MxLWare603_API_ReqTunerLockStatus(struct dvb_frontend *fe,  MXL_BOOL*
 
 	if ((rfLockPtr) && (refLockPtr))
 	{
-		status = MxLWare603_OEM_ReadRegister(fe, RF_REF_STATUS_REG, &regData);  
+		status = MxLWare603_OEM_ReadRegister(fe, RF_REF_STATUS_REG, &regData);
 
 		if ((regData & 0x02) == 0x02) rfLockStatus = MXL_LOCKED;
 		if ((regData & 0x01) == 0x01) refLockStatus = MXL_LOCKED;
@@ -2297,9 +2302,9 @@ MXL_STATUS MxLWare603_API_ReqTunerLockStatus(struct dvb_frontend *fe,  MXL_BOOL*
 
 /*------------------------------------------------------------------------------
 --| FUNCTION NAME : MxLWare603_API_ReqTunerRxPower
---| 
+--|
 --| AUTHOR        : Mahendra Kondur
---|                 Dong Liu 
+--|                 Dong Liu
 --|
 --| DATE CREATED  : 12/10/2011
 --|                 06/18/2012
@@ -2310,7 +2315,7 @@ MXL_STATUS MxLWare603_API_ReqTunerLockStatus(struct dvb_frontend *fe,  MXL_BOOL*
 --|
 --|---------------------------------------------------------------------------*/
 
-MXL_STATUS MxLWare603_API_ReqTunerRxPower(struct dvb_frontend *fe, SINT16* rxPwrPtr)
+static MXL_STATUS MxLWare603_API_ReqTunerRxPower(struct neumo_dvb_frontend *fe, SINT16* rxPwrPtr)
 {
 	UINT8 status = MXL_SUCCESS;
 	UINT8 regData = 0;
@@ -2343,10 +2348,9 @@ MXL_STATUS MxLWare603_API_ReqTunerRxPower(struct dvb_frontend *fe, SINT16* rxPwr
 	return (MXL_STATUS)status;
 }
 
-
-MXL_STATUS MXL603_init(struct dvb_frontend *fe)
+static MXL_STATUS MXL603_init(struct neumo_dvb_frontend *fe)
 {
-	MXL_STATUS status; 
+	MXL_STATUS status;
 //	UINT8 devId;
 	MXL_BOOL singleSupply_3_3V;
 	MXL603_XTAL_SET_CFG_T xtalCfg;
@@ -2354,11 +2358,11 @@ MXL_STATUS MXL603_init(struct dvb_frontend *fe)
 	MXL603_AGC_CFG_T agcCfg;
 	MXL603_TUNER_MODE_CFG_T tunerModeCfg;
 	MXL603_VER_INFO_T	mxl603Version;
-	
+
 	MxLWare603_API_ReqDevVersionInfo(fe, &mxl603Version);
 
 
-	/* If OEM data is not required, customer should treat devId as 
+	/* If OEM data is not required, customer should treat devId as
 	I2C slave Address */
 //	devId = MXL603_I2C_ADDR;
 
@@ -2366,23 +2370,23 @@ MXL_STATUS MXL603_init(struct dvb_frontend *fe)
 	status = MxLWare603_API_CfgDevSoftReset(fe);
 	if (status != MXL_SUCCESS)
 	{
-		printk("Error! MxLWare603_API_CfgDevSoftReset\n");    
+		printk("Error! MxLWare603_API_CfgDevSoftReset\n");
 	}
 
 	//Step 2 : Overwrite Default
 	/*Parameter : singleSupply_3_3V
-	- Enable :  Single power supply to Tuner (3.3v only;  3.3v -> 1.8V tuner internally inverts ) 
-	- Disable : Dual power supply to Tuner (3.3v+1.8v; internal regulator be bypassed) 
-	\A1\EF If set wrongly toward hardware layout, Tuner will loose control of AGC(at least) 
+	- Enable :  Single power supply to Tuner (3.3v only;  3.3v -> 1.8V tuner internally inverts )
+	- Disable : Dual power supply to Tuner (3.3v+1.8v; internal regulator be bypassed)
+	\A1\EF If set wrongly toward hardware layout, Tuner will loose control of AGC(at least)
 	*/
 	singleSupply_3_3V = MXL_ENABLE; //MXL_DISABLE;
 	status = MxLWare603_API_CfgDevOverwriteDefaults(fe, singleSupply_3_3V);
 	if (status != MXL_SUCCESS)
 	{
-		printk("Error! MxLWare603_API_CfgDevOverwriteDefaults\n");    
+		printk("Error! MxLWare603_API_CfgDevOverwriteDefaults\n");
 	}
 
-	//Step 3 : XTAL Setting 
+	//Step 3 : XTAL Setting
 
 	/* Single XTAL for tuner and demod sharing*/
 	xtalCfg.xtalFreqSel = MXL603_XTAL_24MHz;
@@ -2395,12 +2399,12 @@ MXL_STATUS MXL603_init(struct dvb_frontend *fe)
 	status = MxLWare603_API_CfgDevXtal(fe, xtalCfg);
 	if (status != MXL_SUCCESS)
 	{
-		printk("Error! MxLWare603_API_CfgDevXtal\n");    
+		printk("Error! MxLWare603_API_CfgDevXtal\n");
 	}
 
 	//Step 4 : IF Out setting
-	//IF freq set, should match Demod request 
-	ifOutCfg.ifOutFreq = MXL603_IF_5MHz; //we suggest 5Mhz for ATSC MN88436 
+	//IF freq set, should match Demod request
+	ifOutCfg.ifOutFreq = MXL603_IF_5MHz; //we suggest 5Mhz for ATSC MN88436
 
 	ifOutCfg.ifInversion = MXL_DISABLE;
 	ifOutCfg.gainLevel = 11;
@@ -2409,7 +2413,7 @@ MXL_STATUS MXL603_init(struct dvb_frontend *fe)
 	status = MxLWare603_API_CfgTunerIFOutParam(fe, ifOutCfg);
 	if (status != MXL_SUCCESS)
 	{
-		printk("Error! MxLWare603_API_CfgTunerIFOutParam\n");    
+		printk("Error! MxLWare603_API_CfgTunerIFOutParam\n");
 	}
 
 	//Step 5 : AGC Setting
@@ -2420,13 +2424,13 @@ MXL_STATUS MXL603_init(struct dvb_frontend *fe)
 	status = MxLWare603_API_CfgTunerAGC(fe, agcCfg);
 	if (status != MXL_SUCCESS)
 	{
-		printk("Error! MxLWare603_API_CfgTunerAGC\n");    
+		printk("Error! MxLWare603_API_CfgTunerAGC\n");
 	}
 
 	//Step 6 : Application Mode setting
 	tunerModeCfg.signalMode = MXL603_DIG_ISDBT_ATSC;//MXL603_DIG_DVB_T_DTMB;
 
-	//IF freq set, should match Demod request 
+	//IF freq set, should match Demod request
 	tunerModeCfg.ifOutFreqinKHz = 5000;
 
 
@@ -2436,8 +2440,8 @@ MXL_STATUS MXL603_init(struct dvb_frontend *fe)
 	status = MxLWare603_API_CfgTunerMode(fe, tunerModeCfg);
 	if (status != MXL_SUCCESS)
 	{
-		printk("##### Error! pls. make sure return value no problem, otherwise, it will cause Tuner unable to unlock signal #####\n");   
-		printk("Error! MxLWare603_API_CfgTunerMode\n");    
+		printk("##### Error! pls. make sure return value no problem, otherwise, it will cause Tuner unable to unlock signal #####\n");
+		printk("Error! MxLWare603_API_CfgTunerMode\n");
 	}
 
 
@@ -2450,44 +2454,42 @@ MXL_STATUS MXL603_init(struct dvb_frontend *fe)
 	return status;
 }
 
-
-
-MXL_STATUS Mxl603SetFreqBw(struct dvb_frontend *fe,UINT32 freq)
+static MXL_STATUS Mxl603SetFreqBw(struct neumo_dvb_frontend *fe,UINT32 freq)
 {
-	MXL_STATUS status; 
+	MXL_STATUS status;
 //	UINT8 devId;
 	MXL_BOOL refLockPtr;
 	MXL_BOOL rfLockPtr;
 	MXL603_CHAN_TUNE_CFG_T chanTuneCfg;
 	UINT32 rf;
 //	devId = MXL603_I2C_ADDR;
-	
+
 	//Step 7 : Channel frequency & bandwidth setting
 //	printk("freq=%d",freq);
 	if(freq>1000000)rf=freq;
 	else if(freq>1000)rf=freq*1000;
 	else
 		rf=freq*1000000;
-	
-	
+
+
 	chanTuneCfg.bandWidth = MXL603_TERR_BW_6MHz;
 	chanTuneCfg.freqInHz = rf;
 	if(param.system == DMD_E_ATSC)
 	chanTuneCfg.signalMode = MXL603_DIG_ISDBT_ATSC;
 	else
 	chanTuneCfg.signalMode = MXL603_DIG_J83B;
-	
+
 	chanTuneCfg.startTune = MXL_START_TUNE;
 	chanTuneCfg.xtalFreqSel =MXL603_XTAL_16MHz;
 
-	//chanTuneCfgis global struct. 
+	//chanTuneCfgis global struct.
 	status = MxLWare603_API_CfgTunerChanTune(fe, chanTuneCfg);
 	if (status != MXL_SUCCESS)
 	{
-		printk("Error! MxLWare603_API_CfgTunerChanTune\n");    
+		printk("Error! MxLWare603_API_CfgTunerChanTune\n");
 	}
 
-	// Wait 15 ms 
+	// Wait 15 ms
 	msleep(15);
 
 	// Read back Tuner lock status
@@ -2501,10 +2503,10 @@ MXL_STATUS Mxl603SetFreqBw(struct dvb_frontend *fe,UINT32 freq)
 //		else
 //			printk("Tuner unlocked\n");
 //	}
-	return status; 
+	return status;
 }
 
-DMD_ERROR_t  DMD_open(  DMD_PARAMETER_t* param)
+static DMD_ERROR_t  DMD_open(  DMD_PARAMETER_t* param)
 {
 	int i;
 
@@ -2513,13 +2515,13 @@ DMD_ERROR_t  DMD_open(  DMD_PARAMETER_t* param)
 	/* Initialize Parameter Variable */
 	for(i=0;i<DMD_INFORMATION_MAX;i++)
 	{
-		param->info[i] = 0;		//NOT_DEFINED 
+		param->info[i] = 0;		//NOT_DEFINED
 	}
 	param->bw		= DMD_E_BW_6MHZ;
 	param->freq		= 0;
 	param->funit	= DMD_E_KHZ;
 
-	//ts output method select 
+	//ts output method select
 	param->ts_out = DMD_E_TSOUT_PARALLEL_BRTG_MODE;
 
 	//troy.wang, 20120801, for customer to pass test in lab.( SPEC : A74-2010 )
@@ -2529,7 +2531,7 @@ DMD_ERROR_t  DMD_open(  DMD_PARAMETER_t* param)
 	return DMD_E_OK;
 }
 
-DMD_u8_t DMD_BANK_MAIN(DMD_u8_t id)
+static DMD_u8_t DMD_BANK_MAIN(DMD_u8_t id)
 {
 	DMD_u8_t	ret;
 
@@ -2544,7 +2546,7 @@ DMD_u8_t DMD_BANK_MAIN(DMD_u8_t id)
 	return ret;
 }
 
-DMD_u8_t DMD_BANK_USR(DMD_u8_t id)
+static DMD_u8_t DMD_BANK_USR(DMD_u8_t id)
 {
 	DMD_u8_t	ret;
 
@@ -2562,7 +2564,7 @@ DMD_u8_t DMD_BANK_USR(DMD_u8_t id)
 /* **************************************************** */
 /*!	Get Register Settings for Broadcast system */
 /* **************************************************** */
-DMD_ERROR_t DMD_device_init(struct dvb_frontend* fe, DMD_PARAMETER_t* param )
+static DMD_ERROR_t DMD_device_init(struct neumo_dvb_frontend* fe, DMD_PARAMETER_t* param )
 {
 	DMD_ERROR_t	ret;
 	ret = DMD_E_OK;
@@ -2571,7 +2573,7 @@ DMD_ERROR_t DMD_device_init(struct dvb_frontend* fe, DMD_PARAMETER_t* param )
 	switch( param->system ){
 			case DMD_E_ATSC:
 			DMD_send_registers(fe, DMD_I2C_SLAVE[param->devid] , DMD_REG_ATSC );
-			//DMD_device_load_pseq( param ); //troy.wangyx masked, 20120801, only need do once, in initialization. 
+			//DMD_device_load_pseq( param ); //troy.wangyx masked, 20120801, only need do once, in initialization.
 			break;
 		case DMD_E_QAMB_64QAM:
 			DMD_send_registers(fe, DMD_I2C_SLAVE[param->devid] , DMD_REG_QAM_B_64QAM );
@@ -2591,8 +2593,7 @@ DMD_ERROR_t DMD_device_init(struct dvb_frontend* fe, DMD_PARAMETER_t* param )
 	return ret;
 }
 
-
-DMD_ERROR_t DMD_device_load_pseq( struct dvb_frontend* fe, DMD_PARAMETER_t* param )
+static DMD_ERROR_t DMD_device_load_pseq( struct neumo_dvb_frontend* fe, DMD_PARAMETER_t* param )
 {
 	DMD_ERROR_t ret = DMD_E_OK;
 	DMD_u8_t	data;
@@ -2618,8 +2619,8 @@ DMD_ERROR_t DMD_device_load_pseq( struct dvb_frontend* fe, DMD_PARAMETER_t* para
 /* **************************************************** */
 /*!	Set Register setting for I2C communication mode between DMD  and Tuner*/
 /* **************************************************** */
-//Troy.wangyx 20120801, set once is enough 
-DMD_ERROR_t	DMD_device_set_TCB_mode(struct dvb_frontend* fe, DMD_PARAMETER_t* param)
+//Troy.wangyx 20120801, set once is enough
+static DMD_ERROR_t	DMD_device_set_TCB_mode(struct neumo_dvb_frontend* fe, DMD_PARAMETER_t* param)
 {
 	DMD_ERROR_t	ret;
 	DMD_u8_t	bank;
@@ -2640,75 +2641,74 @@ DMD_ERROR_t	DMD_device_set_TCB_mode(struct dvb_frontend* fe, DMD_PARAMETER_t* pa
 
 }
 
-
-
 /* Set TS parallel or serial mode. If you want to set to parallel, make sure your hardware connection no problem */
-DMD_ERROR_t DMD_set_ts_output(struct dvb_frontend* fe, DMD_PARAMETER_t* param,  DMD_TSCLK_POLARITY ts_clk_polarity )
-{  
+static DMD_ERROR_t DMD_set_ts_output(struct neumo_dvb_frontend* fe, DMD_PARAMETER_t* param,
+																		 DMD_TSCLK_POLARITY ts_clk_polarity )
+{
 	switch(param->ts_out)
 	{
 		case DMD_E_TSOUT_PARALLEL_BRTG_MODE:
-			//TS parallel	
+			//TS parallel
 			DMD_I2C_Write(fe, DMD_BANK_MAIN(param->devid) , DMD_MAIN_CPOSET2 , 0xc1 );
 			DMD_I2C_Write(fe, DMD_BANK_MAIN(param->devid) , DMD_MAIN_GPSET1 , 0xff );//troy.wang, 121010, for parallel data setting
 			DMD_I2C_Write(fe, DMD_BANK_MAIN(param->devid) , DMD_MAIN_CPOSET1 , 0x01 );
 
 			break;
-		
+
 		case DMD_E_TSOUT_PARALLEL_SMOOTH_MODE:
-			//TS parallel conventional mode : smooth 
+			//TS parallel conventional mode : smooth
 			DMD_I2C_Write(fe,DMD_BANK_MAIN(param->devid) , DMD_MAIN_CPOSET2 , 0x01 );
 			DMD_I2C_Write(fe, DMD_BANK_MAIN(param->devid) , DMD_MAIN_GPSET1 , 0xff );//troy.wang, 121010, for parallel data setting
 			DMD_I2C_Write(fe, DMD_BANK_MAIN(param->devid) , DMD_MAIN_CPOSET1 , 0x00 ); //address : 0x01
 			break;
-			
+
 		case DMD_E_TSOUT_PARALLEL_BURST_GATED_MODE:
 			//TS parallel conventional mode : burst(gated mode)
 			DMD_I2C_Write(fe, DMD_BANK_MAIN(param->devid) , DMD_MAIN_CPOSET2 , 0x01 );
 			DMD_I2C_Write(fe, DMD_BANK_MAIN(param->devid) , DMD_MAIN_GPSET1 , 0xff );//troy.wang, 121010, for parallel data setting
-			DMD_I2C_Write(fe, DMD_BANK_MAIN(param->devid) , DMD_MAIN_CPOSET1 , 0x02 ); 
+			DMD_I2C_Write(fe, DMD_BANK_MAIN(param->devid) , DMD_MAIN_CPOSET1 , 0x02 );
 			break;
-		
+
 		case DMD_E_TSOUT_PARALLEL_BURST_CONTINUOUS_MODE:
 			//TS parallel conventional mode : burst(continous mode)
 			DMD_I2C_Write(fe, DMD_BANK_MAIN(param->devid) , DMD_MAIN_CPOSET2 , 0x01 );
 			DMD_I2C_Write(fe, DMD_BANK_MAIN(param->devid) , DMD_MAIN_GPSET1 , 0xff );//troy.wang, 121010, for parallel data setting
-			DMD_I2C_Write(fe, DMD_BANK_MAIN(param->devid) , DMD_MAIN_CPOSET1 , 0x0a ); 
+			DMD_I2C_Write(fe, DMD_BANK_MAIN(param->devid) , DMD_MAIN_CPOSET1 , 0x0a );
 			break;
-		
-		case DMD_E_TSOUT_SERIAL_BRTG_MODE:					
-			//TS serial BRTG mode 
+
+		case DMD_E_TSOUT_SERIAL_BRTG_MODE:
+			//TS serial BRTG mode
 			DMD_I2C_Write(fe, DMD_BANK_MAIN(param->devid) , DMD_MAIN_CPOSET2 , 0xc0 );
 			DMD_I2C_Write(fe, DMD_BANK_MAIN(param->devid) , DMD_MAIN_GPSET1 , 0xC0 ); //set error output
 			break;
-		
+
 		case DMD_E_TSOUT_SERIAL_SMOOTH_MODE:
-			//TS serial conventional mode : smooth 
+			//TS serial conventional mode : smooth
 			DMD_I2C_Write(fe, DMD_BANK_MAIN(param->devid) , DMD_MAIN_CPOSET2 , 0x00 );
 			DMD_I2C_Write(fe, DMD_BANK_MAIN(param->devid) , DMD_MAIN_GPSET1 , 0xC0 ); //set error output
 			DMD_I2C_Write(fe, DMD_BANK_MAIN(param->devid) , DMD_MAIN_CPOSET1 , 0x00 ); //address : 0x01
 			break;
-		
+
 		case DMD_E_TSOUT_SERIAL_BURST_GATED_MODE:
 			//TS serial conventional mode : burst(gated mode)
 			DMD_I2C_Write(fe, DMD_BANK_MAIN(param->devid) , DMD_MAIN_CPOSET2 , 0x00 );
 			DMD_I2C_Write(fe, DMD_BANK_MAIN(param->devid) , DMD_MAIN_GPSET1 , 0xC0 ); //set error output
-			DMD_I2C_Write(fe, DMD_BANK_MAIN(param->devid) , DMD_MAIN_CPOSET1 , 0x02 ); 
+			DMD_I2C_Write(fe, DMD_BANK_MAIN(param->devid) , DMD_MAIN_CPOSET1 , 0x02 );
 			break;
-		
+
 		case DMD_E_TSOUT_SERIAL_BURST_CONTINUOUS_MODE:
 			//TS serial conventional mode : burst(continous mode)
 			DMD_I2C_Write(fe, DMD_BANK_MAIN(param->devid) , DMD_MAIN_CPOSET2 , 0x00 );
 			DMD_I2C_Write(fe, DMD_BANK_MAIN(param->devid) , DMD_MAIN_GPSET1 , 0xC0 ); //set error output
-			DMD_I2C_Write(fe, DMD_BANK_MAIN(param->devid) , DMD_MAIN_CPOSET1 , 0x0a ); 
+			DMD_I2C_Write(fe, DMD_BANK_MAIN(param->devid) , DMD_MAIN_CPOSET1 , 0x0a );
 			break;
-			
+
 		default:
 			return DMD_E_ERROR;
 
 	}
 		if (ts_clk_polarity == DMD_E_TSCLK_POLARITY_INVERSE)
-		{		
+		{
 			if (param->ts_out & 0x10) //serial clk
 			{
 				DMD_I2C_Write(fe, DMD_BANK_MAIN(param->devid) , DMD_MAIN_INVSET, 0x01 );
@@ -2724,7 +2724,7 @@ DMD_ERROR_t DMD_set_ts_output(struct dvb_frontend* fe, DMD_PARAMETER_t* param,  
 /* **************************************************** */
 /*! Soft Reset */
 /* **************************************************** */
-DMD_ERROR_t DMD_device_reset(struct dvb_frontend* fe, DMD_PARAMETER_t* param )
+static DMD_ERROR_t DMD_device_reset(struct neumo_dvb_frontend* fe, DMD_PARAMETER_t* param )
 {
 	DMD_ERROR_t	ret;
 	switch( param->system ){
@@ -2742,13 +2742,14 @@ DMD_ERROR_t DMD_device_reset(struct dvb_frontend* fe, DMD_PARAMETER_t* param )
 	return ret;
 }
 
-DMD_ERROR_t DMD_device_post_tune(struct dvb_frontend* fe, DMD_PARAMETER_t* param )
+static DMD_ERROR_t DMD_device_post_tune(struct neumo_dvb_frontend* fe, DMD_PARAMETER_t* param )
 {
 	DMD_device_reset(fe,param);
 	return DMD_E_OK;
 }
 
-DMD_ERROR_t DMD_lock(struct dvb_frontend* fe, DMD_PARAMETER_t* param )
+#if 0 //unused
+static DMD_ERROR_t DMD_lock(struct neumo_dvb_frontend* fe, DMD_PARAMETER_t* param )
 {
 	DMD_ERROR_t	ret = DMD_E_OK;
 	DMD_u8_t	rd = 0;
@@ -2771,22 +2772,21 @@ DMD_ERROR_t DMD_lock(struct dvb_frontend* fe, DMD_PARAMETER_t* param )
 	if( lockstatus )
 	{
 		param->info[DMD_E_INFO_LOCK] = DMD_E_LOCKED;
-	} 
+	}
 	else if( param->info[DMD_E_INFO_LOCK] == DMD_E_LOCKED )
 	{
 		param->info[DMD_E_INFO_LOCK] = DMD_E_LOCK_ERROR;
 	}
 	return ret;
 }
+#endif
 
-DMD_ERROR_t DMD_scan_vq(struct dvb_frontend* fe, DMD_PARAMETER_t *param )
+static DMD_ERROR_t DMD_scan_vq(struct neumo_dvb_frontend* fe, DMD_PARAMETER_t *param )
 {
-	DMD_u32_t	st;
-	DMD_u32_t	now;
 	DMD_u32_t	timeout = 1500 ;
 	DMD_u8_t	rd;
 	DMD_ERROR_t	ret = DMD_E_ERROR;
-	param->info[DMD_E_INFO_LOCK] = DMD_E_LOCK_ERROR;	
+	param->info[DMD_E_INFO_LOCK] = DMD_E_LOCK_ERROR;
 	int i=0;
 	//timeout setting & etc.
 	switch( param->system )
@@ -2798,26 +2798,26 @@ DMD_ERROR_t DMD_scan_vq(struct dvb_frontend* fe, DMD_PARAMETER_t *param )
 		timeout = 2000;
 		break;
 	}
-	
+
 	for(i=0;i<230;i++)
 	{
 		DMD_I2C_Read(fe, DMD_BANK_MAIN(param->devid)  ,DMD_MAIN_STSMON1	 , &rd );
 		//VQ LOCK
 		if( rd & 0x1 )
 		{
-			param->info[DMD_E_INFO_LOCK] = DMD_E_LOCKED;	
+			param->info[DMD_E_INFO_LOCK] = DMD_E_LOCKED;
 			ret = DMD_E_OK;
 			//printk("Singal LOCK.");
 			break;
 		}
 		msleep(2);			//wait 1ms
-		
+
 	}
 
 	return ret;
 }
 
-DMD_ERROR_t DMD_device_scan(struct dvb_frontend* fe, DMD_PARAMETER_t* param )
+static DMD_ERROR_t DMD_device_scan(struct neumo_dvb_frontend* fe, DMD_PARAMETER_t* param )
 {
 	DMD_ERROR_t	ret = DMD_E_ERROR;
 	switch( param->system )
@@ -2832,7 +2832,8 @@ DMD_ERROR_t DMD_device_scan(struct dvb_frontend* fe, DMD_PARAMETER_t* param )
 	}
 	return ret;
 }
-DMD_ERROR_t	DMD_device_set_system(struct dvb_frontend* fe, DMD_PARAMETER_t* param){
+
+static DMD_ERROR_t	DMD_device_set_system(struct neumo_dvb_frontend* fe, DMD_PARAMETER_t* param){
 	DMD_ERROR_t	ret;
 	ret = DMD_E_OK;
 
@@ -2840,7 +2841,7 @@ DMD_ERROR_t	DMD_device_set_system(struct dvb_frontend* fe, DMD_PARAMETER_t* para
 	switch( param->system ){
 		case DMD_E_ATSC:
 			DMD_send_registers(fe, DMD_I2C_SLAVE[param->devid] , DMD_REG_ATSC );
-			//DMD_device_load_pseq( param ); //troy.wangyx masked, 20120801, only need do once, in initialization. 
+			//DMD_device_load_pseq( param ); //troy.wangyx masked, 20120801, only need do once, in initialization.
 			break;
 		case DMD_E_QAMB_64QAM:
 			DMD_send_registers(fe, DMD_I2C_SLAVE[param->devid] , DMD_REG_QAM_B_64QAM );
@@ -2859,12 +2860,13 @@ DMD_ERROR_t	DMD_device_set_system(struct dvb_frontend* fe, DMD_PARAMETER_t* para
 	return ret;
 
 }
-DMD_ERROR_t DMD_device_set_echo_enhance(struct dvb_frontend* fe,DMD_PARAMETER_t* param, DMD_ECHO_PERFORMANCE_SET echo_out )
-{    
+
+static DMD_ERROR_t DMD_device_set_echo_enhance(struct neumo_dvb_frontend* fe,DMD_PARAMETER_t* param, DMD_ECHO_PERFORMANCE_SET echo_out )
+{
 	switch(echo_out)
        {
 	       case DMD_E_ENHANCE_MINUS_ECHO_DELAY_DEFAULT:
-			// DMD_MAIN_VEQSET2	0x80   |  field test passed result	
+			// DMD_MAIN_VEQSET2	0x80   |  field test passed result
 			DMD_I2C_Write( fe,DMD_BANK_MAIN(param->devid) , DMD_MAIN_VEQSET2 , 0x80 );
 			break;
 		case DMD_E_ENHANCE_MINUS_ECHO_DELAY_NO_SIDEEFFECT:
@@ -2880,7 +2882,8 @@ DMD_ERROR_t DMD_device_set_echo_enhance(struct dvb_frontend* fe,DMD_PARAMETER_t*
 	}
 	return DMD_E_OK;
 }
-DMD_ERROR_t DMD_set_system( struct dvb_frontend* fe,DMD_PARAMETER_t* param )
+
+static DMD_ERROR_t DMD_set_system( struct neumo_dvb_frontend* fe, DMD_PARAMETER_t* param )
 {
 
 		if( DMD_device_set_system(fe, param ) == DMD_E_ERROR )
@@ -2888,24 +2891,25 @@ DMD_ERROR_t DMD_set_system( struct dvb_frontend* fe,DMD_PARAMETER_t* param )
 			printk("ERROR:device set system");
 			return DMD_E_ERROR;
 		}
-		
+
 		/* '11/08/29 : OKAMOTO	Select TS output. */
-		if( DMD_set_ts_output(fe,param, param->ts_out ) == DMD_E_ERROR ){
+		if( DMD_set_ts_output(fe,param, (DMD_TSCLK_POLARITY) param->ts_out ) == DMD_E_ERROR ){
 			printk("ERROR:set ts output");
 			return DMD_E_ERROR;
 		}
-		
+
 		/* 20120801, troy, set echo performance */
 		if (DMD_device_set_echo_enhance(fe, param, param->echo_set) == DMD_E_ERROR )
 		{
 			printk("===== ERROR: DMD set echo performace =====\r\n");
 			return DMD_E_ERROR;
 		}
-		
+
 
 	return DMD_E_OK;
 }
-DMD_ERROR_t DMD_init( struct dvb_frontend* fe, DMD_PARAMETER_t* param )
+
+static DMD_ERROR_t DMD_init( struct neumo_dvb_frontend* fe, DMD_PARAMETER_t* param )
 {
 	/*IF use DMD to repeat I2C cmd, firstly initializing DMD is better. Troy.wangyx, 120801*/
 	/* Demodulator LSI Initialize */
@@ -2933,10 +2937,9 @@ DMD_ERROR_t DMD_init( struct dvb_frontend* fe, DMD_PARAMETER_t* param )
 }
 
 
-static int MNDMD_init(struct dvb_frontend* fe)
-{	
-	struct mndmd_state *state = fe->demodulator_priv;
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+static int MNDMD_init(struct neumo_dvb_frontend* fe)
+{
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 
 	DMD_open(&param);
 	DMD_init( fe,&param);
@@ -2953,11 +2956,9 @@ static int MNDMD_init(struct dvb_frontend* fe)
 	return 0;
 }
 
-static int DMD_set_parameters(struct dvb_frontend* fe)
+static int DMD_set_parameters(struct neumo_dvb_frontend* fe)
 {
-	int ret;
-	struct mndmd_state* state = fe->demodulator_priv;
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 
 	switch (c->modulation) {
 	case VSB_8:
@@ -2984,18 +2985,15 @@ static int DMD_set_parameters(struct dvb_frontend* fe)
 	return 0;
 }
 
-static int DMD_get_parameters(struct dvb_frontend* fe,
-				 struct dtv_frontend_properties *c)
+static int DMD_get_parameters(struct neumo_dvb_frontend* fe,
+				 struct neumo_driver_dtv_frontend_properties *c)
 {
-	struct mndmd_state* state = fe->demodulator_priv;
-
 	return 0;
 }
 
-static int DMD_read_status(struct dvb_frontend *fe, enum fe_status *status)
+static int DMD_read_status(struct neumo_dvb_frontend *fe, enum fe_status *status)
 {
-	struct mndmd_state* state = fe->demodulator_priv;
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	DMD_u32_t	lockstatus = 0;
 	DMD_u8_t	rd = 0;
 	DMD_u32_t  x,y,val;
@@ -3012,7 +3010,7 @@ static int DMD_read_status(struct dvb_frontend *fe, enum fe_status *status)
 
 
 	MxLWare603_API_ReqTunerRxPower(fe,&rfpower);
-	
+
 	msleep(2);
 	c->strength.len = 2;
 	c->strength.stat[0].scale = FE_SCALE_DECIBEL;
@@ -3021,7 +3019,7 @@ static int DMD_read_status(struct dvb_frontend *fe, enum fe_status *status)
 	c->strength.stat[1].scale = FE_SCALE_RELATIVE;
 	c->strength.stat[1].uvalue = min(max(2*(rfpower/100+69),0),100);
 
-	if(*status&FE_HAS_VITERBI){
+	if(*status& FE_HAS_VITERBI){
 	DMD_I2C_Read(fe, DMD_BANK_USR(0) , DMD_USR_CNMON1 , &rd );
 	x = 0x100 * rd;
 	DMD_I2C_Read(fe, DMD_BANK_USR(0) , DMD_USR_CNMON2 , &rd );
@@ -3034,7 +3032,7 @@ static int DMD_read_status(struct dvb_frontend *fe, enum fe_status *status)
 	{
 		//after EQ
 		val = 4634 - log10_easy( y );
-		
+
 	}
 	else
 	{
@@ -3053,7 +3051,7 @@ static int DMD_read_status(struct dvb_frontend *fe, enum fe_status *status)
 	c->cnr.stat[1].uvalue =min(max((val*10)/1000*24/10,0),100);
 	}
 
-	if(*status &FE_HAS_LOCK){
+	if(*status & FE_HAS_LOCK){
 	DMD_u32_t	berr = 0 ,bit = 1;
 	DMD_u8_t	rd;
 
@@ -3079,25 +3077,24 @@ static int DMD_read_status(struct dvb_frontend *fe, enum fe_status *status)
 	c->post_bit_error.stat[0].uvalue = berr;
 	c->post_bit_count.len = 1;
 	c->post_bit_count.stat[0].scale = FE_SCALE_COUNTER;
-	c->post_bit_count.stat[0].uvalue = berr;	
+	c->post_bit_count.stat[0].uvalue = berr;
 	}
 	return 0;
 }
 
-static int DMD_tune(struct dvb_frontend *fe, bool re_tune,
+static int DMD_tune(struct neumo_dvb_frontend *fe, bool re_tune,
 	unsigned int mode_flags, unsigned int *delay, enum fe_status *status)
 {
-	struct mndmd_state* state = fe->demodulator_priv;
 	*delay = HZ/5;
 	if(re_tune){
        		int ret=DMD_set_parameters(fe);
 		if (ret)
 			return ret;
 		}
-	 
+
 	return DMD_read_status(fe,status);
 }
-static int DMD_get_tune_settings(struct dvb_frontend* fe, struct dvb_frontend_tune_settings* fe_tune_settings)
+static int DMD_get_tune_settings(struct neumo_dvb_frontend* fe, struct neumo_dvb_frontend_tune_settings* fe_tune_settings)
 {
 	fe_tune_settings->min_delay_ms = 500;
 	fe_tune_settings->step_size = 0;
@@ -3106,21 +3103,21 @@ static int DMD_get_tune_settings(struct dvb_frontend* fe, struct dvb_frontend_tu
 	return 0;
 }
 
-static void DMD_release(struct dvb_frontend* fe)
+static void DMD_release(struct neumo_dvb_frontend* fe)
 {
 	struct mndmd_state* state = fe->demodulator_priv;
-	
+
 	kfree(state);
-	
+
 }
 
-static int DMD_read_signal_strength(struct dvb_frontend* fe, u16* strength)
+static int DMD_read_signal_strength(struct neumo_dvb_frontend* fe, u16* strength)
 {
 	/* Calculate Strength from SNR up to 35dB */
 	/* Even though the SNR can go higher than 35dB, there is some comfort */
 	/* factor in having a range of strong signals that can show at 100%   */
 
-	struct dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int i=0;
 	*strength = 0;
 	for (i=0; i < p->strength.len; i++)
@@ -3133,9 +3130,9 @@ static int DMD_read_signal_strength(struct dvb_frontend* fe, u16* strength)
 
 }
 
-static int DMD_read_snr(struct dvb_frontend* fe, u16* snr)
+static int DMD_read_snr(struct neumo_dvb_frontend* fe, u16* snr)
 {
-	struct dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int i;
 
 	*snr = 0;
@@ -3147,9 +3144,9 @@ static int DMD_read_snr(struct dvb_frontend* fe, u16* snr)
 	return 0;
 }
 
-static int DMD_read_ber(struct dvb_frontend* fe, u32* ber)
+static int DMD_read_ber(struct neumo_dvb_frontend* fe, u32* ber)
 {
-	struct dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
 
 	if ( p->post_bit_error.stat[0].scale == FE_SCALE_COUNTER &&
 		p->post_bit_count.stat[0].scale == FE_SCALE_COUNTER )
@@ -3159,18 +3156,18 @@ static int DMD_read_ber(struct dvb_frontend* fe, u32* ber)
 	return 0;
 }
 
-static int DMD_read_ucblocks(struct dvb_frontend* fe, u32* ucblocks)
+static int DMD_read_ucblocks(struct neumo_dvb_frontend* fe, u32* ucblocks)
 {
 	*ucblocks = 0;
 	return 0;
 }
 
-static int DMD_sleep(struct dvb_frontend* fe)
+static int DMD_sleep(struct neumo_dvb_frontend* fe)
 {
 	return 0;
 }
 
-static struct dvb_frontend_ops mndmd_ops = {
+static struct neumo_dvb_frontend_ops mndmd_ops = {
 	.delsys = { SYS_ATSC, SYS_DVBC_ANNEX_B },
 	.info = {
 		.name			= "Panasonic MN88436 8VSB/QAM Frontend",
@@ -3198,7 +3195,7 @@ static struct dvb_frontend_ops mndmd_ops = {
 };
 
 
-struct dvb_frontend* mndmd_attach(struct mndmd_config* config,
+struct neumo_dvb_frontend* mndmd_attach(struct mndmd_config* config,
 				    struct i2c_adapter* i2c)
 {
 	struct mndmd_state* state = NULL;
@@ -3214,7 +3211,7 @@ struct dvb_frontend* mndmd_attach(struct mndmd_config* config,
 
 
 	/* Create dvb_frontend */
-	memcpy(&state->frontend.ops, &mndmd_ops, sizeof(struct dvb_frontend_ops));
+	memcpy(&state->frontend.ops, &mndmd_ops, sizeof(struct neumo_dvb_frontend_ops));
 	state->frontend.demodulator_priv = state;
 	return &state->frontend;
 }
@@ -3224,4 +3221,5 @@ MODULE_DESCRIPTION("mn88436 qamb atsc demodulator driver");
 MODULE_AUTHOR("Georg Acher, Bob Liu, Igor liplianin");
 MODULE_LICENSE("GPL");
 
-
+//check for incorrect include files
+#include "linux/media/neumo-check.h"

@@ -10,8 +10,8 @@
 #ifndef __STB_6100_REG_H
 #define __STB_6100_REG_H
 
-#include <linux/dvb/frontend.h>
-#include <media/dvb_frontend.h>
+#include <dvb/neumo-frontend.h>
+#include <media/neumo-dvb-frontend.h>
 
 #define STB6100_LD			0x00
 #define STB6100_LD_LOCK			(1 << 0)
@@ -72,8 +72,8 @@ struct stb6100_state {
 	struct i2c_adapter *i2c;
 
 	const struct stb6100_config	*config;
-	struct dvb_tuner_ops		ops;
-	struct dvb_frontend		*frontend;
+	struct neumo_dvb_tuner_ops		ops;
+	struct neumo_dvb_frontend		*frontend;
 
 	u32 frequency;
 	u32 srate;
@@ -82,8 +82,7 @@ struct stb6100_state {
 };
 
 
-
-extern struct dvb_frontend *stb6100_attach(struct dvb_frontend *fe,
+extern struct neumo_dvb_frontend *stb6100_attach(struct neumo_dvb_frontend *fe,
 					   const struct stb6100_config *config,
 					   struct i2c_adapter *i2c);
 

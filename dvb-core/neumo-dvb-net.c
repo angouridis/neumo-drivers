@@ -45,24 +45,17 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/netdevice.h>
+#include <linux/nospec.h>
 #include <linux/etherdevice.h>
 #include <linux/dvb/net.h>
 #include <linux/uio.h>
-#include <linux/version.h>
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0))
-#include <asm/uaccess.h>
-#else
 #include <linux/uaccess.h>
-#endif
 #include <linux/crc32.h>
 #include <linux/mutex.h>
 #include <linux/sched.h>
 
-#include <media/dvb_demux.h>
-#include <media/dvb_net.h>
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 18))
-#include <linux/nospec.h>
-#endif
+#include <media/neumo-dvb-demux.h>
+#include <media/neumo-dvb-net.h>
 
 static inline __u32 iov_crc32( __u32 c, struct kvec *iov, unsigned int cnt )
 {
@@ -94,12 +87,12 @@ struct dvb_net_priv {
 	u16 pid;
 	struct net_device *net;
 	struct dvb_net *host;
-	struct dmx_demux *demux;
-	struct dmx_section_feed *secfeed;
-	struct dmx_section_filter *secfilter;
-	struct dmx_ts_feed *tsfeed;
+	struct neumo_dmx_demux *demux;
+	struct neumo_dmx_section_feed *secfeed;
+	struct neumo_dmx_section_filter *secfilter;
+	struct neumo_pid_stream* neumo_pid_stream;
 	int multi_num;
-	struct dmx_section_filter *multi_secfilter[DVB_NET_MULTICAST_MAX];
+	struct neumo_dmx_section_filter *multi_secfilter[DVB_NET_MULTICAST_MAX];
 	unsigned char multi_macs[DVB_NET_MULTICAST_MAX][6];
 	int rx_mode;
 #define RX_MODE_UNI 0
@@ -816,11 +809,7 @@ static void dvb_net_ule(struct net_device *dev, const u8 *buf, size_t buf_len)
 
 		/* Copy data into our current skb. */
 		h.how_much = min(h.priv->ule_sndu_remain, (int)h.ts_remain);
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0))
-		memcpy(skb_put(h.priv->ule_skb, h.how_much), h.from_where, h.how_much);
-#else
 		skb_put_data(h.priv->ule_skb, h.from_where, h.how_much);
-#endif
 		h.priv->ule_sndu_remain -= h.how_much;
 		h.ts_remain -= h.how_much;
 		h.from_where += h.how_much;
@@ -882,12 +871,12 @@ static void dvb_net_ule(struct net_device *dev, const u8 *buf, size_t buf_len)
 	}	/* for all available TS cells */
 }
 
-static int dvb_net_ts_callback(const u8 *buffer1, size_t buffer1_len,
+static int dvb_net_pid_callback(const u8 *buffer1, size_t buffer1_len,
 			       const u8 *buffer2, size_t buffer2_len,
-			       struct dmx_ts_feed *feed,
+			       struct neumo_pid_stream* neumo_pid_stream,
 			       u32 *buffer_flags)
 {
-	struct net_device *dev = feed->priv;
+	struct net_device *dev = neumo_pid_stream->priv;
 
 	if (buffer2)
 		pr_warn("buffer2 not NULL: %p.\n", buffer2);
@@ -994,7 +983,7 @@ static void dvb_net_sec(struct net_device *dev,
 
 static int dvb_net_sec_callback(const u8 *buffer1, size_t buffer1_len,
 		 const u8 *buffer2, size_t buffer2_len,
-		 struct dmx_section_filter *filter, u32 *buffer_flags)
+		 struct neumo_dmx_section_filter *filter, u32 *buffer_flags)
 {
 	struct net_device *dev = filter->priv;
 
@@ -1018,14 +1007,14 @@ static u8 mac_allmulti[6]={0x01, 0x00, 0x5e, 0x00, 0x00, 0x00};
 static u8 mask_promisc[6]={0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 static int dvb_net_filter_sec_set(struct net_device *dev,
-		   struct dmx_section_filter **secfilter,
+		   struct neumo_dmx_section_filter **secfilter,
 		   const u8 *mac, u8 *mac_mask)
 {
 	struct dvb_net_priv *priv = netdev_priv(dev);
 	int ret;
 
 	*secfilter=NULL;
-	ret = priv->secfeed->allocate_filter(priv->secfeed, secfilter);
+	ret = priv->secfeed->allocate_section_filter(priv->secfeed, secfilter);
 	if (ret<0) {
 		pr_err("%s: could not get filter\n", dev->name);
 		return ret;
@@ -1062,34 +1051,28 @@ static int dvb_net_feed_start(struct net_device *dev)
 {
 	int ret = 0, i;
 	struct dvb_net_priv *priv = netdev_priv(dev);
-	struct dmx_demux *demux = priv->demux;
+	struct neumo_dmx_demux *demux = priv->demux;
 	const unsigned char *mac = (const unsigned char *) dev->dev_addr;
-
+	struct neumo_dvb_demux* dvb_demux =  container_of(demux, struct neumo_dvb_demux, dmx);
 	netdev_dbg(dev, "rx_mode %i\n", priv->rx_mode);
 	mutex_lock(&priv->mutex);
-	if (priv->tsfeed || priv->secfeed || priv->secfilter || priv->multi_secfilter[0])
+	if (priv->neumo_pid_stream || priv->secfeed || priv->secfilter || priv->multi_secfilter[0])
 		pr_err("%s: BUG %d\n", __func__, __LINE__);
 
 	priv->secfeed=NULL;
 	priv->secfilter=NULL;
-	priv->tsfeed = NULL;
+	priv->neumo_pid_stream = NULL;
 
 	if (priv->feedtype == DVB_NET_FEEDTYPE_MPE) {
 		netdev_dbg(dev, "alloc secfeed\n");
 		ret=demux->allocate_section_feed(demux, &priv->secfeed,
-					 dvb_net_sec_callback);
+																		 dvb_net_sec_callback,
+																		 priv->pid, 1 /*check_crc*/,
+																		 dvb_demux->default_feeds //TODO: allow this to be part of bbframes feed
+																		 );
 		if (ret<0) {
 			pr_err("%s: could not allocate section feed\n",
 			       dev->name);
-			goto error;
-		}
-
-		ret = priv->secfeed->set(priv->secfeed, priv->pid, 1);
-
-		if (ret<0) {
-			pr_err("%s: could not set section feed\n", dev->name);
-			priv->demux->release_section_feed(priv->demux, priv->secfeed);
-			priv->secfeed=NULL;
 			goto error;
 		}
 
@@ -1120,36 +1103,24 @@ static int dvb_net_feed_start(struct net_device *dev)
 		}
 
 		netdev_dbg(dev, "start filtering\n");
-		priv->secfeed->start_filtering(priv->secfeed);
+		priv->secfeed->start_section_filtering(priv->secfeed);
 	} else if (priv->feedtype == DVB_NET_FEEDTYPE_ULE) {
 		ktime_t timeout = ns_to_ktime(10 * NSEC_PER_MSEC);
-
 		/* we have payloads encapsulated in TS */
-		netdev_dbg(dev, "alloc tsfeed\n");
-		ret = demux->allocate_ts_feed(demux, &priv->tsfeed, dvb_net_ts_callback);
+		netdev_dbg(dev, "alloc neumo_pid_stream\n");
+		ret = demux->allocate_neumo_pid_stream(demux, &priv->neumo_pid_stream, dvb_net_pid_callback,
+																		 priv->pid, /* pid */
+																		 TS_PACKET, /* type */
+																		 DMX_PES_OTHER, /* pes type */
+																		 timeout,    /* timeout */
+																		 dvb_demux->default_feeds);
 		if (ret < 0) {
 			pr_err("%s: could not allocate ts feed\n", dev->name);
+			priv->neumo_pid_stream = NULL;
 			goto error;
 		}
-
-		/* Set netdevice pointer for ts decaps callback. */
-		priv->tsfeed->priv = (void *)dev;
-		ret = priv->tsfeed->set(priv->tsfeed,
-					priv->pid, /* pid */
-					TS_PACKET, /* type */
-					DMX_PES_OTHER, /* pes type */
-					timeout    /* timeout */
-					);
-
-		if (ret < 0) {
-			pr_err("%s: could not set ts feed\n", dev->name);
-			priv->demux->release_ts_feed(priv->demux, priv->tsfeed);
-			priv->tsfeed = NULL;
-			goto error;
-		}
-
 		netdev_dbg(dev, "start filtering\n");
-		priv->tsfeed->start_filtering(priv->tsfeed);
+		priv->neumo_pid_stream->start_filtering(priv->neumo_pid_stream);
 	} else
 		ret = -EINVAL;
 
@@ -1168,12 +1139,12 @@ static int dvb_net_feed_stop(struct net_device *dev)
 		if (priv->secfeed) {
 			if (priv->secfeed->is_filtering) {
 				netdev_dbg(dev, "stop secfeed\n");
-				priv->secfeed->stop_filtering(priv->secfeed);
+				priv->secfeed->stop_section_filtering(priv->secfeed);
 			}
 
 			if (priv->secfilter) {
 				netdev_dbg(dev, "release secfilter\n");
-				priv->secfeed->release_filter(priv->secfeed,
+				priv->secfeed->release_section_filter(priv->secfeed,
 							      priv->secfilter);
 				priv->secfilter=NULL;
 			}
@@ -1182,7 +1153,7 @@ static int dvb_net_feed_stop(struct net_device *dev)
 				if (priv->multi_secfilter[i]) {
 					netdev_dbg(dev, "release multi_filter[%d]\n",
 						   i);
-					priv->secfeed->release_filter(priv->secfeed,
+					priv->secfeed->release_section_filter(priv->secfeed,
 								      priv->multi_secfilter[i]);
 					priv->multi_secfilter[i] = NULL;
 				}
@@ -1193,13 +1164,13 @@ static int dvb_net_feed_stop(struct net_device *dev)
 		} else
 			pr_err("%s: no feed to stop\n", dev->name);
 	} else if (priv->feedtype == DVB_NET_FEEDTYPE_ULE) {
-		if (priv->tsfeed) {
-			if (priv->tsfeed->is_filtering) {
-				netdev_dbg(dev, "stop tsfeed\n");
-				priv->tsfeed->stop_filtering(priv->tsfeed);
+		if (priv->neumo_pid_stream) {
+			if (priv->neumo_pid_stream->is_filtering) {
+				netdev_dbg(dev, "stop neumo_pid_stream\n");
+				priv->neumo_pid_stream->stop_filtering(priv->neumo_pid_stream);
 			}
-			priv->demux->release_ts_feed(priv->demux, priv->tsfeed);
-			priv->tsfeed = NULL;
+			priv->demux->release_neumo_pid_stream(priv->demux, priv->neumo_pid_stream);
+			priv->neumo_pid_stream = NULL;
 		}
 		else
 			pr_err("%s: no ts feed to stop\n", dev->name);
@@ -1283,11 +1254,7 @@ static int dvb_net_set_mac (struct net_device *dev, void *p)
 	struct dvb_net_priv *priv = netdev_priv(dev);
 	struct sockaddr *addr=p;
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 17, 0))
-	memcpy(dev->dev_addr, addr->sa_data, dev->addr_len);
-#else
 	eth_hw_addr_set(dev, addr->sa_data);
-#endif
 
 	if (netif_running(dev))
 		schedule_work(&priv->restart_net_feed_wq);
@@ -1336,9 +1303,8 @@ static void dvb_net_setup(struct net_device *dev)
 	dev->header_ops		= &dvb_header_ops;
 	dev->netdev_ops		= &dvb_netdev_ops;
 	dev->mtu		= 4096;
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0))
 	dev->max_mtu		= 4096;
-#endif
+
 	dev->flags |= IFF_NOARP;
 }
 
@@ -1370,10 +1336,7 @@ static int dvb_net_add_if(struct dvb_net *dvbnet, u16 pid, u8 feedtype)
 		return -EINVAL;
 
 	net = alloc_netdev(sizeof(struct dvb_net_priv), "dvb",
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 17, 0))
-			   NET_NAME_UNKNOWN,
-#endif
-			   dvb_net_setup);
+			   NET_NAME_UNKNOWN, dvb_net_setup);
 	if (!net)
 		return -ENOMEM;
 
@@ -1386,11 +1349,8 @@ static int dvb_net_add_if(struct dvb_net *dvbnet, u16 pid, u8 feedtype)
 			 dvbnet->dvbdev->adapter->num, if_num);
 
 	net->addr_len = 6;
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 17, 0))
-	memcpy(net->dev_addr, dvbnet->dvbdev->adapter->proposed_mac, 6);
-#else
 	eth_hw_addr_set(net, dvbnet->dvbdev->adapter->proposed_mac);
-#endif
+
 	dvbnet->device[if_num] = net;
 
 	priv = netdev_priv(net);
@@ -1491,9 +1451,8 @@ static int dvb_net_do_ioctl(struct file *file,
 			ret = -EINVAL;
 			goto ioctl_error;
 		}
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 18))
 		if_num = array_index_nospec(if_num, DVB_NET_DEVICES_MAX);
-#endif
+
 		if (!dvbnet->state[if_num]) {
 			ret = -EINVAL;
 			goto ioctl_error;
@@ -1558,9 +1517,8 @@ static int dvb_net_do_ioctl(struct file *file,
 			ret = -EINVAL;
 			goto ioctl_error;
 		}
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 18))
 		if_num = array_index_nospec(if_num, DVB_NET_DEVICES_MAX);
-#endif
+
 		if (!dvbnet->state[if_num]) {
 			ret = -EINVAL;
 			goto ioctl_error;
@@ -1671,7 +1629,7 @@ EXPORT_SYMBOL(dvb_net_release);
 
 
 int dvb_net_init (struct dvb_adapter *adap, struct dvb_net *dvbnet,
-		  struct dmx_demux *dmx)
+		  struct neumo_dmx_demux *dmx)
 {
 	int i;
 
@@ -1686,3 +1644,7 @@ int dvb_net_init (struct dvb_adapter *adap, struct dvb_net *dvbnet,
 			     dvbnet, DVB_DEVICE_NET, 0);
 }
 EXPORT_SYMBOL(dvb_net_init);
+
+
+//check for incorrect include files
+#include "linux/media/neumo-check.h"

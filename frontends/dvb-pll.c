@@ -11,7 +11,7 @@
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/idr.h>
-#include <linux/dvb/frontend.h>
+#include <linux/dvb/neumo-frontend.h>
 #include <asm/types.h>
 
 #include "dvb-pll.h"
@@ -54,7 +54,7 @@ struct dvb_pll_desc {
 	u32  min;
 	u32  max;
 	u32  iffreq;
-	void (*set)(struct dvb_frontend *fe, u8 *buf);
+	void (*set)(struct neumo_dvb_frontend *fe, u8 *buf);
 	u8   *initdata;
 	u8   *initdata2;
 	u8   *sleepdata;
@@ -85,7 +85,7 @@ static const struct dvb_pll_desc dvb_pll_thomson_dtt7579 = {
 	},
 };
 
-static void thomson_dtt759x_bw(struct dvb_frontend *fe, u8 *buf)
+static void thomson_dtt759x_bw(struct neumo_dvb_frontend *fe, u8 *buf)
 {
 	u32 bw = fe->dtv_property_cache.bandwidth_hz;
 	if (bw == 7000000)
@@ -109,7 +109,7 @@ static const struct dvb_pll_desc dvb_pll_thomson_dtt759x = {
 	},
 };
 
-static void thomson_dtt7520x_bw(struct dvb_frontend *fe, u8 *buf)
+static void thomson_dtt7520x_bw(struct neumo_dvb_frontend *fe, u8 *buf)
 {
 	u32 bw = fe->dtv_property_cache.bandwidth_hz;
 	if (bw == 8000000)
@@ -203,7 +203,7 @@ static const struct dvb_pll_desc dvb_pll_env57h1xd5 = {
 /* Philips TDA6650/TDA6651
  * used in Panasonic ENV77H11D5
  */
-static void tda665x_bw(struct dvb_frontend *fe, u8 *buf)
+static void tda665x_bw(struct neumo_dvb_frontend *fe, u8 *buf)
 {
 	u32 bw = fe->dtv_property_cache.bandwidth_hz;
 	if (bw == 8000000)
@@ -237,7 +237,7 @@ static const struct dvb_pll_desc dvb_pll_tda665x = {
 /* Infineon TUA6034
  * used in LG TDTP E102P
  */
-static void tua6034_bw(struct dvb_frontend *fe, u8 *buf)
+static void tua6034_bw(struct neumo_dvb_frontend *fe, u8 *buf)
 {
 	u32 bw = fe->dtv_property_cache.bandwidth_hz;
 	if (bw == 7000000)
@@ -261,7 +261,7 @@ static const struct dvb_pll_desc dvb_pll_tua6034 = {
 /* ALPS TDED4
  * used in Nebula-Cards and USB boxes
  */
-static void tded4_bw(struct dvb_frontend *fe, u8 *buf)
+static void tded4_bw(struct neumo_dvb_frontend *fe, u8 *buf)
 {
 	u32 bw = fe->dtv_property_cache.bandwidth_hz;
 	if (bw == 8000000)
@@ -336,9 +336,9 @@ static const struct dvb_pll_desc dvb_pll_philips_sd1878_tda8261 = {
 	},
 };
 
-static void opera1_bw(struct dvb_frontend *fe, u8 *buf)
+static void opera1_bw(struct neumo_dvb_frontend *fe, u8 *buf)
 {
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct dvb_pll_priv *priv = fe->tuner_priv;
 	u32 b_w  = (c->symbol_rate * 27) / 32000;
 	struct i2c_msg msg = {
@@ -409,7 +409,7 @@ static const struct dvb_pll_desc dvb_pll_opera1 = {
 	}
 };
 
-static void samsung_dtos403ih102a_set(struct dvb_frontend *fe, u8 *buf)
+static void samsung_dtos403ih102a_set(struct neumo_dvb_frontend *fe, u8 *buf)
 {
 	struct dvb_pll_priv *priv = fe->tuner_priv;
 	struct i2c_msg msg = {
@@ -594,7 +594,7 @@ static const struct dvb_pll_desc *pll_list[] = {
 /* ----------------------------------------------------------- */
 /* code                                                        */
 
-static int dvb_pll_configure(struct dvb_frontend *fe, u8 *buf,
+static int dvb_pll_configure(struct neumo_dvb_frontend *fe, u8 *buf,
 			     const u32 frequency)
 {
 	struct dvb_pll_priv *priv = fe->tuner_priv;
@@ -632,13 +632,13 @@ static int dvb_pll_configure(struct dvb_frontend *fe, u8 *buf,
 	return (div * desc->entries[i].stepsize) - desc->iffreq;
 }
 
-static void dvb_pll_release(struct dvb_frontend *fe)
+static void dvb_pll_release(struct neumo_dvb_frontend *fe)
 {
 	kfree(fe->tuner_priv);
 	fe->tuner_priv = NULL;
 }
 
-static int dvb_pll_sleep(struct dvb_frontend *fe)
+static int dvb_pll_sleep(struct neumo_dvb_frontend *fe)
 {
 	struct dvb_pll_priv *priv = fe->tuner_priv;
 
@@ -664,9 +664,9 @@ static int dvb_pll_sleep(struct dvb_frontend *fe)
 	return -EINVAL;
 }
 
-static int dvb_pll_set_params(struct dvb_frontend *fe)
+static int dvb_pll_set_params(struct neumo_dvb_frontend *fe)
 {
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct dvb_pll_priv *priv = fe->tuner_priv;
 	u8 buf[4];
 	struct i2c_msg msg =
@@ -696,10 +696,10 @@ static int dvb_pll_set_params(struct dvb_frontend *fe)
 	return 0;
 }
 
-static int dvb_pll_calc_regs(struct dvb_frontend *fe,
+static int dvb_pll_calc_regs(struct neumo_dvb_frontend *fe,
 			     u8 *buf, int buf_len)
 {
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct dvb_pll_priv *priv = fe->tuner_priv;
 	int result;
 	u32 frequency = 0;
@@ -721,21 +721,21 @@ static int dvb_pll_calc_regs(struct dvb_frontend *fe,
 	return 5;
 }
 
-static int dvb_pll_get_frequency(struct dvb_frontend *fe, u32 *frequency)
+static int dvb_pll_get_frequency(struct neumo_dvb_frontend *fe, u32 *frequency)
 {
 	struct dvb_pll_priv *priv = fe->tuner_priv;
 	*frequency = priv->frequency;
 	return 0;
 }
 
-static int dvb_pll_get_bandwidth(struct dvb_frontend *fe, u32 *bandwidth)
+static int dvb_pll_get_bandwidth(struct neumo_dvb_frontend *fe, u32 *bandwidth)
 {
 	struct dvb_pll_priv *priv = fe->tuner_priv;
 	*bandwidth = priv->bandwidth;
 	return 0;
 }
 
-static int dvb_pll_init(struct dvb_frontend *fe)
+static int dvb_pll_init(struct neumo_dvb_frontend *fe)
 {
 	struct dvb_pll_priv *priv = fe->tuner_priv;
 
@@ -769,7 +769,7 @@ static int dvb_pll_init(struct dvb_frontend *fe)
 	return -EINVAL;
 }
 
-static const struct dvb_tuner_ops dvb_pll_tuner_ops = {
+static const struct neumo_dvb_tuner_ops dvb_pll_tuner_ops = {
 	.release = dvb_pll_release,
 	.sleep = dvb_pll_sleep,
 	.init = dvb_pll_init,
@@ -779,7 +779,7 @@ static const struct dvb_tuner_ops dvb_pll_tuner_ops = {
 	.get_bandwidth = dvb_pll_get_bandwidth,
 };
 
-struct dvb_frontend *dvb_pll_attach(struct dvb_frontend *fe, int pll_addr,
+struct neumo_dvb_frontend *dvb_pll_attach(struct neumo_dvb_frontend *fe, int pll_addr,
 				    struct i2c_adapter *i2c,
 				    unsigned int pll_desc_id)
 {
@@ -831,7 +831,7 @@ struct dvb_frontend *dvb_pll_attach(struct dvb_frontend *fe, int pll_addr,
 	priv->nr = nr;
 
 	memcpy(&fe->ops.tuner_ops, &dvb_pll_tuner_ops,
-	       sizeof(struct dvb_tuner_ops));
+	       sizeof(struct neumo_dvb_tuner_ops));
 
 	strscpy(fe->ops.tuner_ops.info.name, desc->name,
 		sizeof(fe->ops.tuner_ops.info.name));
@@ -880,7 +880,7 @@ static int dvb_pll_probe(struct i2c_client *client)
 	const struct i2c_device_id *id = i2c_client_get_device_id(client);
 #endif
 	struct dvb_pll_config *cfg;
-	struct dvb_frontend *fe;
+	struct neumo_dvb_frontend *fe;
 	unsigned int desc_id;
 
 	cfg = client->dev.platform_data;
@@ -912,7 +912,7 @@ static int dvb_pll_remove(struct i2c_client *client)
 static void dvb_pll_remove(struct i2c_client *client)
 #endif
 {
-	struct dvb_frontend *fe = i2c_get_clientdata(client);
+	struct neumo_dvb_frontend *fe = i2c_get_clientdata(client);
 	struct dvb_pll_priv *priv = fe->tuner_priv;
 
 	ida_simple_remove(&pll_ida, priv->nr);

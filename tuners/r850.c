@@ -3043,9 +3043,9 @@ R850_ErrCode R850_SetFrequency(struct r850_priv *priv, struct R850_Set_Info R850
 }
 
 
-static int r850_init(struct dvb_frontend *fe)
+static int r850_init(struct neumo_dvb_frontend *fe)
 {
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct r850_priv *priv = fe->tuner_priv;
 
 	int ret = 0;
@@ -3124,10 +3124,10 @@ static int r850_init(struct dvb_frontend *fe)
 
 }
 
-static int r850_set_params(struct dvb_frontend *fe)
+static int r850_set_params(struct neumo_dvb_frontend *fe)
 {
 	struct r850_priv *priv = fe->tuner_priv;
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct R850_Set_Info tuner_parameters;
 
 	int ret = 0;
@@ -3151,10 +3151,10 @@ static int r850_set_params(struct dvb_frontend *fe)
 
 	return ret;
 }
-static int r850_get_rf_strength(struct dvb_frontend *fe, u16 *rssi)
+static int r850_get_rf_strength(struct neumo_dvb_frontend *fe, u16 *rssi)
 {
 	struct r850_priv *priv = fe->tuner_priv;
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	s32 RSSI_Value = 0;
 	int strength;
 	
@@ -3184,7 +3184,7 @@ static int r850_get_rf_strength(struct dvb_frontend *fe, u16 *rssi)
 	
 	return 0;
 }
-static void r850_release(struct dvb_frontend *fe)
+static void r850_release(struct neumo_dvb_frontend *fe)
 {
 	struct r850_priv *priv = fe->tuner_priv;
 	dev_dbg(&priv->i2c->dev, "%s()\n", __func__);
@@ -3193,7 +3193,7 @@ static void r850_release(struct dvb_frontend *fe)
 	fe->tuner_priv = NULL;
 }
 
-static int r850_sleep(struct dvb_frontend *fe)
+static int r850_sleep(struct neumo_dvb_frontend *fe)
 {
 	struct r850_priv *priv = fe->tuner_priv;
 	int ret = 0;
@@ -3204,7 +3204,7 @@ static int r850_sleep(struct dvb_frontend *fe)
 	return ret;
 }
 
-static const struct dvb_tuner_ops r850_tuner_ops = {
+static const struct neumo_dvb_tuner_ops r850_tuner_ops = {
 	.info = {
 		.name           = "Rafael R850",
 //		.frequency_min_hz  =  250 * MHz,
@@ -3219,7 +3219,7 @@ static const struct dvb_tuner_ops r850_tuner_ops = {
 	.get_rf_strength = r850_get_rf_strength,
 };
 
-struct dvb_frontend *r850_attach(struct dvb_frontend *fe,
+struct neumo_dvb_frontend *r850_attach(struct neumo_dvb_frontend *fe,
 		struct r850_config *cfg, struct i2c_adapter *i2c)
 {
 	struct r850_priv *priv = NULL;
@@ -3247,7 +3247,7 @@ struct dvb_frontend *r850_attach(struct dvb_frontend *fe,
 		KBUILD_MODNAME,buf[0]);
 
 	memcpy(&fe->ops.tuner_ops, &r850_tuner_ops,
-			sizeof(struct dvb_tuner_ops));
+			sizeof(struct neumo_dvb_tuner_ops));
 
 	fe->tuner_priv = priv;
 	return fe;

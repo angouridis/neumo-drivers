@@ -71,14 +71,14 @@ static void dvb_usb_data_complete(struct usb_data_stream *stream, u8 *buffer, si
 {
 	struct dvb_usb_adapter *adap = stream->user_priv;
 	if (adap->feedcount > 0 && adap->state & DVB_USB_ADAP_STATE_DVB)
-		dvb_dmx_swfilter(&adap->demux, buffer, length);
+		neumo_dvb_dmx_swfilter(&adap->demux, buffer, length);
 }
 
 static void dvb_usb_data_complete_204(struct usb_data_stream *stream, u8 *buffer, size_t length)
 {
 	struct dvb_usb_adapter *adap = stream->user_priv;
 	if (adap->feedcount > 0 && adap->state & DVB_USB_ADAP_STATE_DVB)
-		dvb_dmx_swfilter_204(&adap->demux, buffer, length);
+		neumo_dvb_dmx_swfilter_204(&adap->demux, buffer, length);
 }
 
 static void dvb_usb_data_complete_raw(struct usb_data_stream *stream,
@@ -86,7 +86,7 @@ static void dvb_usb_data_complete_raw(struct usb_data_stream *stream,
 {
 	struct dvb_usb_adapter *adap = stream->user_priv;
 	if (adap->feedcount > 0 && adap->state & DVB_USB_ADAP_STATE_DVB)
-		dvb_dmx_swfilter_raw(&adap->demux, buffer, length);
+		neumo_dvb_dmx_swfilter_raw(&adap->demux, buffer, length);
 }
 
 int dvb_usb_adapter_stream_init(struct dvb_usb_adapter *adap)
@@ -120,3 +120,5 @@ int dvb_usb_adapter_stream_exit(struct dvb_usb_adapter *adap)
 		usb_urb_exit(&adap->fe_adap[i].stream);
 	return 0;
 }
+
+#include<media/neumo-check.h>

@@ -16,6 +16,8 @@
 */
 
 #include "tbsecp3.h"
+#define dprintk(fmt, arg...)																					\
+	printk(KERN_DEBUG pr_fmt("%s:%d " fmt), __func__, __LINE__, ##arg)
 
 union tbsecp3_i2c_ctrl {
 	struct {
@@ -43,8 +45,8 @@ static int i2c_xfer(struct i2c_adapter *adapter, struct i2c_msg *msg, int num)
 	u8 *b;
 
 	mutex_lock(&bus->lock);
-	//clear the i2c status	
-	tbs_read(bus->base, 0x00);
+	//clear the i2c status
+	tbs_read(bus->base, 0x00); //TBSECP3_I2C_STAT=0x00
 
 	for (i = 0; i < num; i++) {
 
@@ -54,7 +56,7 @@ static int i2c_xfer(struct i2c_adapter *adapter, struct i2c_msg *msg, int num)
 		i2c_ctrl.raw.ctrl = 0;
 		i2c_ctrl.bits.start = 1;
 		i2c_ctrl.bits.addr = msg[i].addr;
-		
+
 		if (msg[i].flags & I2C_M_RD) {
 			i2c_ctrl.bits.read = 1;
 			xfer_max = 4;
@@ -96,12 +98,12 @@ static int i2c_xfer(struct i2c_adapter *adapter, struct i2c_msg *msg, int num)
 				memcpy(b, &i2c_ctrl.raw.data, len);
 				b += len;
 			}
-			
+
 			i2c_ctrl.bits.start = 0;
 			remaining -= len;
 		} while (remaining);
 
-	}	
+	}
 	retval = num;
 i2c_xfer_exit:
 	mutex_unlock(&bus->lock);
@@ -132,7 +134,7 @@ static int tbsecp3_i2c_register(struct tbsecp3_i2c *bus)
 	adap->algo_data = (void*) bus;
 	adap->dev.parent = &dev->pci_dev->dev;
 	adap->owner = THIS_MODULE;
-	
+
 	strcpy(bus->i2c_client.name, "tbsecp3cli");
 	bus->i2c_client.adapter = adap;
 
@@ -147,45 +149,25 @@ static void tbsecp3_i2c_unregister(struct tbsecp3_i2c *bus)
 
 /* ----------------------------------------------------------------------- */
 
-void tbsecp3_i2c_remove_clients(struct tbsecp3_adapter *adapter)
-{
-#if 0
-	struct i2c_client *client_demod, *client_tuner;
-
-	/* remove tuner I2C client */
-	client_tuner = adapter->i2c_client_tuner;
-	if (client_tuner) {
-		module_put(client_tuner->dev.driver->owner);
-		i2c_unregister_device(client_tuner);
-		adapter->i2c_client_tuner = NULL;
-	}
-
-	/* remove demodulator I2C client */
-	client_demod = adapter->i2c_client_demod;
-	if (client_demod) {
-		module_put(client_demod->dev.driver->owner);
-		i2c_unregister_device(client_demod);
-		adapter->i2c_client_demod = NULL;
-	}
-#endif
-}
 
 void tbsecp3_i2c_reg_init(struct tbsecp3_dev *dev)
 {
 	int i;
 	u32 baud = dev->info->i2c_speed;
 
-	/* default to 400kbps */
+	/* default to 400kbps
+		 i2c_speed in kHz is = 125000/4/baud/2/4
+		 baud = 9:  434kHz
+		 baud = 39: 100.16 kHz
+		 baud = 3:  1302.08 kHz
+*/
 	if (!baud)
 		baud = 9;
 
-	for (i = 0; i < 8; i++) {
+	for (i = 0; i < 4; i++) {
 		tbs_write(dev->i2c_bus[i].base, TBSECP3_I2C_BAUD, baud);
 		tbs_read(dev->i2c_bus[i].base, TBSECP3_I2C_STAT);
-		if(i<4)
-		  tbs_write(TBSECP3_INT_BASE, TBSECP3_I2C_IE(i), 1);
-		else
-		  tbs_write(TBSECP3_INT_BASE, TBSECP3_I2C_IE1(i), 1);
+		tbs_write(TBSECP3_INT_BASE, TBSECP3_I2C_IE(i), 1);
 	}
 }
 
@@ -194,7 +176,7 @@ int tbsecp3_i2c_init(struct tbsecp3_dev *dev)
 	int i, ret = 0;
 
 	/* I2C Defaults / setup */
-	for (i = 0; i < 8; i++) {
+	for (i = 0; i < 4; i++) {
 		dev->i2c_bus[i].base = TBSECP3_I2C_BASE(i);
 		dev->i2c_bus[i].dev = dev;
 		ret = tbsecp3_i2c_register(&dev->i2c_bus[i]);
@@ -214,7 +196,9 @@ int tbsecp3_i2c_init(struct tbsecp3_dev *dev)
 void tbsecp3_i2c_exit(struct tbsecp3_dev *dev)
 {
 	int i;
-	for (i = 0; i < 8; i++)
+	for (i = 0; i < 4; i++)
 		tbsecp3_i2c_unregister(&dev->i2c_bus[i]);
 }
 
+//check for incorrect include files
+#include <media/neumo-check.h>

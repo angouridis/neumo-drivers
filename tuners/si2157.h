@@ -9,7 +9,7 @@
 #define SI2157_H
 
 #include <media/media-device.h>
-#include <media/dvb_frontend.h>
+#include <media/neumo-dvb-frontend.h>
 
 /**
  * struct si2157_config - configuration parameters for si2157
@@ -30,7 +30,7 @@
  *	The I2C address of this demod is 0x60.
  */
 struct si2157_config {
-	struct dvb_frontend *fe;
+	struct neumo_dvb_frontend *fe;
 
 #if defined(CONFIG_MEDIA_CONTROLLER)
 	struct media_device *mdev;

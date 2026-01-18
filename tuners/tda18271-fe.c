@@ -25,7 +25,7 @@ static LIST_HEAD(hybrid_tuner_instance_list);
 
 /*---------------------------------------------------------------------*/
 
-static int tda18271_toggle_output(struct dvb_frontend *fe, int standby)
+static int tda18271_toggle_output(struct neumo_dvb_frontend *fe, int standby)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
 
@@ -46,7 +46,7 @@ fail:
 
 /*---------------------------------------------------------------------*/
 
-static inline int charge_pump_source(struct dvb_frontend *fe, int force)
+static inline int charge_pump_source(struct neumo_dvb_frontend *fe, int force)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
 	return tda18271_charge_pump_source(fe,
@@ -55,7 +55,7 @@ static inline int charge_pump_source(struct dvb_frontend *fe, int force)
 					   TDA18271_MAIN_PLL, force);
 }
 
-static inline void tda18271_set_if_notch(struct dvb_frontend *fe)
+static inline void tda18271_set_if_notch(struct neumo_dvb_frontend *fe)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
 	unsigned char *regs = priv->tda18271_regs;
@@ -70,7 +70,7 @@ static inline void tda18271_set_if_notch(struct dvb_frontend *fe)
 	}
 }
 
-static int tda18271_channel_configuration(struct dvb_frontend *fe,
+static int tda18271_channel_configuration(struct neumo_dvb_frontend *fe,
 					  struct tda18271_std_map_item *map,
 					  u32 freq, u32 bw)
 {
@@ -195,7 +195,7 @@ fail:
 	return ret;
 }
 
-static int tda18271_read_thermometer(struct dvb_frontend *fe)
+static int tda18271_read_thermometer(struct neumo_dvb_frontend *fe)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
 	unsigned char *regs = priv->tda18271_regs;
@@ -239,7 +239,7 @@ static int tda18271_read_thermometer(struct dvb_frontend *fe)
 
 /* ------------------------------------------------------------------ */
 
-static int tda18271c2_rf_tracking_filters_correction(struct dvb_frontend *fe,
+static int tda18271c2_rf_tracking_filters_correction(struct neumo_dvb_frontend *fe,
 						     u32 freq)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
@@ -290,7 +290,7 @@ fail:
 	return ret;
 }
 
-static int tda18271_por(struct dvb_frontend *fe)
+static int tda18271_por(struct neumo_dvb_frontend *fe)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
 	unsigned char *regs = priv->tda18271_regs;
@@ -323,7 +323,7 @@ fail:
 	return ret;
 }
 
-static int tda18271_calibrate_rf(struct dvb_frontend *fe, u32 freq)
+static int tda18271_calibrate_rf(struct neumo_dvb_frontend *fe, u32 freq)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
 	unsigned char *regs = priv->tda18271_regs;
@@ -426,7 +426,7 @@ static int tda18271_calibrate_rf(struct dvb_frontend *fe, u32 freq)
 	return regs[R_EB14];
 }
 
-static int tda18271_powerscan(struct dvb_frontend *fe,
+static int tda18271_powerscan(struct neumo_dvb_frontend *fe,
 			      u32 *freq_in, u32 *freq_out)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
@@ -520,7 +520,7 @@ static int tda18271_powerscan(struct dvb_frontend *fe,
 	return bcal;
 }
 
-static int tda18271_powerscan_init(struct dvb_frontend *fe)
+static int tda18271_powerscan_init(struct neumo_dvb_frontend *fe)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
 	unsigned char *regs = priv->tda18271_regs;
@@ -556,7 +556,7 @@ fail:
 	return ret;
 }
 
-static int tda18271_rf_tracking_filters_init(struct dvb_frontend *fe, u32 freq)
+static int tda18271_rf_tracking_filters_init(struct neumo_dvb_frontend *fe, u32 freq)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
 	struct tda18271_rf_tracking_filter_cal *map = priv->rf_cal_state;
@@ -628,7 +628,7 @@ static int tda18271_rf_tracking_filters_init(struct dvb_frontend *fe, u32 freq)
 	return 0;
 }
 
-static int tda18271_calc_rf_filter_curve(struct dvb_frontend *fe)
+static int tda18271_calc_rf_filter_curve(struct neumo_dvb_frontend *fe)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
 	unsigned int i;
@@ -659,7 +659,7 @@ fail:
 
 /* ------------------------------------------------------------------ */
 
-static int tda18271c2_rf_cal_init(struct dvb_frontend *fe)
+static int tda18271c2_rf_cal_init(struct neumo_dvb_frontend *fe)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
 	unsigned char *regs = priv->tda18271_regs;
@@ -690,7 +690,7 @@ end:
 	return ret;
 }
 
-static int tda18271c1_rf_tracking_filter_calibration(struct dvb_frontend *fe,
+static int tda18271c1_rf_tracking_filter_calibration(struct neumo_dvb_frontend *fe,
 						     u32 freq, u32 bw)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
@@ -791,7 +791,7 @@ static int tda18271c1_rf_tracking_filter_calibration(struct dvb_frontend *fe,
 
 /* ------------------------------------------------------------------ */
 
-static int tda18271_ir_cal_init(struct dvb_frontend *fe)
+static int tda18271_ir_cal_init(struct neumo_dvb_frontend *fe)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
 	unsigned char *regs = priv->tda18271_regs;
@@ -808,7 +808,7 @@ fail:
 	return ret;
 }
 
-static int tda18271_init(struct dvb_frontend *fe)
+static int tda18271_init(struct neumo_dvb_frontend *fe)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
 	int ret;
@@ -833,7 +833,7 @@ fail:
 	return ret;
 }
 
-static int tda18271_sleep(struct dvb_frontend *fe)
+static int tda18271_sleep(struct neumo_dvb_frontend *fe)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
 	int ret;
@@ -850,7 +850,7 @@ static int tda18271_sleep(struct dvb_frontend *fe)
 
 /* ------------------------------------------------------------------ */
 
-static int tda18271_agc(struct dvb_frontend *fe)
+static int tda18271_agc(struct neumo_dvb_frontend *fe)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
 	int ret = 0;
@@ -881,7 +881,7 @@ static int tda18271_agc(struct dvb_frontend *fe)
 	return ret;
 }
 
-static int tda18271_tune(struct dvb_frontend *fe,
+static int tda18271_tune(struct neumo_dvb_frontend *fe,
 			 struct tda18271_std_map_item *map, u32 freq, u32 bw)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
@@ -917,9 +917,9 @@ fail:
 
 /* ------------------------------------------------------------------ */
 
-static int tda18271_set_params(struct dvb_frontend *fe)
+static int tda18271_set_params(struct neumo_dvb_frontend *fe)
 {
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	u32 delsys = c->delivery_system;
 	u32 bw = c->bandwidth_hz;
 	u32 freq = c->frequency;
@@ -980,7 +980,7 @@ fail:
 	return ret;
 }
 
-static int tda18271_set_analog_params(struct dvb_frontend *fe,
+static int tda18271_set_analog_params(struct neumo_dvb_frontend *fe,
 				      struct analog_parameters *params)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
@@ -1036,7 +1036,7 @@ fail:
 	return ret;
 }
 
-static void tda18271_release(struct dvb_frontend *fe)
+static void tda18271_release(struct neumo_dvb_frontend *fe)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
 
@@ -1050,21 +1050,21 @@ static void tda18271_release(struct dvb_frontend *fe)
 	fe->tuner_priv = NULL;
 }
 
-static int tda18271_get_frequency(struct dvb_frontend *fe, u32 *frequency)
+static int tda18271_get_frequency(struct neumo_dvb_frontend *fe, u32 *frequency)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
 	*frequency = priv->frequency;
 	return 0;
 }
 
-static int tda18271_get_bandwidth(struct dvb_frontend *fe, u32 *bandwidth)
+static int tda18271_get_bandwidth(struct neumo_dvb_frontend *fe, u32 *bandwidth)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
 	*bandwidth = priv->bandwidth;
 	return 0;
 }
 
-static int tda18271_get_if_frequency(struct dvb_frontend *fe, u32 *frequency)
+static int tda18271_get_if_frequency(struct neumo_dvb_frontend *fe, u32 *frequency)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
 	*frequency = (u32)priv->if_freq * 1000;
@@ -1090,7 +1090,7 @@ static int tda18271_get_if_frequency(struct dvb_frontend *fe, u32 *frequency)
 		std->std_cfg.if_lvl, std->std_cfg.rfagc_top);		\
 	} while (0)
 
-static int tda18271_dump_std_map(struct dvb_frontend *fe)
+static int tda18271_dump_std_map(struct neumo_dvb_frontend *fe)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
 	struct tda18271_std_map *std = &priv->std;
@@ -1115,7 +1115,7 @@ static int tda18271_dump_std_map(struct dvb_frontend *fe)
 	return 0;
 }
 
-static int tda18271_update_std_map(struct dvb_frontend *fe,
+static int tda18271_update_std_map(struct neumo_dvb_frontend *fe,
 				   struct tda18271_std_map *map)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
@@ -1143,7 +1143,7 @@ static int tda18271_update_std_map(struct dvb_frontend *fe,
 	return 0;
 }
 
-static int tda18271_get_id(struct dvb_frontend *fe)
+static int tda18271_get_id(struct neumo_dvb_frontend *fe)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
 	unsigned char *regs = priv->tda18271_regs;
@@ -1183,7 +1183,7 @@ static int tda18271_get_id(struct dvb_frontend *fe)
 	return 0;
 }
 
-static int tda18271_setup_configuration(struct dvb_frontend *fe,
+static int tda18271_setup_configuration(struct neumo_dvb_frontend *fe,
 					struct tda18271_config *cfg)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
@@ -1209,7 +1209,7 @@ static inline int tda18271_need_cal_on_startup(struct tda18271_config *cfg)
 		(tda18271_cal_on_startup)) ? 1 : 0;
 }
 
-static int tda18271_set_config(struct dvb_frontend *fe, void *priv_cfg)
+static int tda18271_set_config(struct neumo_dvb_frontend *fe, void *priv_cfg)
 {
 	struct tda18271_config *cfg = (struct tda18271_config *) priv_cfg;
 
@@ -1225,7 +1225,7 @@ static int tda18271_set_config(struct dvb_frontend *fe, void *priv_cfg)
 	return 0;
 }
 
-static const struct dvb_tuner_ops tda18271_tuner_ops = {
+static const struct neumo_dvb_tuner_ops tda18271_tuner_ops = {
 	.info = {
 		.name = "NXP TDA18271HD",
 		.frequency_min_hz  =  45 * MHz,
@@ -1243,7 +1243,7 @@ static const struct dvb_tuner_ops tda18271_tuner_ops = {
 	.get_if_frequency  = tda18271_get_if_frequency,
 };
 
-struct dvb_frontend *tda18271_attach(struct dvb_frontend *fe, u8 addr,
+struct neumo_dvb_frontend *tda18271_attach(struct neumo_dvb_frontend *fe, u8 addr,
 				     struct i2c_adapter *i2c,
 				     struct tda18271_config *cfg)
 {
@@ -1324,7 +1324,7 @@ struct dvb_frontend *tda18271_attach(struct dvb_frontend *fe, u8 addr,
 	mutex_unlock(&tda18271_list_mutex);
 
 	memcpy(&fe->ops.tuner_ops, &tda18271_tuner_ops,
-	       sizeof(struct dvb_tuner_ops));
+	       sizeof(struct neumo_dvb_tuner_ops));
 
 	if (tda18271_debug & (DBG_MAP | DBG_ADV))
 		tda18271_dump_std_map(fe);
@@ -1341,3 +1341,6 @@ MODULE_DESCRIPTION("NXP TDA18271HD analog / digital tuner driver");
 MODULE_AUTHOR("Michael Krufky <mkrufky@linuxtv.org>");
 MODULE_LICENSE("GPL");
 MODULE_VERSION("0.4");
+
+//check for incorrect include files
+#include "linux/media/neumo-check.h"

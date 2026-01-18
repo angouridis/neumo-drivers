@@ -18,10 +18,30 @@
 #include "tbsecp3.h"
 
 static unsigned int dma_pkts[16] = {128, 128, 128, 128, 128, 128, 128, 128,128, 128, 128, 128, 128, 128, 128, 128};
+
 module_param_array(dma_pkts, int, NULL, 0444); /* No /sys/module write access */
 MODULE_PARM_DESC(dma_pkts, "DMA buffer size in TS packets (16-256), default 128");
 
 #define TS_PACKET_SIZE		188
+#define dprintk(fmt, arg...)																					\
+	printk(KERN_DEBUG pr_fmt("%s:%d " fmt),  __func__, __LINE__, ##arg)
+
+#if 0
+static void pkt_hex_dump(uint8_t*data, size_t len)
+{
+    int i, l, remaining;
+    uint8_t ch;
+
+    dprintk("PCKT: ");
+
+    remaining = len;
+    for (i = 0; i < len; ++i) {
+			ch = data[l];
+			printk(KERN_CONT "%02X ", (uint32_t) ch);
+		}
+		printk(KERN_CONT "\n");
+}
+#endif
 
 static void tbsecp3_dma_tasklet(unsigned long adap)
 {
@@ -38,15 +58,14 @@ static void tbsecp3_dma_tasklet(unsigned long adap)
 		next_buffer = (tbs_read(adapter->dma.base, TBSECP3_DMA_STAT) - TBSECP3_DMA_PRE_BUFFERS + 1) & (TBSECP3_DMA_BUFFERS - 1);
 		adapter->dma.cnt++;
 	}
-        else
-        {
-		next_buffer = (tbs_read(adapter->dma.base, TBSECP3_DMA_STAT) - TBSECP3_DMA_PRE_BUFFERS + 1) & (TBSECP3_DMA_BUFFERS - 1);
+	else
+		{
+			next_buffer = (tbs_read(adapter->dma.base, TBSECP3_DMA_STAT) - TBSECP3_DMA_PRE_BUFFERS + 1) & (TBSECP3_DMA_BUFFERS - 1);
 		read_buffer = (u32)adapter->dma.next_buffer;
 
 		while (read_buffer != next_buffer)
 		{
 			data = adapter->dma.buf[read_buffer];
-
 			if (data[adapter->dma.offset] != 0x47) {
 			/* Find sync byte offset with crude force (this might fail!) */
 				for (i = 0; i < TS_PACKET_SIZE; i++)
@@ -67,7 +86,7 @@ static void tbsecp3_dma_tasklet(unsigned long adap)
 						adapter->dma.buf[0], adapter->dma.offset);
 				}
 			}
-			dvb_dmx_swfilter_packets(&adapter->demux, data, adapter->dma.buffer_pkts);
+			neumo_dvb_dmx_swfilter_packets(&adapter->demux, data, adapter->dma.buffer_pkts);
 			read_buffer = (read_buffer + 1) & (TBSECP3_DMA_BUFFERS - 1);
 		}
 	}
@@ -87,7 +106,7 @@ void tbsecp3_dma_enable(struct tbsecp3_adapter *adap)
 	adap->dma.cnt = 0;
 	adap->dma.next_buffer= 0;
 	tbs_read(adap->dma.base, TBSECP3_DMA_STAT);
-	tbs_write(TBSECP3_INT_BASE, TBSECP3_DMA_IE(adap->cfg->ts_in), 1); 
+	tbs_write(TBSECP3_INT_BASE, TBSECP3_DMA_IE(adap->cfg->ts_in), 1);
 	tbs_write(adap->dma.base, TBSECP3_DMA_EN, 1);
 	spin_unlock_irq(&adap->adap_lock);
 }
@@ -156,7 +175,7 @@ int tbsecp3_dma_init(struct tbsecp3_dev *dev)
 			goto err;
 
 		dev_dbg(&dev->pci_dev->dev,
-			"TS in %d: DMA page %d bytes, %d bytes (%d TS packets) per %d buffers\n", adapter->cfg->ts_in, 
+			"TS in %d: DMA page %d bytes, %d bytes (%d TS packets) per %d buffers\n", adapter->cfg->ts_in,
 			 adapter->dma.page_size, adapter->dma.buffer_size, adapter->dma.buffer_pkts, TBSECP3_DMA_BUFFERS);
 
 		adapter->dma.base = TBSECP3_DMA_BASE(adapter->cfg->ts_in);
@@ -176,3 +195,6 @@ err:
 	tbsecp3_dma_free(dev);
 	return -ENOMEM;
 }
+
+//check for incorrect include files
+#include <media/neumo-check.h>

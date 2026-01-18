@@ -1,7 +1,7 @@
 header-y += audio.h
-header-y += ca.h
-header-y += dmx.h
-header-y += frontend.h
+header-y += neumo-ca.h
+header-y += neumo-dmx.h
+header-y += neumo-frontend.h
 header-y += net.h
 header-y += osd.h
 header-y += version.h

@@ -1,19 +1,19 @@
 //SPX-License-Identifier: GPL-2.0-or-later
 /*
  * Montage Technology M88rs6060 demodulator and tuner drivers
- * some code form 
+ * some code form
  * Copyright (c) 2021 Davin zhang <Davin@tbsdtv.com> www.Turbosight.com
  *
 */
 
 #ifndef _M88RS6060_H_
 #define _M88RS6060_H_
-#include <linux/dvb/frontend.h>
+#include <media/neumo-dvb-frontend.h>
 
 #define MT_FE_MCLK_KHZ   96000
 
 /*
-* 
+*
 */
 
 enum m88rs6060_ts_mode {
@@ -24,38 +24,60 @@ enum m88rs6060_ts_mode {
 };
 
 enum MT_FE_CODE_RATE {
-	MtFeCodeRate_Undef =
-	    0, MtFeCodeRate_1_4, MtFeCodeRate_1_3, MtFeCodeRate_2_5,
-	    MtFeCodeRate_1_2, MtFeCodeRate_3_5, MtFeCodeRate_2_3,
-	    MtFeCodeRate_3_4, MtFeCodeRate_4_5, MtFeCodeRate_5_6,
-	    MtFeCodeRate_7_8, MtFeCodeRate_8_9, MtFeCodeRate_9_10
+	MtFeCodeRate_Undef =-1,
+	MtFeCodeRate_1_2 = FEC_1_2,
+	MtFeCodeRate_1_4 = FEC_1_4,
+	MtFeCodeRate_2_3 = FEC_2_3,
+	MtFeCodeRate_3_4 = FEC_3_4,
+	MtFeCodeRate_4_5 = FEC_4_5,
+	MtFeCodeRate_5_6 = FEC_5_6,
+	MtFeCodeRate_7_8 = FEC_7_8,
+	MtFeCodeRate_8_9 = FEC_8_9,
+	MtFeCodeRate_3_5 = FEC_3_5,
+	MtFeCodeRate_9_10 = FEC_9_10,
+	MtFeCodeRate_2_5 = FEC_2_5,
+	MtFeCodeRate_1_3 = FEC_1_3,
+	MtFeCodeRate_11_15 = FEC_11_15,
+	MtFeCodeRate_5_9 = FEC_5_9,
+	MtFeCodeRate_7_9 = FEC_7_9,
+	MtFeCodeRate_4_15 = FEC_4_15,
+	MtFeCodeRate_7_15 = FEC_7_15,
+	MtFeCodeRate_8_15 = FEC_8_15,
 	    //,MtFeCodeRate_1_2L
 	    //,MtFeCodeRate_3_5L
 	    //,MtFeCodeRate_2_3L
-	    , MtFeCodeRate_5_9
 	    //,MtFeCodeRate_5_9L
-	    , MtFeCodeRate_7_9, MtFeCodeRate_4_15, MtFeCodeRate_7_15,
-	    MtFeCodeRate_8_15
 	    //,MtFeCodeRate_8_15L
-	    , MtFeCodeRate_11_15
 	    //,MtFeCodeRate_11_15L
-	    , MtFeCodeRate_13_18, MtFeCodeRate_9_20, MtFeCodeRate_11_20,
-	    MtFeCodeRate_23_36, MtFeCodeRate_25_36, MtFeCodeRate_11_45,
-	    MtFeCodeRate_13_45, MtFeCodeRate_14_45, MtFeCodeRate_26_45
+	MtFeCodeRate_13_18 = FEC_13_18,
+	MtFeCodeRate_9_20 = FEC_9_20,
+	MtFeCodeRate_11_20 = FEC_11_20,
+	MtFeCodeRate_23_36 = FEC_23_36,
+	MtFeCodeRate_25_36 = FEC_25_36,
+	MtFeCodeRate_29_45 = FEC_29_45,
+	MtFeCodeRate_11_45 = FEC_11_45,
+	MtFeCodeRate_13_45 = FEC_13_45,
+	MtFeCodeRate_14_45 = FEC_14_45,
+	MtFeCodeRate_26_45 = FEC_26_45,
 	    //,MtFeCodeRate_26_45L
-	    , MtFeCodeRate_28_45, MtFeCodeRate_29_45
+	MtFeCodeRate_28_45 = FEC_28_45,
+
 	    //,MtFeCodeRate_29_45L
-	    , MtFeCodeRate_31_45
+	MtFeCodeRate_31_45 = FEC_31_45,
 	    //,MtFeCodeRate_31_45L
-	    , MtFeCodeRate_32_45
+	MtFeCodeRate_32_45 = FEC_32_45,
 	    //,MtFeCodeRate_32_45L
-	, MtFeCodeRate_77_90
+	MtFeCodeRate_77_90 = FEC_77_90
 };
 
 enum MT_FE_ROLL_OFF {
-	MtFeRollOff_Undef =
-	    0, MtFeRollOff_0p35, MtFeRollOff_0p25, MtFeRollOff_0p20,
-	    MtFeRollOff_0p15, MtFeRollOff_0p10, MtFeRollOff_0p05
+	MtFeRollOff_Undef = -1,
+	MtFeRollOff_0p35 = ROLLOFF_35,
+	MtFeRollOff_0p25 = ROLLOFF_25,
+	MtFeRollOff_0p20 = ROLLOFF_20,
+	MtFeRollOff_0p15 = ROLLOFF_15,
+	MtFeRollOff_0p10 = ROLLOFF_10,
+	MtFeRollOff_0p05 = ROLLOFF_5
 };
 
 enum MT_FE_SPECTRUM_MODE {
@@ -78,28 +100,28 @@ enum MT_FE_TYPE {
 };
 
 enum MT_FE_MOD_MODE {
-	MtFeModMode_Undef = 0,
+	MtFeModMode_Undef = -1,
+	MtFeModMode_Qpsk = QPSK,
+	MtFeModMode_16Qam = QAM_16,
+	MtFeModMode_32Qam = QAM_32,
+	MtFeModMode_64Qam = QAM_64,
+	MtFeModMode_128Qam = QAM_128,
+	MtFeModMode_256Qam = QAM_256,
+		MtFeModMode_Auto = QAM_AUTO,
+	MtFeModMode_8psk = PSK_8,
+	MtFeModMode_16Apsk = APSK_16,
+	MtFeModMode_32Apsk = APSK_32,
+	MtFeModMode_64Apsk = APSK_64,
+	MtFeModMode_128Apsk = APSK_128,
+	MtFeModMode_256Apsk = APSK_256,
+	MtFeModMode_16Apsk_L = APSK_16_L,
+	MtFeModMode_8Apsk_L = APSK_8_L,
+	MtFeModMode_32Apsk_L = APSK_32_L,
+	MtFeModMode_64Apsk_L = APSK_64_L,
+	MtFeModMode_128Apsk_L = APSK_128_L,
+	MtFeModMode_256Apsk_L = APSK_256_L,
 	MtFeModMode_4Qam,
 	MtFeModMode_4QamNr,
-	MtFeModMode_16Qam,
-	MtFeModMode_32Qam,
-	MtFeModMode_64Qam,
-	MtFeModMode_128Qam,
-	MtFeModMode_256Qam,
-	MtFeModMode_Qpsk,
-	MtFeModMode_8psk,
-	MtFeModMode_16Apsk,
-	MtFeModMode_32Apsk,
-	MtFeModMode_64Apsk,
-	MtFeModMode_128Apsk,
-	MtFeModMode_256Apsk,
-	MtFeModMode_8Apsk_L,
-	MtFeModMode_16Apsk_L,
-	MtFeModMode_32Apsk_L,
-	MtFeModMode_64Apsk_L,
-	MtFeModMode_128Apsk_L,
-	MtFeModMode_256Apsk_L,
-	MtFeModMode_Auto
 };
 enum MT_FE_LOCK_STATE {
 	MtFeLockState_Undef = 0,
@@ -109,7 +131,7 @@ enum MT_FE_LOCK_STATE {
 };
 
 struct m88rs6060_cfg {
-	struct dvb_frontend **fe;
+	struct neumo_dvb_frontend** fe;
 	u8 demod_adr;
 	u8 tuner_adr;
 	enum m88rs6060_ts_mode ts_mode;	// 1:serial 2: parallel 3:common
@@ -122,17 +144,22 @@ struct m88rs6060_cfg {
 	u32 clk;
 	u16 i2c_wr_max;
 	u8 envelope_mode;	//for diseqc   default 0
-	//0x11 or 0x12 0x11 : there is only one i2c_STOP flag. 0x12 ther are two I2C_STOP flag.        
+	//0x11 or 0x12 0x11 : there is only one i2c_STOP flag. 0x12 ther are two I2C_STOP flag.
 	u8 repeater_value;
-	bool disable_22k; //for 6909se tuner 1,3,5,7 
+	bool disable_22k; //for 6909se tuner 1,3,5,7
 	u8 num; // for ci setting;
 	bool HAS_CI; // for 6910se ci
-	
+
 	int clk_port; //for si5351
+
+
+	void (*SetSpeedstatus)(struct i2c_adapter * i2c, int tuner);
+	int  (*GetSpeedstatus)(struct i2c_adapter * i2c, int tuner);
+	int (*GetSpeed)(struct i2c_adapter * i2c, int tuner);
 
 	int (*SetCIClock)(struct i2c_adapter *i2c, int tuner);  //set the CI clock for 6910se
 	void (*SetTimes)(struct i2c_adapter * i2c, int tuner,int times);
-	
+
 	void (*write_properties)(struct i2c_adapter * i2c, u8 reg, u32 buf);
 	void (*read_properties)(struct i2c_adapter * i2c, u8 reg, u32 * buf);
 	void (*write_eeprom) (struct i2c_adapter *i2c,u8 reg, u8 buf);
@@ -140,7 +167,10 @@ struct m88rs6060_cfg {
 	/*rf switch for 6590se 5590*/
 	void (*RF_switch)(struct i2c_adapter * i2c,u8 rf_in,u8 flag);
 	void (*TS_switch)(struct i2c_adapter * i2c,u8 flag);  //5590
-	void (*LED_switch)(struct i2c_adapter * i2c,u8 flag); //5590	
+	void (*LED_switch)(struct i2c_adapter * i2c,u8 flag); //5590
 };
+
+extern struct i2c_client*  m88rs6060_attach(struct i2c_adapter *i2c, struct i2c_board_info* board_info, int adapterno);
+extern void m88rs6060_detach(struct neumo_dvb_frontend* fe);
 
 #endif

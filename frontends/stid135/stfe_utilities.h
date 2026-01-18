@@ -1,38 +1,38 @@
-/* 
-* This file is part of STiD135 OXFORD LLA 
-* 
-* Copyright (c) <2014>-<2018>, STMicroelectronics - All Rights Reserved 
-* Author(s): Mathias Hilaire (mathias.hilaire@st.com), Thierry Delahaye (thierry.delahaye@st.com) for STMicroelectronics. 
-* 
-* License terms: BSD 3-clause "New" or "Revised" License. 
-* 
-* Redistribution and use in source and binary forms, with or without 
-* modification, are permitted provided that the following conditions are met: 
-* 
-* 1. Redistributions of source code must retain the above copyright notice, this 
-* list of conditions and the following disclaimer. 
-* 
-* 2. Redistributions in binary form must reproduce the above copyright notice, 
-* this list of conditions and the following disclaimer in the documentation 
-* and/or other materials provided with the distribution. 
-* 
-* 3. Neither the name of the copyright holder nor the names of its contributors 
-* may be used to endorse or promote products derived from this software 
-* without specific prior written permission. 
-* 
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
-* AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
-* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
-* DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE 
-* FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL 
-* DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
-* SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
-* CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, 
-* OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
-* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
-* 
-*/ 
-/** 
+/*
+* This file is part of STiD135 OXFORD LLA
+*
+* Copyright (c) <2014>-<2018>, STMicroelectronics - All Rights Reserved
+* Author(s): Mathias Hilaire (mathias.hilaire@st.com), Thierry Delahaye (thierry.delahaye@st.com) for STMicroelectronics.
+*
+* License terms: BSD 3-clause "New" or "Revised" License.
+*
+* Redistribution and use in source and binary forms, with or without
+* modification, are permitted provided that the following conditions are met:
+*
+* 1. Redistributions of source code must retain the above copyright notice, this
+* list of conditions and the following disclaimer.
+*
+* 2. Redistributions in binary form must reproduce the above copyright notice,
+* this list of conditions and the following disclaimer in the documentation
+* and/or other materials provided with the distribution.
+*
+* 3. Neither the name of the copyright holder nor the names of its contributors
+* may be used to endorse or promote products derived from this software
+* without specific prior written permission.
+*
+* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+* AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+* DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+* FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+* DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+* SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+* CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+* OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*
+*/
+/**
  @File   stfe_utilities.h
  @brief
 
@@ -48,8 +48,8 @@
 		#include "chip.h"
 	#endif
 
-	typedef void *internal_param_ptr;		/*Handle to the FE */ 
-		
+	typedef void *internal_param_ptr;		/*Handle to the FE */
+
 	#define FE_LLA_MAXLOOKUPSIZE 500
 	/* One point of the lookup table */
 	typedef struct
@@ -69,13 +69,13 @@
 
 	typedef enum
 	{
-		FE_LLA_NO_ERROR 			= ST_NO_ERROR,
-		FE_LLA_INVALID_HANDLE 		= ST_ERROR_INVALID_HANDLE ,
-		FE_LLA_ALLOCATION 			= ST_ERROR_NO_MEMORY ,
+		FE_LLA_NO_ERROR 			= ST_NO_ERROR,                   //0
+		FE_LLA_INVALID_HANDLE 		= ST_ERROR_INVALID_HANDLE ,  //7
+		FE_LLA_ALLOCATION 			= ST_ERROR_NO_MEMORY ,         //2
 		FE_LLA_BAD_PARAMETER 		= ST_ERROR_BAD_PARAMETER ,
-		FE_LLA_ALREADY_INITIALIZED 	= ST_ERROR_BAD_PARAMETER,
-		FE_LLA_I2C_ERROR 			= STFRONTEND_ERROR_I2C,
-		FE_LLA_SEARCH_FAILED ,
+		FE_LLA_ALREADY_INITIALIZED 	= ST_ERROR_BAD_PARAMETER, //1
+		FE_LLA_I2C_ERROR 			= STFRONTEND_ERROR_I2C, //13?
+		FE_LLA_SEARCH_FAILED , //14
 		FE_LLA_TRACKING_FAILED,
 		FE_LLA_NODATA,
 		FE_LLA_TUNER_NOSIGNAL,
@@ -85,7 +85,8 @@
 		FE_LLA_TUNER_16_STEP,
 		FE_LLA_TERM_FAILED,
 		FE_LLA_DISEQC_FAILED,
-		FE_LLA_NOT_SUPPORTED
+		FE_LLA_NOT_SUPPORTED,
+		FE_LLA_OUT_OF_LLR,
 	}
 	fe_lla_error_t;					/*Error Type*/
 
@@ -220,12 +221,12 @@
 
     /*  last entry in enumerated list                                       */
     Tuner_EOP,
-    
+
       /*  Dummy Entry                                                         */
     Tuner_STANDBY_WITH_VCO,
 
 	Tuner_AGC_LOOP_BW,  /*for Mxl201 */
-	
+
     Tuner_LOCK_STATUS   /*for Mxl201*/
 
   }Tuner_Param_t;
@@ -236,7 +237,7 @@
 		TUNER_NOTLOCKED
 	}
 	TUNER_Lock_t;
-	
+
  typedef enum
  {
 		TUNER_INPUT1=0,		/*input 1 (A,B for 6120)*/
@@ -291,7 +292,7 @@ typedef enum			/* Path selection for dual tuner */
 		TUNER_TYPE_ERR = 0x40,
 		TUNER_CONFIG_ERR = 0x80
 	} TUNER_Error_t;
-	
+
  typedef enum
  {
 	FE_BER_Algo_Default = STFRONTEND_BER_ALGO_DEFAULT,
@@ -310,7 +311,7 @@ typedef enum
 
 }FE_AdditionalParams_Flags_t;
 	/****************************************************************
-						ST FE Demodulators List  
+						ST FE Demodulators List
 	 ****************************************************************/
 
  	typedef enum
@@ -324,7 +325,7 @@ typedef enum
 	  FE_TransmissionStandard_Unknown = 0xFF
 	}
 	FE_TransmissionStandard_t;
-	
+
 	typedef enum
 	{
 		DEMOD_STV0297E,
@@ -367,7 +368,7 @@ typedef enum
 		DEMOD_CUSTOM_DEMOD_01,
 		DEMOD_ISDBT_02,
 		DEMOD_SONY2820R
-	
+
 	} FE_DEMOD_Model_t;
 
 	/****************************************************************
@@ -393,7 +394,7 @@ typedef enum
 };
 
 	typedef enum
-	{								
+	{
   FE_TS_DATARATECONTROL_DEFAULT = STFRONTEND_TS_DATARATECONTROL_DEFAULT,
   FE_TS_MANUAL_SPEED= STFRONTEND_TS_MANUAL_SPEED,    /* TS Speed manual */
   FE_TS_AUTO_SPEED = STFRONTEND_TS_AUTO_SPEED/* TS Speed automatic */
@@ -446,11 +447,11 @@ typedef enum
 	 typedef struct
 	{
 		enum fe_ts_output_mode			TSMode;				/* TS Serial pucntured, serial continues, parallel punctured or DVBSI			 		*/
-		FE_TS_DataRateControl_t		TSSpeedControl;		/* TS speed control : manual or automatic 		*/ 
+		FE_TS_DataRateControl_t		TSSpeedControl;		/* TS speed control : manual or automatic 		*/
 		FE_TS_ClockPolarity_t		TSClockPolarity;	/* TS clock polarity : rising edge/falling edge	*/
 		u32 						TSClockRate;		/* TS clock rate in Hz if manual mode			*/
 		u32 						TSDataRate;			/* TS Data rate in Hz if manual mode			*/
-		FE_TS_SyncByteEnable_t		TSSyncByteEnable;	/* TS sync byte : enable/disabe					*/	
+		FE_TS_SyncByteEnable_t		TSSyncByteEnable;	/* TS sync byte : enable/disabe					*/
 		FE_TS_ParityBytes_t			TSParityBytes;		/* TS parity bytes Enable/Disable				*/
 		FE_TS_Swap_t				TSSwap;				/* TS bits swap/ unswap							*/
 		FE_TS_Smoother_t			TSSmoother;			/* TS smoother enable/disable					*/
@@ -460,13 +461,13 @@ typedef enum
 
     #define PowOf2(number) (1<<(number))				/* was: s32 PowOf2(s32 number); */
     #define PowOf4(number) (1<<((number)<<1))			/* was: s32 PowOf2(s32 number); */
-	 
+
 	s32 Get2Comp(s32 a, s32 width);
-	
+
 	u32 XtoPowerY(s32 Number, u32 Power);
 //	#define XtoPowerY(Number,Power)  XtoPowerY( Number,  Power,__FILE__)
 	u32 STLogt(s32 number);
-	unsigned int STLog10(u32 value);
+	s32  STLog10(u32 value);
 	u32 Gcdivisor(u32 m, u32 n);
 #endif
 /* End of stfe_utilities.h */

@@ -10,7 +10,7 @@
 #define __TDA18271_H__
 
 #include <linux/i2c.h>
-#include <media/dvb_frontend.h>
+#include <media/neumo-dvb-frontend.h>
 
 struct tda18271_std_map_item {
 	u16 if_freq;
@@ -110,11 +110,11 @@ enum tda18271_mode {
 };
 
 #if IS_REACHABLE(CONFIG_MEDIA_TUNER_TDA18271)
-extern struct dvb_frontend *tda18271_attach(struct dvb_frontend *fe, u8 addr,
+extern struct neumo_dvb_frontend *tda18271_attach(struct neumo_dvb_frontend *fe, u8 addr,
 					    struct i2c_adapter *i2c,
 					    struct tda18271_config *cfg);
 #else
-static inline struct dvb_frontend *tda18271_attach(struct dvb_frontend *fe,
+static inline struct neumo_dvb_frontend *tda18271_attach(struct neumo_dvb_frontend *fe,
 						   u8 addr,
 						   struct i2c_adapter *i2c,
 						   struct tda18271_config *cfg)

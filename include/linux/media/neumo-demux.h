@@ -1,9 +1,11 @@
 /*
- * demux.h
+ * neumo-demux.h
  *
  * The Kernel Digital TV Demux kABI defines a driver-internal interface for
  * registering low-level, hardware specific driver to a hardware independent
  * demux layer.
+ *
+ * Copyright (c) 2025-2026 Deep Thought <deeptho@gmail.com>
  *
  * Copyright (c) 2002 Convergence GmbH
  *
@@ -23,14 +25,14 @@
  *
  */
 
-#ifndef __DEMUX_H
-#define __DEMUX_H
+#ifndef __NEUMO_DEMUX_H
+#define __NEUMO_DEMUX_H
 
 #include <linux/types.h>
 #include <linux/errno.h>
 #include <linux/list.h>
 #include <linux/time.h>
-#include <linux/dvb/dmx.h>
+#include <linux/dvb/neumo-dmx.h>
 
 /*
  * Common definitions
@@ -61,7 +63,7 @@
  */
 
 /**
- * enum ts_filter_type - filter type bitmap for dmx_ts_feed.set\(\)
+ * enum ts_filter_type - filter type bitmap for neumo_dmx_pid_feed.set\(\)
  *
  * @TS_PACKET:		Send TS packets (188 bytes) to callback (default).
  * @TS_PAYLOAD_ONLY:	In case TS_PACKET is set, only send the TS payload
@@ -78,30 +80,100 @@ enum ts_filter_type {
 };
 
 /**
- * struct dmx_ts_feed - Structure that contains a TS feed filter
+ * enum neumo_dmxdev_feed_type - type of demux feed.
+ *
+ * @DMXDEV_FEED_TYPE_UNDEFINED:	undefined
+ * @DMXDEV_FEED_TYPE_PID: substream of transport stream for s a specific pid
+ * @DMXDEV_FEED_TYPE_STID: bbframes embedded in a specific pid
+ * @DMXDEV_FEED_TYPE_T2MI:	t2mi transport stream embedded in specific pid
+ */
+enum neumo_dmxdev_feed_type {
+	DMXDEV_FEED_TYPE_UNDEFINED,
+	DMXDEV_FEED_TYPE_PID,
+	DMXDEV_FEED_TYPE_STID,
+	DMXDEV_FEED_TYPE_T2MI
+};
+
+/**
+ * struct neumo_dmxdev_feed - digital TV dmxdev feed
+ *
+ * @feed_type:	type of the feed
+ * @next:	&struct list_head pointing to the next feed.
+ */
+struct neumo_dmxdev_feed {
+	/*This structure is the first field of struct neumo_dmx_pid_feed, struct neumo_dmx_stid_stream, struct neumo_dmx_t2mi_stream
+		which describe how a stream is to be constructed when it is started.
+		Construction only occurs when the filter is started, at which time the parameters are
+		copies into struct neumo_dmx_pid_feed
+	*/
+	enum neumo_dmxdev_feed_type feed_type;
+	struct list_head next;
+};
+
+/**
+ * struct neumo_dmx_t2mi_stream - parameters of a specific t2mi stream
+ *
+ * @embedding_pid: The pid of the TS in which the bbframes stream is embedded.
+ * @isi:	The Input Stream Identifier of the stream.
+ * @feeds:	The &struct neumo_dmx_demux_feeds container listing the feeds subscribed in the stream
+ * @stream:	 The internal &struct bbframes_stream state of the stream
+ */
+struct neumo_dmx_t2mi_stream {
+	struct neumo_dmxdev_feed f;
+	int embedding_pid;
+	int isi;
+	struct neumo_dvb_demux_feeds* feeds;
+	struct bbframes_stream* stream;
+};
+
+/**
+ * struct neumo_dmx_stid_stream - parameters of a specific t2mi stream
+ *
+ * @embedding_pid: The pid of the TS in which the t2mi stream is embedded.
+ * @isi:	The Input Stream Identifier of the stream.
+ * @feeds:	The &struct neumo_dmx_demux_feeds container listing the feeds subscribed in the stream
+ * @stream:	 The internal &struct bbframes_stream state of the stream
+ */
+struct neumo_dmx_stid_stream {
+	struct neumo_dmxdev_feed f;
+	int embedding_pid;
+	int isi;
+	struct neumo_dvb_demux_feeds* feeds;
+	struct bbframes_stream* stream;
+};
+
+/**
+ * struct neumo_pid_stream - Structure that contains a TS feed filter
  *
  * @is_filtering:	Set to non-zero when filtering in progress
- * @parent:		pointer to struct dmx_demux
  * @priv:		pointer to private data of the API client
- * @set:		sets the TS filter
  * @start_filtering:	starts TS filtering
  * @stop_filtering:	stops TS filtering
  *
+ * A PID feed is typically mapped to a hardware PID filter on the demux chip.
+ * Using this API, the client can set the filtering properties to start/stop
+ * filtering TS packets on a particular TS feed.
+ */
+struct neumo_pid_stream {
+	int is_filtering;
+	void *priv;
+	int (*start_filtering)(struct neumo_pid_stream* neumo_pid_stream);
+	int (*stop_filtering)(struct neumo_pid_stream* neumo_pid_stream);
+};
+
+/**
+ * struct neumo_dmx_pid_feed - Structure that contains a TS feed filter
+ *
+ * @pid: The pid of the TS in which the bbframes stream is embedded.
+ * @stream:
  * A TS feed is typically mapped to a hardware PID filter on the demux chip.
  * Using this API, the client can set the filtering properties to start/stop
  * filtering TS packets on a particular TS feed.
  */
-struct dmx_ts_feed {
-	int is_filtering;
-	struct dmx_demux *parent;
-	void *priv;
-	int (*set)(struct dmx_ts_feed *feed,
-		   u16 pid,
-		   int type,
-		   enum dmx_ts_pes pes_type,
-		   ktime_t timeout);
-	int (*start_filtering)(struct dmx_ts_feed *feed);
-	int (*stop_filtering)(struct dmx_ts_feed *feed);
+struct neumo_dmx_pid_feed {
+	struct neumo_dmxdev_feed f;
+	int pid;
+	struct neumo_pid_stream* neumo_pid_stream;
 };
 
 /*
@@ -109,7 +181,7 @@ struct dmx_ts_feed {
  */
 
 /**
- * struct dmx_section_filter - Structure that describes a section filter
+ * struct neumo_dmx_section_filter - Structure that describes a section filter
  *
  * @filter_value: Contains up to 16 bytes (128 bits) of the TS section header
  *		  that will be matched by the section filter
@@ -117,7 +189,7 @@ struct dmx_ts_feed {
  *		  specified by @filter_value that will be used on the filter
  *		  match logic.
  * @filter_mode:  Contains a 16 bytes (128 bits) filter mode.
- * @parent:	  Back-pointer to struct dmx_section_feed.
+ * @parent_dmx_section_feed:	  Back-pointer to struct neumo_dmx_section_feed.
  * @priv:	  Pointer to private data of the API client.
  *
  *
@@ -126,20 +198,20 @@ struct dmx_ts_feed {
  * corresponding bits are compared. The filter only accepts sections that are
  * equal to filter_value in all the tested bit positions.
  */
-struct dmx_section_filter {
+struct neumo_dmx_section_filter {
 	u8 filter_value[DMX_MAX_FILTER_SIZE];
 	u8 filter_mask[DMX_MAX_FILTER_SIZE];
 	u8 filter_mode[DMX_MAX_FILTER_SIZE];
-	struct dmx_section_feed *parent;
+	struct neumo_dmx_section_feed *parent_dmx_section_feed;
 
 	void *priv;
 };
 
 /**
- * struct dmx_section_feed - Structure that contains a section feed filter
+ * struct neumo_dmx_section_feed - Structure that contains a section feed filter
  *
  * @is_filtering:	Set to non-zero when filtering in progress
- * @parent:		pointer to struct dmx_demux
+ * @parent:		pointer to struct neumo_dmx_demux
  * @priv:		pointer to private data of the API client
  * @check_crc:		If non-zero, check the CRC values of filtered sections.
  * @set:		sets the section filter
@@ -160,9 +232,9 @@ struct dmx_section_filter {
  * Using this API, the client can set the filtering properties to start/stop
  * filtering TS packets on a particular TS feed.
  */
-struct dmx_section_feed {
+struct neumo_dmx_section_feed {
 	int is_filtering;
-	struct dmx_demux *parent;
+	struct neumo_dmx_demux *parent_dmx_demux;
 	void *priv;
 
 	int check_crc;
@@ -175,19 +247,16 @@ struct dmx_section_feed {
 	u16 secbufp, seclen, tsfeedp;
 
 	/* public: */
-	int (*set)(struct dmx_section_feed *feed,
-		   u16 pid,
-		   int check_crc);
-	int (*allocate_filter)(struct dmx_section_feed *feed,
-			       struct dmx_section_filter **filter);
-	int (*release_filter)(struct dmx_section_feed *feed,
-			      struct dmx_section_filter *filter);
-	int (*start_filtering)(struct dmx_section_feed *feed);
-	int (*stop_filtering)(struct dmx_section_feed *feed);
+	int (*allocate_section_filter)(struct neumo_dmx_section_feed *feed,
+																 struct neumo_dmx_section_filter **filter);
+	int (*release_section_filter)(struct neumo_dmx_section_feed *feed,
+			      struct neumo_dmx_section_filter *filter);
+	int (*start_section_filtering)(struct neumo_dmx_section_feed *feed);
+	int (*stop_section_filtering)(struct neumo_dmx_section_feed *feed);
 };
 
 /**
- * typedef dmx_ts_cb - DVB demux TS filter callback function prototype
+ * typedef neumo_dmx_pid_cb - DVB demux TS filter callback function prototype
  *
  * @buffer1:		Pointer to the start of the filtered TS packets.
  * @buffer1_length:	Length of the TS data in buffer1.
@@ -197,7 +266,7 @@ struct dmx_section_feed {
  * @buffer_flags:	Address where buffer flags are stored. Those are
  *			used to report discontinuity users via DVB
  *			memory mapped API, as defined by
- *			&enum dmx_buffer_flags.
+ *			&enum neumo_dmx_buffer_flags.
  *
  * This function callback prototype, provided by the client of the demux API,
  * is called from the demux code. The function is only called when filtering
@@ -235,7 +304,7 @@ struct dmx_section_feed {
  * is full and return -EOVERFLOW.
  *
  * The type of data returned to the callback can be selected by the
- * &dmx_ts_feed.@set function. The type parameter decides if the raw
+ * &neumo_dmx_pid_feed.@set function. The type parameter decides if the raw
  * TS packet (TS_PACKET) or just the payload (TS_PACKET|TS_PAYLOAD_ONLY)
  * should be returned. If additionally the TS_DECODER bit is set the stream
  * will also be sent to the hardware MPEG decoder.
@@ -246,11 +315,11 @@ struct dmx_section_feed {
  *
  * - -EOVERFLOW, on buffer overflow.
  */
-typedef int (*dmx_ts_cb)(const u8 *buffer1,
+typedef int (*neumo_dmx_pid_cb)(const u8 *buffer1,
 			 size_t buffer1_length,
 			 const u8 *buffer2,
 			 size_t buffer2_length,
-			 struct dmx_ts_feed *source,
+			 struct neumo_pid_stream* neumo_pid_stream,
 			 u32 *buffer_flags);
 
 /**
@@ -270,12 +339,12 @@ typedef int (*dmx_ts_cb)(const u8 *buffer1,
  * @buffer_flags:	Address where buffer flags are stored. Those are
  *			used to report discontinuity users via DVB
  *			memory mapped API, as defined by
- *			&enum dmx_buffer_flags.
+ *			&enum neumo_dmx_buffer_flags.
  *
  * This function callback prototype, provided by the client of the demux API,
  * is called from the demux code. The function is only called when
  * filtering of sections has been enabled using the function
- * &dmx_ts_feed.@start_filtering. When the demux driver has received a
+ * &neumo_dmx_pid_feed.@start_filtering. When the demux driver has received a
  * complete section that matches at least one section filter, the client
  * is notified via this callback function. Normally this function is called
  * for each received section; however, it is also possible to deliver
@@ -287,16 +356,16 @@ typedef int (*dmx_ts_cb)(const u8 *buffer1,
  * However, this is not necessary if the Section Feed API is implemented as
  * a client of the TS Feed API, because the TS Feed implementation then
  * buffers the received data. The size of the circular buffer can be
- * configured using the &dmx_ts_feed.@set function in the Section Feed API.
+ * configured using the &neumo_dmx_pid_feed.@set function in the Section Feed API.
  * If there is no room in the circular buffer when a new section is received,
  * the section must be discarded. If this happens, the value of the success
  * parameter should be DMX_OVERRUN_ERROR on the next callback.
  */
-typedef int (*dmx_section_cb)(const u8 *buffer1,
+typedef int (*neumo_dmx_section_cb)(const u8 *buffer1,
 			      size_t buffer1_len,
 			      const u8 *buffer2,
 			      size_t buffer2_len,
-			      struct dmx_section_filter *source,
+			      struct neumo_dmx_section_filter *source,
 			      u32 *buffer_flags);
 
 /*
@@ -368,7 +437,7 @@ enum dmx_demux_caps {
 	list_entry(list, struct dmx_frontend, connectivity_list)
 
 /**
- * struct dmx_demux - Structure that contains the demux capabilities and
+ * struct neumo_dmx_demux - Structure that contains the demux capabilities and
  *		      callbacks.
  *
  * @capabilities: Bitfield of capability flags.
@@ -423,7 +492,23 @@ enum dmx_demux_caps {
  *	-ENODEV, if demux was removed;
  *	-EINVAL, on bad parameter.
  *
- * @allocate_ts_feed: Allocates a new TS feed, which is used to filter the TS
+ * @allocate_stid_stream: Allocates an internal sub demux which extracts a particular transport
+ *                        stream from a multistream embedded by the stid135 chip into a single pid
+ *	@demux: pointer to the demux API and instance data.
+ *	@dmx_stream_ret: a datastructure that will be filled with data to be use used for allocating
+ *                   streams or feeds in the embedded transport stream
+ *                   and to release the sub demux later
+ *	@embedding_pid: the pid in which the stream is embedded
+ *	@embedding_isi: the ISI of the transport stream to be made available
+ *	@parent_feeds: the struct neumo_dvb_demux_feeds which will send packets with pid == embedding_pid
+ *                 from which the TS stream will be extracted
+ *	It returns:
+ *	0 on success;
+ *	-ERESTARTSYS, if mutex lock was interrupted;
+ *	-EBUSY, if no more TS feeds is available;
+ *	-EINVAL, on bad parameter.
+ *
+ * @allocate_pid_feed: Allocates a new TS feed, which is used to filter the TS
  *	packets carrying a certain PID. The TS feed normally corresponds to a
  *	hardware PID filter on the demux chip.
  *	The @demux function parameter contains a pointer to the demux API and
@@ -438,7 +523,7 @@ enum dmx_demux_caps {
  *	-EBUSY, if no more TS feeds is available;
  *	-EINVAL, on bad parameter.
  *
- * @release_ts_feed: Releases the resources allocated with @allocate_ts_feed.
+ * @release_neumo_pid_stream: Releases the resources allocated with @allocate_pid_feed.
  *	Any filtering in progress on the TS feed should be stopped before
  *	calling this function.
  *	The @demux function parameter contains a pointer to the demux API and
@@ -557,34 +642,49 @@ enum dmx_demux_caps {
  *	0 on success;
  *	-EINVAL on bad parameter.
  */
-struct dmx_demux {
+struct neumo_dmx_demux {
 	enum dmx_demux_caps capabilities;
 	struct dmx_frontend *frontend;
 	void *priv;
-	int (*open)(struct dmx_demux *demux);
-	int (*close)(struct dmx_demux *demux);
-	int (*write)(struct dmx_demux *demux, const char __user *buf,
+	int (*open)(struct neumo_dmx_demux *demux);
+	int (*close)(struct neumo_dmx_demux *demux);
+	int (*write)(struct neumo_dmx_demux *demux, const char __user *buf,
 		     size_t count);
-	int (*allocate_ts_feed)(struct dmx_demux *demux,
-				struct dmx_ts_feed **feed,
-				dmx_ts_cb callback);
-	int (*release_ts_feed)(struct dmx_demux *demux,
-			       struct dmx_ts_feed *feed);
-	int (*allocate_section_feed)(struct dmx_demux *demux,
-				     struct dmx_section_feed **feed,
-				     dmx_section_cb callback);
-	int (*release_section_feed)(struct dmx_demux *demux,
-				    struct dmx_section_feed *feed);
-	int (*add_frontend)(struct dmx_demux *demux,
-			    struct dmx_frontend *frontend);
-	int (*remove_frontend)(struct dmx_demux *demux,
-			       struct dmx_frontend *frontend);
-	struct list_head *(*get_frontends)(struct dmx_demux *demux);
-	int (*connect_frontend)(struct dmx_demux *demux,
-				struct dmx_frontend *frontend);
-	int (*disconnect_frontend)(struct dmx_demux *demux);
+	int (*allocate_stid_stream)(struct neumo_dmx_demux *demux,
+															struct neumo_dmx_stid_stream* dmx_stream_ret,
+															int embedding_pid, int embedded_isi,
+															struct neumo_dvb_demux_feeds* parent_feeds);
+	int (*allocate_t2mi_stream)(struct neumo_dmx_demux *demux,
+															struct neumo_dmx_t2mi_stream* stream_ret,
+															int embedding_pid, int embedded_isi,
+															struct neumo_dvb_demux_feeds* parent_feeds);
+	int (*release_bbf_stream)(struct neumo_dmx_demux *demux, struct bbframes_stream* bbs);
 
-	int (*get_pes_pids)(struct dmx_demux *demux, u16 *pids);
+	struct neumo_dvb_demux_feeds* (*get_fe_feeds)(struct neumo_dmx_demux *demux);
+
+	int (*allocate_neumo_pid_stream)(struct neumo_dmx_demux *demux,
+													struct neumo_pid_stream **neumo_pid_stream,
+													neumo_dmx_pid_cb callback,
+													u16 pid, int ts_type,
+													enum dmx_ts_pes pes_type, ktime_t timeout,
+													struct neumo_dvb_demux_feeds* parent_feeds);
+	int (*release_neumo_pid_stream)(struct neumo_dmx_demux *demux, struct neumo_pid_stream* neumo_pid_stream);
+	int (*allocate_section_feed)(struct neumo_dmx_demux *demux,
+															 struct neumo_dmx_section_feed **feed,
+															 neumo_dmx_section_cb callback, u16 pid, bool check_crc,
+															 struct neumo_dvb_demux_feeds* parent_feeds);
+	int (*release_section_feed)(struct neumo_dmx_demux *demux,
+				    struct neumo_dmx_section_feed *feed);
+	int (*add_frontend)(struct neumo_dmx_demux *demux,
+			    struct dmx_frontend *frontend);
+	int (*remove_frontend)(struct neumo_dmx_demux *demux,
+			       struct dmx_frontend *frontend);
+	struct list_head *(*get_frontends)(struct neumo_dmx_demux *demux);
+	int (*connect_frontend)(struct neumo_dmx_demux *demux,
+				struct dmx_frontend *frontend);
+	int (*disconnect_frontend)(struct neumo_dmx_demux *demux);
+
+	int (*get_pes_pids)(struct neumo_dmx_demux *demux, u16 *pids);
 
 	/* private: */
 
@@ -593,8 +693,8 @@ struct dmx_demux {
 	 * As this was never documented, we have no clue about what's
 	 * there, and its usage on other drivers aren't encouraged.
 	 */
-	int (*get_stc)(struct dmx_demux *demux, unsigned int num,
+	int (*get_stc)(struct neumo_dmx_demux *demux, unsigned int num,
 		       u64 *stc, unsigned int *base);
 };
 
-#endif /* #ifndef __DEMUX_H */
+#endif /* #ifndef __NEUMO_DEMUX_H */

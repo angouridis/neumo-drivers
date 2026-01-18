@@ -11,7 +11,7 @@
 #define __DVB_STB6000_H__
 
 #include <linux/i2c.h>
-#include <media/dvb_frontend.h>
+#include <media/neumo-dvb-frontend.h>
 
 
 /**
@@ -23,7 +23,7 @@
  *
  * return: FE pointer on success, NULL on failure.
  */
-extern struct dvb_frontend *stb6000_attach(struct dvb_frontend *fe, int addr,
+extern struct neumo_dvb_frontend *stb6000_attach(struct neumo_dvb_frontend *fe, int addr,
 					   struct i2c_adapter *i2c);
 
 

@@ -119,7 +119,7 @@ struct avl6882_fw {
 struct avl6882_priv {
 	struct i2c_adapter *i2c;
  	struct avl6882_config *config;
-	struct dvb_frontend frontend;
+	struct neumo_dvb_frontend frontend;
 	enum fe_delivery_system delivery_system;
 
 	/* DVB-Tx */

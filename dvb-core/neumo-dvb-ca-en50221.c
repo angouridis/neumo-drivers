@@ -20,30 +20,23 @@
 #include <linux/slab.h>
 #include <linux/list.h>
 #include <linux/module.h>
-#include <linux/version.h>
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 18))
 #include <linux/nospec.h>
-#endif
 #include <linux/vmalloc.h>
 #include <linux/delay.h>
 #include <linux/spinlock.h>
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0))
 #include <linux/sched/signal.h>
-#else
-#include <linux/sched.h>
-#endif
 #include <linux/kthread.h>
 
-#include <media/dvb_ca_en50221.h>
+#include <media/neumo-dvb-ca-en50221.h>
 #include <media/dvb_ringbuffer.h>
 
-static int dvb_ca_en50221_debug;
+static int neumo_dvb_ca_en50221_debug;
 
-module_param_named(cam_debug, dvb_ca_en50221_debug, int, 0644);
-MODULE_PARM_DESC(cam_debug, "enable verbose debug messages");
+module_param_named(neumo_cam_debug, neumo_dvb_ca_en50221_debug, int, 0644);
+MODULE_PARM_DESC(neumo_cam_debug, "enable verbose debug messages");
 
 #define dprintk(fmt, arg...) do {					\
-	if (dvb_ca_en50221_debug)					\
+	if (neumo_dvb_ca_en50221_debug)					\
 		printk(KERN_DEBUG pr_fmt("%s: " fmt), __func__, ##arg);\
 } while (0)
 
@@ -253,7 +246,7 @@ static int dvb_ca_en50221_check_camstatus(struct dvb_ca_private *ca, int slot)
 
 		cam_changed = (cam_present_now != cam_present_old);
 	}
-	
+
 	if (cam_changed) {
 		if (!cam_present_now)
 			sl->camchange_type = DVB_CA_EN50221_CAMCHANGE_REMOVED;
@@ -937,13 +930,13 @@ static int dvb_ca_en50221_slot_shutdown(struct dvb_ca_private *ca, int slot)
 }
 
 /**
- * dvb_ca_en50221_camchange_irq - A CAMCHANGE IRQ has occurred.
+ * neumo_dvb_ca_en50221_camchange_irq - A CAMCHANGE IRQ has occurred.
  *
  * @pubca: CA instance.
  * @slot: Slot concerned.
  * @change_type: One of the DVB_CA_CAMCHANGE_* values.
  */
-void dvb_ca_en50221_camchange_irq(struct dvb_ca_en50221 *pubca, int slot,
+void neumo_dvb_ca_en50221_camchange_irq(struct dvb_ca_en50221 *pubca, int slot,
 				  int change_type)
 {
 	struct dvb_ca_private *ca = pubca->private;
@@ -964,7 +957,7 @@ void dvb_ca_en50221_camchange_irq(struct dvb_ca_en50221 *pubca, int slot,
 	atomic_inc(&sl->camchange_count);
 	dvb_ca_en50221_thread_wakeup(ca);
 }
-EXPORT_SYMBOL(dvb_ca_en50221_camchange_irq);
+EXPORT_SYMBOL(neumo_dvb_ca_en50221_camchange_irq);
 
 /**
  * dvb_ca_en50221_camready_irq - A CAMREADY IRQ has occurred.
@@ -972,7 +965,7 @@ EXPORT_SYMBOL(dvb_ca_en50221_camchange_irq);
  * @pubca: CA instance.
  * @slot: Slot concerned.
  */
-void dvb_ca_en50221_camready_irq(struct dvb_ca_en50221 *pubca, int slot)
+void neumo_dvb_ca_en50221_camready_irq(struct dvb_ca_en50221 *pubca, int slot)
 {
 	struct dvb_ca_private *ca = pubca->private;
 	struct dvb_ca_slot *sl = &ca->slot_info[slot];
@@ -984,15 +977,15 @@ void dvb_ca_en50221_camready_irq(struct dvb_ca_en50221 *pubca, int slot)
 		dvb_ca_en50221_thread_wakeup(ca);
 	}
 }
-EXPORT_SYMBOL(dvb_ca_en50221_camready_irq);
+EXPORT_SYMBOL(neumo_dvb_ca_en50221_camready_irq);
 
 /**
- * dvb_ca_en50221_frda_irq - An FR or DA IRQ has occurred.
+ * neumo_dvb_ca_en50221_frda_irq - An FR or DA IRQ has occurred.
  *
  * @pubca: CA instance.
  * @slot: Slot concerned.
  */
-void dvb_ca_en50221_frda_irq(struct dvb_ca_en50221 *pubca, int slot)
+void neumo_dvb_ca_en50221_frda_irq(struct dvb_ca_en50221 *pubca, int slot)
 {
 	struct dvb_ca_private *ca = pubca->private;
 	struct dvb_ca_slot *sl = &ca->slot_info[slot];
@@ -1015,7 +1008,7 @@ void dvb_ca_en50221_frda_irq(struct dvb_ca_en50221 *pubca, int slot)
 		break;
 	}
 }
-EXPORT_SYMBOL(dvb_ca_en50221_frda_irq);
+EXPORT_SYMBOL(neumo_dvb_ca_en50221_frda_irq);
 
 /* ************************************************************************** */
 /* EN50221 thread functions */
@@ -1372,7 +1365,7 @@ static int dvb_ca_en50221_io_do_ioctl(struct file *file,
 			if (sl->slot_state != DVB_CA_SLOTSTATE_NONE) {
 				dvb_ca_en50221_slot_shutdown(ca, slot);
 				if (ca->flags & DVB_CA_EN50221_FLAG_IRQ_CAMCHANGE)
-					dvb_ca_en50221_camchange_irq(ca->pub,
+					neumo_dvb_ca_en50221_camchange_irq(ca->pub,
 								     slot,
 								     DVB_CA_EN50221_CAMCHANGE_INSERTED);
 			}
@@ -1401,9 +1394,7 @@ static int dvb_ca_en50221_io_do_ioctl(struct file *file,
 			err = -EINVAL;
 			goto out_unlock;
 		}
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 18))
 		slot = array_index_nospec(slot, ca->slot_count);
-#endif
 
 		info->type = CA_CI_LINK;
 		info->flags = 0;
@@ -1486,9 +1477,7 @@ static ssize_t dvb_ca_en50221_io_write(struct file *file,
 
 	if (slot >= ca->slot_count)
 		return -EINVAL;
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 18))
 	slot = array_index_nospec(slot, ca->slot_count);
-#endif
 	sl = &ca->slot_info[slot];
 
 	/* check if the slot is actually running */
@@ -1818,10 +1807,6 @@ static int dvb_ca_en50221_io_release(struct inode *inode, struct file *file)
  *
  * return: Standard poll mask.
  */
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 16, 0))
-typedef unsigned int __poll_t;
-#define EPOLLIN POLLIN
-#endif
 static __poll_t dvb_ca_en50221_io_poll(struct file *file, poll_table *wait)
 {
 	struct dvb_device *dvbdev = file->private_data;
@@ -1873,7 +1858,7 @@ static const struct dvb_device dvbdev_ca = {
 /* Initialisation/shutdown functions */
 
 /**
- * dvb_ca_en50221_init - Initialise a new DVB CA EN50221 interface device.
+ * neumo_dvb_ca_en50221_init - Initialise a new DVB CA EN50221 interface device.
  *
  * @dvb_adapter: DVB adapter to attach the new CA device to.
  * @pubca: The dvb_ca instance.
@@ -1882,7 +1867,7 @@ static const struct dvb_device dvbdev_ca = {
  *
  * return: 0 on success, nonzero on failure
  */
-int dvb_ca_en50221_init(struct dvb_adapter *dvb_adapter,
+int neumo_dvb_ca_en50221_init(struct dvb_adapter *dvb_adapter,
 			struct dvb_ca_en50221 *pubca, int flags, int slot_count)
 {
 	int ret;
@@ -1951,7 +1936,6 @@ int dvb_ca_en50221_init(struct dvb_adapter *dvb_adapter,
 		       ret);
 		goto unregister_device;
 	}
-
 	return 0;
 
 unregister_device:
@@ -1964,14 +1948,14 @@ exit:
 	pubca->private = NULL;
 	return ret;
 }
-EXPORT_SYMBOL(dvb_ca_en50221_init);
+EXPORT_SYMBOL(neumo_dvb_ca_en50221_init);
 
 /**
- * dvb_ca_en50221_release - Release a DVB CA EN50221 interface device.
+ * neumo_dvb_ca_en50221_release - Release a DVB CA EN50221 interface device.
  *
  * @pubca: The associated dvb_ca instance.
  */
-void dvb_ca_en50221_release(struct dvb_ca_en50221 *pubca)
+void neumo_dvb_ca_en50221_release(struct dvb_ca_en50221 *pubca)
 {
 	struct dvb_ca_private *ca = pubca->private;
 	int i;
@@ -1996,4 +1980,8 @@ void dvb_ca_en50221_release(struct dvb_ca_en50221 *pubca)
 	dvb_ca_private_put(ca);
 	pubca->private = NULL;
 }
-EXPORT_SYMBOL(dvb_ca_en50221_release);
+EXPORT_SYMBOL(neumo_dvb_ca_en50221_release);
+
+
+//check for incorrect include files
+#include "linux/media/neumo-check.h"

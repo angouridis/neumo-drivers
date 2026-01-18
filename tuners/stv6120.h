@@ -3,7 +3,7 @@
 
 #include <linux/kconfig.h>
 #include <linux/i2c.h>
-#include <media/dvb_frontend.h>
+#include <media/neumo-dvb-frontend.h>
 
 struct stv6120_cfg {
 	u8 adr;
@@ -12,11 +12,8 @@ struct stv6120_cfg {
 	u8 Rdiv;
 };
 
-
-
-extern struct dvb_frontend *stv6120_attach(struct dvb_frontend *fe,
+extern struct neumo_dvb_frontend *stv6120_attach(struct neumo_dvb_frontend *fe,
 		    struct i2c_adapter *i2c, struct stv6120_cfg *cfg, int nr);
-
 
 
 #endif /* STV6120_H */

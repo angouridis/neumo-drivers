@@ -33,8 +33,8 @@
 #ifndef STV0299_H
 #define STV0299_H
 
-#include <linux/dvb/frontend.h>
-#include <media/dvb_frontend.h>
+#include <linux/dvb/neumo-frontend.h>
+#include <media/neumo-dvb-frontend.h>
 
 #define STV0299_LOCKOUTPUT_0  0
 #define STV0299_LOCKOUTPUT_1  1
@@ -77,18 +77,18 @@ struct stv0299_config
 	int min_delay_ms;
 
 	/* Set the symbol rate */
-	int (*set_symbol_rate)(struct dvb_frontend *fe, u32 srate, u32 ratio);
+	int (*set_symbol_rate)(struct neumo_dvb_frontend *fe, u32 srate, u32 ratio);
 
 	/* Set device param to start dma */
-	int (*set_ts_params)(struct dvb_frontend *fe, int is_punctured);
+	int (*set_ts_params)(struct neumo_dvb_frontend *fe, int is_punctured);
 };
 
 
-extern struct dvb_frontend *stv0299_attach(const struct stv0299_config *config,
+extern struct neumo_dvb_frontend *stv0299_attach(const struct stv0299_config *config,
 					   struct i2c_adapter *i2c);
 
 
-static inline int stv0299_writereg(struct dvb_frontend *fe, u8 reg, u8 val) {
+static inline int stv0299_writereg(struct neumo_dvb_frontend *fe, u8 reg, u8 val) {
 	int r = 0;
 	u8 buf[] = {reg, val};
 	if (fe->ops.write)

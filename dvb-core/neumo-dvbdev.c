@@ -21,8 +21,9 @@
 #include <linux/fs.h>
 #include <linux/cdev.h>
 #include <linux/mutex.h>
-#include <linux/version.h>
-#include <media/dvbdev.h>
+#include <media/neumo-dvbdev.h>
+#include <linux/kobject.h>
+#include <linux/sysfs.h>
 
 /* Due to enum tuner_pad_index */
 #include <media/tuner.h>
@@ -34,11 +35,8 @@ static int dvbdev_debug;
 module_param(dvbdev_debug, int, 0644);
 MODULE_PARM_DESC(dvbdev_debug, "Turn on/off device debugging (default:off).");
 
-#define dprintk(fmt, arg...) do {					\
-	if (dvbdev_debug)						\
-		printk(KERN_DEBUG pr_fmt("%s: " fmt),			\
-		       __func__, ##arg);				\
-} while (0)
+#define dprintk(fmt, arg...)							\
+	printk(KERN_DEBUG pr_fmt("%s:%d " fmt), __func__, __LINE__, ##arg)
 
 static LIST_HEAD(dvb_adapter_list);
 static DEFINE_MUTEX(dvbdev_register_lock);
@@ -56,7 +54,7 @@ static const char * const dnames[] = {
 };
 
 #ifdef CONFIG_DVB_DYNAMIC_MINORS
-#define MAX_DVB_MINORS		512
+#define MAX_DVB_MINORS		256
 #define DVB_MAX_IDS		MAX_DVB_MINORS
 #else
 #define DVB_MAX_IDS		4
@@ -744,7 +742,6 @@ int dvb_create_media_graph(struct dvb_adapter *adap,
 						     MEDIA_LNK_FL_ENABLED,
 						     false);
 		} else {
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,2,0))
 			pad_sink = media_get_pad_index(tuner, MEDIA_PAD_FL_SINK,
 						       PAD_SIGNAL_ANALOG);
 			if (pad_sink < 0)
@@ -756,25 +753,17 @@ int dvb_create_media_graph(struct dvb_adapter *adap,
 						     tuner, pad_sink,
 						     MEDIA_LNK_FL_ENABLED,
 						     false);
-#else
-			pad_sink = TUNER_PAD_RF_INPUT;
-#endif
 		}
 		if (ret)
 			return ret;
 	}
 
 	if (ntuner && ndemod) {
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,2,0))
 		/* NOTE: first found tuner source pad presumed correct */
 		pad_source = media_get_pad_index(tuner, MEDIA_PAD_FL_SOURCE,
 						 PAD_SIGNAL_ANALOG);
 		if (pad_source < 0)
 			return -EINVAL;
-#else
-		pad_source = TUNER_PAD_OUTPUT;
-#endif
-		
 		ret = media_create_pad_links(mdev,
 					     MEDIA_ENT_F_TUNER,
 					     tuner, pad_source,
@@ -1028,7 +1017,6 @@ out:
 }
 
 #if IS_ENABLED(CONFIG_I2C)
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,5,0))
 struct i2c_client *dvb_module_probe(const char *module_name,
 				    const char *name,
 				    struct i2c_adapter *adap,
@@ -1076,13 +1064,8 @@ void dvb_module_release(struct i2c_client *client)
 }
 EXPORT_SYMBOL_GPL(dvb_module_release);
 #endif
-#endif
 
-#if (KERNEL_VERSION(6, 2, 0) > LINUX_VERSION_CODE)
-static int dvb_uevent(struct device *dev, struct kobj_uevent_env *env)
-#else
 static int dvb_uevent(const struct device *dev, struct kobj_uevent_env *env)
-#endif
 {
 	const struct dvb_device *dvbdev = dev_get_drvdata(dev);
 
@@ -1092,11 +1075,7 @@ static int dvb_uevent(const struct device *dev, struct kobj_uevent_env *env)
 	return 0;
 }
 
-#if (KERNEL_VERSION(6, 2, 0) > LINUX_VERSION_CODE)
-static char *dvb_devnode(struct device *dev, umode_t *mode)
-#else
 static char *dvb_devnode(const struct device *dev, umode_t *mode)
-#endif
 {
 	const struct dvb_device *dvbdev = dev_get_drvdata(dev);
 
@@ -1104,10 +1083,75 @@ static char *dvb_devnode(const struct device *dev, umode_t *mode)
 		dvbdev->adapter->num, dnames[dvbdev->type], dvbdev->id);
 }
 
+static struct kobject *info_kobject;
+
+
+static void dvb_git_versions(const char ** neumo, const char ** rev, const char ** tag, const char ** branch)
+{
+	//neumo_version_string; this comment is needed to  make version_patch.pl work
+	*neumo  = "type = \"neumo\";\nversion = \"1.7\";";
+}
+
+static ssize_t version_show(struct kobject *kobj, struct kobj_attribute *attr,
+                      char *buf)
+{
+	char const* neumo = NULL;
+	char const* rev = NULL;
+	char const* tag = NULL;
+	char const * branch = NULL;
+	dvb_git_versions(&neumo, &rev, &tag, &branch);
+	return sprintf(buf, "%s\n%s\n%s\n%s\n", neumo, rev, tag, branch);
+	/*
+		show() must not use snprintf() when formatting the value to be
+		returned to user space. If you can guarantee that an overflow
+		will never happen you can use sprintf() otherwise you must use
+		scnprintf().*/
+}
+
+static void version_log(void)
+{
+	char const* neumo = NULL;
+	char const* rev = NULL;
+	char const* tag = NULL;
+	char const* branch = NULL;
+	dvb_git_versions(&neumo, &rev, &tag, &branch);
+	printk(KERN_ERR "neumodvb blindscan drivers %s; %s;%s;\n", rev, tag, branch);
+}
+
+static ssize_t version_store(struct kobject *kobj, struct kobj_attribute *attr,
+                      const char *buf, size_t count)
+{
+	return 0;
+}
+
+static struct kobj_attribute version_attribute =__ATTR(version, 0444, version_show, version_store);
+
+static int dvb_module_make_info(void)
+{
+	int error = 0;
+	struct kobject* mod_kobj = &(((struct module*)(THIS_MODULE))->mkobj).kobj;
+	info_kobject = kobject_create_and_add("info", mod_kobj/*kernel_kobj*/);
+	if(!info_kobject)
+		return -ENOMEM;
+
+	error = sysfs_create_file(info_kobject, &version_attribute.attr);
+	if (error) {
+		pr_err("dvb-core failed to create the info file\n");
+	}
+
+	return error;
+}
+
+extern void	neumo_dvb_frontend_module_init(void);
+extern void	neumo_dvb_frontend_module_exit(void);
+
+extern int init_dvbdev_dvbapi(void);
 static int __init init_dvbdev(void)
 {
 	int retval;
 	dev_t dev = MKDEV(DVB_MAJOR, 0);
+	version_log();
+	dvb_module_make_info();
 
 	retval = register_chrdev_region(dev, MAX_DVB_MINORS, "DVB");
 	if (retval != 0) {
@@ -1122,17 +1166,14 @@ static int __init init_dvbdev(void)
 		goto error;
 	}
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(6,4,0))
-	dvb_class = class_create(THIS_MODULE, "dvb");
-#else
 	dvb_class = class_create("dvb");
-#endif
 	if (IS_ERR(dvb_class)) {
 		retval = PTR_ERR(dvb_class);
 		goto error;
 	}
 	dvb_class->dev_uevent = dvb_uevent;
 	dvb_class->devnode = dvb_devnode;
+	neumo_dvb_frontend_module_init();
 	return 0;
 
 error:
@@ -1144,6 +1185,7 @@ error:
 static void __exit exit_dvbdev(void)
 {
 	struct dvbdevfops_node *node, *next;
+	kobject_put(info_kobject);
 
 	class_destroy(dvb_class);
 	cdev_del(&dvb_device_cdev);
@@ -1154,11 +1196,15 @@ static void __exit exit_dvbdev(void)
 		kfree(node->fops);
 		kfree(node);
 	}
+	neumo_dvb_frontend_module_exit();
 }
 
 subsys_initcall(init_dvbdev);
 module_exit(exit_dvbdev);
 
-MODULE_DESCRIPTION("DVB Core Driver");
-MODULE_AUTHOR("Marcus Metzler, Ralph Metzler, Holger Waechtler");
+MODULE_DESCRIPTION("Neumo DVB Core Driver");
+MODULE_AUTHOR("Deep Thought, Marcus Metzler, Ralph Metzler, Holger Waechtler");
 MODULE_LICENSE("GPL");
+
+//check for incorrect include files
+#include "linux/media/neumo-check.h"

@@ -14,14 +14,14 @@
 #include <linux/kfifo.h>
 
 
-#include <media/dmxdev.h>
-#include <media/dvbdev.h>
-#include <media/dvb_demux.h>
-#include <media/dvb_ca_en50221.h>
-#include <media/dvb_frontend.h>
+#include <media/neumo-dmxdev.h>
+#include <media/neumo-dvbdev.h>
+#include <media/neumo-dvb-demux.h>
+#include <media/neumo-dvb-ca-en50221.h>
+#include <media/neumo-dvb-frontend.h>
 #include <media/dvb_ringbuffer.h>
-#include <media/dvb_net.h>
-#include <linux/dvb/frontend.h>
+#include <media/neumo-dvb-net.h>
+#include <linux/dvb/neumo-frontend.h>
 
 #include "tbsci.h"
 #include "tbsci-io.h"
@@ -100,7 +100,7 @@ static void stop_indma_transfer(struct ca_channel *pchannel)
 static ssize_t ts_write(struct file *file, const char __user *ptr,
 			size_t size, loff_t *ppos)
 {
-	
+
 	struct dvb_device *dvbdev = file->private_data;
 	struct ca_channel *chan = dvbdev->priv;
 	int count;
@@ -108,7 +108,7 @@ static ssize_t ts_write(struct file *file, const char __user *ptr,
 	int timeout;
 
 //	printk("%s channel index:%d \n",__func__,  chan->channel_index);
-	count = kfifo_avail(&chan->w_fifo); 
+	count = kfifo_avail(&chan->w_fifo);
 	while (count < size)
 	{
 		chan->write_ready=0;
@@ -118,7 +118,7 @@ static ssize_t ts_write(struct file *file, const char __user *ptr,
 			return 0;
 		}
 
-		count = kfifo_avail(&chan->w_fifo); 
+		count = kfifo_avail(&chan->w_fifo);
 		i++;
 		if (i > 5)
 		{
@@ -143,14 +143,14 @@ static ssize_t ts_write(struct file *file, const char __user *ptr,
 static ssize_t ts_read(struct file *file, char __user *ptr,
 		       size_t size, loff_t *ppos)
 {
-	
+
 	struct dvb_device *dvbdev = file->private_data;
 	struct ca_channel *chan = dvbdev->priv;
 	int count;
 	unsigned int copied = -EAGAIN;
 
 	//	printk("%s channel index:%d \n",__func__,  chan->channel_index);
-	count = kfifo_len(&chan->r_fifo); 
+	count = kfifo_len(&chan->r_fifo);
 	while (count < TS_PACKET_SIZE)
 	{
 		if (file->f_flags & O_NONBLOCK)
@@ -225,15 +225,16 @@ static int ts_release(struct inode *inode, struct file *file)
 }
 
 
-void spi_read(struct tbs_pcie_dev *dev, struct mcu24cxx_info *info)
+static void spi_read(struct tbs_pcie_dev *dev, struct mcu24cxx_info *info)
 {
 	//	printk("%s bassaddr:%x ,reg: %x,val: %x\n", __func__,
 	//	       info->bassaddr, info->reg, info->data);
 	info->data = TBS_PCIE_READ(info->bassaddr, info->reg);
 }
-void spi_write(struct tbs_pcie_dev *dev, struct mcu24cxx_info *info)
+
+static void spi_write(struct tbs_pcie_dev *dev, struct mcu24cxx_info *info)
 {
-	TBS_PCIE_WRITE(info->bassaddr,info->reg,info->data);	
+	TBS_PCIE_WRITE(info->bassaddr,info->reg,info->data);
 	//printk("%s size:%x, reg: %x, val: %x\n", __func__, info->bassaddr, info->reg,info->data);
 }
 static long tbsci_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
@@ -246,15 +247,20 @@ static long tbsci_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	struct dtv_properties props ;
 	struct dtv_property prop;
 	int ret = 0;
-	u32 clk_freq;
 	u32 clk_data;
 	switch (cmd)
 	{
 	case FE_SET_PROPERTY:
-		copy_from_user(&props , (const char*)arg, sizeof(struct dtv_properties ));
+		if(copy_from_user(&props , (const char*)arg, sizeof(struct dtv_properties )) !=0) {
+			ret=- EFAULT;
+			break;
+		}
 		if (props.num == 1)
 		{
-			copy_from_user(&prop , (const char*)props.props, sizeof(struct dtv_property ));
+			if(copy_from_user(&prop , (const char*)props.props, sizeof(struct dtv_property )) != 0) {
+			ret=- EFAULT;
+			break;
+			}
 			switch (prop.cmd)
 			{
 				case MODULATOR_INPUT_BITRATE:
@@ -262,8 +268,8 @@ static long tbsci_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 					       __func__, chan->channel_index,
 					       prop.u.data);
 					chan->w_bitrate = prop.u.data;
-					//set clock preset 
-					
+					//set clock preset
+
 					if(chan->w_bitrate<30)
 						clk_data = 15;
 					else if(chan->w_bitrate<=41)
@@ -281,7 +287,7 @@ static long tbsci_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 					else if((chan->w_bitrate>=102)&&(chan->w_bitrate<110))
 						clk_data = 4;//8freq
 					else if((chan->w_bitrate>=110)&&(chan->w_bitrate<119))
-						clk_data = 0x30;  
+						clk_data = 0x30;
 					else if((chan->w_bitrate>=119)&&(chan->w_bitrate<128))
 						clk_data = 0x40;
 					else if((chan->w_bitrate>=128)&&(chan->w_bitrate<142))
@@ -290,9 +296,9 @@ static long tbsci_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 						clk_data = 3 ;
 					printk(" clk preset val : %d\n",clk_data);
 					TBS_PCIE_WRITE(pcmcia_adapter0+chan->channel_index*0x1000, 0x10, clk_data);
-					
+
 					clk_data=TBS_PCIE_READ(pcmcia_adapter0+chan->channel_index*0x1000, 0x10);
-					printk(" read clk preset val : %d\n",clk_data);	
+					printk(" read clk preset val : %d\n",clk_data);
 					break;
 				default:
 					ret = -EINVAL;
@@ -342,18 +348,18 @@ static void write_dma_work(struct work_struct *p_work)
 	int count = 0;
 	int ret;
 	u32 delay;
-	
+
 	spin_lock(&pchannel->writelock);
 	TBS_PCIE_READ(dmaout_adapter0+pchannel->channel_index*0x1000, 0x00);
-	//TBS_PCIE_WRITE(int_adapter, 0x00, (0x40<<index) ); 
-	count = kfifo_len(&pchannel->w_fifo); 
+	//TBS_PCIE_WRITE(int_adapter, 0x00, (0x40<<index) );
+	count = kfifo_len(&pchannel->w_fifo);
 	if (count >= WRITE_TOTAL_SIZE){
-		ret = kfifo_out(&pchannel->w_fifo, ((void *)(pchannel->w_dmavirt) ), WRITE_TOTAL_SIZE); 
+		ret = kfifo_out(&pchannel->w_fifo, ((void *)(pchannel->w_dmavirt) ), WRITE_TOTAL_SIZE);
 		if(pchannel->is_open ){
 			start_outdma_transfer(pchannel);
 		}
 		pchannel->write_ready = 1;
-		wake_up(&pchannel->write_wq);	
+		wake_up(&pchannel->write_wq);
 	}
 	else{
 		delay = div_u64(1000000000ULL * WRITE_TOTAL_SIZE, (pchannel->w_bitrate )*1024*1024*3);
@@ -362,7 +368,7 @@ static void write_dma_work(struct work_struct *p_work)
 		//TBS_PCIE_WRITE(int_adapter, 0x04, 0x00000001);
 	}
 	spin_unlock(&pchannel->writelock);
-		
+
 }
 
 // Drop the empty packets
@@ -387,7 +393,7 @@ static int copy_non_null_ts(struct ca_channel *pchannel, void *source, int size)
 					dropped++;
 			}
 			if (pchannel->feeds) {
-				dvb_dmx_swfilter_packets(&pchannel->demux,
+				neumo_dvb_dmx_swfilter_packets(&pchannel->demux,
 							 src + i, 1);
 			}
 			len += copied;
@@ -421,7 +427,7 @@ static void read_dma_work(struct work_struct *p_work)
 			data = ((void *)(pchannel->r_dmavirt)+read_buffer*READ_CELL_SIZE );
 
 			if (data[pchannel->dma_offset] != 0x47) {
-			// Find sync byte offset with crude force (this might fail!) 
+			// Find sync byte offset with crude force (this might fail!)
 				for (i = 0; i < TS_PACKET_SIZE; i++)
 					if ((data[i] == 0x47) &&
 					(data[i + TS_PACKET_SIZE] == 0x47) &&
@@ -433,7 +439,7 @@ static void read_dma_work(struct work_struct *p_work)
 			}
 
 			if (pchannel->dma_offset != 0) {
-				// Copy remains of last packet from buffer 0 behind last one 
+				// Copy remains of last packet from buffer 0 behind last one
 				if (read_buffer ==(READ_CELLS - 1)) {
 					memcpy( (void*)pchannel->r_dmavirt+READ_TOTAL_SIZE,
 						(void*)pchannel->r_dmavirt, pchannel->dma_offset);
@@ -460,12 +466,12 @@ static irqreturn_t tbsci_irq(int irq, void *dev_id)
 {
 	struct tbs_pcie_dev *dev = (struct tbs_pcie_dev *)dev_id;
 	u32 stat,tmp;
-	
+
 	tmp = TBS_PCIE_READ(int_adapter, 0x0c);
 	stat = TBS_PCIE_READ(int_adapter, 0x00);
 	TBS_PCIE_WRITE(int_adapter, 0, stat);
 	//printk("%s 0x00:%x 0xc0:%x\n",__func__,stat,tmp);
-	
+
 	TBS_PCIE_WRITE(int_adapter, 0x04, 0x00000001);
 	if (!(stat & 0xf0)){
 		//TBS_PCIE_WRITE(int_adapter, 0x04, 0x00000001);
@@ -490,12 +496,12 @@ static irqreturn_t tbsci_irq(int irq, void *dev_id)
 
 	if (stat & 0x10){ //dma0 status
 		queue_work(wq,&dev->channnel[0].read_work);
-		//TBS_PCIE_WRITE(int_adapter, 0x04, 0x00000001);	
+		//TBS_PCIE_WRITE(int_adapter, 0x04, 0x00000001);
 	}
 	return IRQ_HANDLED;
 }
 
-int ca_read_attribute_mem(struct dvb_ca_en50221 *en50221,int slot, int address)
+static int ca_read_attribute_mem(struct dvb_ca_en50221 *en50221,int slot, int address)
 {
 	struct ca_channel *tbsca = en50221->data;
 	struct tbs_pcie_dev *dev = tbsca->dev;
@@ -515,10 +521,10 @@ int ca_read_attribute_mem(struct dvb_ca_en50221 *en50221,int slot, int address)
 
 	mutex_unlock(&tbsca->lock);
 
-	return (data & 0xff);		
+	return (data & 0xff);
 }
 
-int ca_write_attribute_mem(struct dvb_ca_en50221 *en50221,int slot, int address, u8 value)
+static int ca_write_attribute_mem(struct dvb_ca_en50221 *en50221,int slot, int address, u8 value)
 {
 	struct ca_channel *tbsca = en50221->data;
 	struct tbs_pcie_dev *dev = tbsca->dev;
@@ -542,7 +548,7 @@ int ca_write_attribute_mem(struct dvb_ca_en50221 *en50221,int slot, int address,
 
 }
 
-int ca_read_cam_control(struct dvb_ca_en50221 *en50221,int slot, u8 address)
+static int ca_read_cam_control(struct dvb_ca_en50221 *en50221,int slot, u8 address)
 {
 	struct ca_channel *tbsca = en50221->data;
 	struct tbs_pcie_dev *dev = tbsca->dev;
@@ -557,15 +563,15 @@ int ca_read_cam_control(struct dvb_ca_en50221 *en50221,int slot, u8 address)
 	data |= 0x02 << 16;
 	TBS_PCIE_WRITE(pcmcia_adapter0+tbsca->channel_index*0x1000, 0x00, data);
 	udelay(150);
-	
+
 	data = TBS_PCIE_READ(pcmcia_adapter0+tbsca->channel_index*0x1000,  0x08);
 
 	mutex_unlock(&tbsca->lock);
 
-	return (data & 0xff);		
+	return (data & 0xff);
 }
 
-int ca_write_cam_control(struct dvb_ca_en50221 *en50221,int slot, u8 address, u8 value)
+static int ca_write_cam_control(struct dvb_ca_en50221 *en50221,int slot, u8 address, u8 value)
 {
 	struct ca_channel *tbsca = en50221->data;
 	struct tbs_pcie_dev *dev = tbsca->dev;
@@ -587,14 +593,14 @@ int ca_write_cam_control(struct dvb_ca_en50221 *en50221,int slot, u8 address, u8
 	return 0;
 }
 
-int ca_slot_reset(struct dvb_ca_en50221 *en50221, int slot)
+static int ca_slot_reset(struct dvb_ca_en50221 *en50221, int slot)
 {
 	struct ca_channel *tbsca = en50221->data;
 	struct tbs_pcie_dev *dev = tbsca->dev;
 
 	if (slot != 0)
 		return -EINVAL;
-	
+
 	mutex_lock(&tbsca->lock);
 
 	TBS_PCIE_WRITE(pcmcia_adapter0+tbsca->channel_index*0x1000,  0x04, 1);
@@ -604,9 +610,10 @@ int ca_slot_reset(struct dvb_ca_en50221 *en50221, int slot)
 	msleep (2800);
 
 	mutex_unlock (&tbsca->lock);
-	return 0;		
+	return 0;
 }
-int ca_slot_ctrl(struct dvb_ca_en50221 *en50221,
+
+static int ca_slot_ctrl(struct dvb_ca_en50221 *en50221,
 	int slot, int enable)
 {
 	struct ca_channel *tbsca = en50221->data;
@@ -623,17 +630,19 @@ int ca_slot_ctrl(struct dvb_ca_en50221 *en50221,
 	mutex_unlock(&tbsca->lock);
 	return 0;
 }
-int ca_slot_shutdown(struct dvb_ca_en50221 *en50221, int slot)
+
+static int ca_slot_shutdown(struct dvb_ca_en50221 *en50221, int slot)
 {
 		return ca_slot_ctrl(en50221, slot, 0);
 }
 
-int ca_slot_ts_enable(struct dvb_ca_en50221 *en50221, int slot)
+
+static int ca_slot_ts_enable(struct dvb_ca_en50221 *en50221, int slot)
 {
 		return ca_slot_ctrl(en50221, slot, 1);
 }
 
-int ca_poll_slot_status(struct dvb_ca_en50221 *en50221,int slot, int open)
+static int ca_poll_slot_status(struct dvb_ca_en50221 *en50221,int slot, int open)
 {
 	struct ca_channel *tbsca = en50221->data;
 	struct tbs_pcie_dev *dev = tbsca->dev;
@@ -659,26 +668,26 @@ int ca_poll_slot_status(struct dvb_ca_en50221 *en50221,int slot, int open)
 	else
 		ret = 0;
 
-	return ret;		
+	return ret;
 }
 
-static int tas2101_read_ber(struct dvb_frontend *fe, u32 *ber)
+static int tas2101_read_ber(struct neumo_dvb_frontend *fe, u32 *ber)
 {
 	//printk("%s \n", __func__);
 	*ber = 0;
 	return 0;
 }
 
-static int tas2101_read_signal_strength(struct dvb_frontend *fe,
+static int tas2101_read_signal_strength(struct neumo_dvb_frontend *fe,
 	u16 *signal_strength)
 {
 	//printk("%s \n", __func__);
 	*signal_strength = 62940;
 	return 0;
-	
+
 }
 
-static int tas2101_read_snr(struct dvb_frontend *fe, u16 *snr)
+static int tas2101_read_snr(struct neumo_dvb_frontend *fe, u16 *snr)
 {
  	//printk("%s \n", __func__);
 
@@ -687,13 +696,13 @@ static int tas2101_read_snr(struct dvb_frontend *fe, u16 *snr)
 }
 
 /* unimplemented */
-static int tas2101_read_ucblocks(struct dvb_frontend *fe, u32 *ucblocks)
+static int tas2101_read_ucblocks(struct neumo_dvb_frontend *fe, u32 *ucblocks)
 {
 	//printk("%s \n", __func__);
 	return 0;
 }
 
-static int tas2101_read_status(struct dvb_frontend *fe, enum fe_status *status)
+static int tas2101_read_status(struct neumo_dvb_frontend *fe, enum fe_status *status)
 {
 	//printk("%s \n", __func__);
 	*status = FE_HAS_SIGNAL | FE_HAS_CARRIER |
@@ -702,51 +711,51 @@ static int tas2101_read_status(struct dvb_frontend *fe, enum fe_status *status)
 
 }
 
-static int tas2101_set_voltage(struct dvb_frontend *fe,
+static int tas2101_set_voltage(struct neumo_dvb_frontend *fe,
 	enum fe_sec_voltage voltage)
 {
 	return 0;
-	
+
 }
 
-static int tas2101_set_tone(struct dvb_frontend *fe,
+static int tas2101_set_tone(struct neumo_dvb_frontend *fe,
 	enum fe_sec_tone_mode tone)
 {
 	return 0;
-	
+
 }
 
-static int tas2101_send_diseqc_msg(struct dvb_frontend *fe,
+static int tas2101_send_diseqc_msg(struct neumo_dvb_frontend *fe,
 	struct dvb_diseqc_master_cmd *d)
 {
 	return 0;
 
 }
 
-static int tas2101_diseqc_send_burst(struct dvb_frontend *fe,
+static int tas2101_diseqc_send_burst(struct neumo_dvb_frontend *fe,
 	enum fe_sec_mini_cmd burst)
 {
 	return 0;
 }
 
-static void tas2101_release(struct dvb_frontend *fe)
+static void tas2101_release(struct neumo_dvb_frontend *fe)
 {
 
 }
 
 
-static int tas2101_initfe(struct dvb_frontend *fe)
-{
-	return 0;
-
-}
-
-static int tas2101_sleep(struct dvb_frontend *fe)
+static int tas2101_initfe(struct neumo_dvb_frontend *fe)
 {
 	return 0;
+
 }
 
-static int tas2101_get_frontend(struct dvb_frontend *fe,struct dtv_frontend_properties *c)
+static int tas2101_sleep(struct neumo_dvb_frontend *fe)
+{
+	return 0;
+}
+
+static int tas2101_get_frontend(struct neumo_dvb_frontend *fe,struct neumo_driver_dtv_frontend_properties *c)
 {
 	//printk("%s \n", __func__);
 	c->fec_inner = 1;
@@ -757,20 +766,20 @@ static int tas2101_get_frontend(struct dvb_frontend *fe,struct dtv_frontend_prop
 	return 0;
 }
 
-static int tas2101_tune(struct dvb_frontend *fe, bool re_tune,
+static int tas2101_tune(struct neumo_dvb_frontend *fe, bool re_tune,
 	unsigned int mode_flags, unsigned int *delay, enum fe_status *status)
-{	
+{
 	return tas2101_read_status(fe, status);
 }
 
-static enum dvbfe_algo tas2101_get_algo(struct dvb_frontend *fe)
+static enum neumo_dvbfe_algo tas2101_get_algo(struct neumo_dvb_frontend *fe)
 {
 	return DVBFE_ALGO_HW;
 
 }
 
 
-static struct dvb_frontend_ops tas2101_ops = {
+static struct neumo_dvb_frontend_ops tas2101_ops = {
 	.delsys = { SYS_DVBS, SYS_DVBS2 },
 	.info = {
 		.name = "tbs6900 dual ci",
@@ -811,9 +820,9 @@ static struct dvb_frontend_ops tas2101_ops = {
 
 };
 
-static int start_feed(struct dvb_demux_feed *dvbdmxfeed)
+static int start_feed(struct neumo_dvb_demux_feed *dvbdmxfeed)
 {
-	struct dvb_demux *dvbdmx = dvbdmxfeed->demux;
+	struct neumo_dvb_demux *dvbdmx = dvbdmxfeed->demux;
 	struct ca_channel *tbsca = dvbdmx->priv;
 	//printk("%s feeds:%d\n", __func__,tbsca->feeds);
 	if (!tbsca->feeds)
@@ -822,9 +831,9 @@ static int start_feed(struct dvb_demux_feed *dvbdmxfeed)
 	return ++tbsca->feeds;
 }
 
-static int stop_feed(struct dvb_demux_feed *dvbdmxfeed)
+static int stop_feed(struct neumo_dvb_demux_feed *dvbdmxfeed)
 {
-	struct dvb_demux *dvbdmx = dvbdmxfeed->demux;
+	struct neumo_dvb_demux *dvbdmx = dvbdmxfeed->demux;
 	struct ca_channel *tbsca = dvbdmx->priv;
 	//printk("%s feeds:%d\n", __func__,tbsca->feeds);
 	tbsca->feeds--;
@@ -832,10 +841,10 @@ static int stop_feed(struct dvb_demux_feed *dvbdmxfeed)
 }
 
 
-int my_dvb_dmx_ts_card_init(struct dvb_demux *dvbdemux, char *id,
-			    int (*start_feed)(struct dvb_demux_feed *),
-			    int (*stop_feed)(struct dvb_demux_feed *),
-			    void *priv)
+static int my_dvb_dmx_ts_card_init(struct neumo_dvb_demux *dvbdemux, char *id,
+																	 int (*start_feed)(struct neumo_dvb_demux_feed *),
+																	 int (*stop_feed)(struct neumo_dvb_demux_feed *),
+																	 void *priv)
 {
 //	printk("%s \n", __func__);
 	dvbdemux->priv = priv;
@@ -848,11 +857,11 @@ int my_dvb_dmx_ts_card_init(struct dvb_demux *dvbdemux, char *id,
 	dvbdemux->dmx.capabilities = (DMX_TS_FILTERING |
 				      DMX_SECTION_FILTERING |
 				      DMX_MEMORY_BASED_FILTERING);
-	return dvb_dmx_init(dvbdemux);
+	return neumo_dvb_dmx_init(dvbdemux);
 }
 
-int my_dvb_dmxdev_ts_card_init(struct dmxdev *dmxdev,
-			       struct dvb_demux *dvbdemux,
+static int my_dvb_dmxdev_ts_card_init(struct neumo_dmxdev *dmxdev,
+			       struct neumo_dvb_demux *dvbdemux,
 			       struct dmx_frontend *hw_frontend,
 			       struct dmx_frontend *mem_frontend,
 			       struct dvb_adapter *dvb_adapter)
@@ -862,7 +871,7 @@ int my_dvb_dmxdev_ts_card_init(struct dmxdev *dmxdev,
 	dmxdev->filternum = 256;
 	dmxdev->demux = &dvbdemux->dmx;
 	dmxdev->capabilities = 0;
-	ret = dvb_dmxdev_init(dmxdev, dvb_adapter);
+	ret = neumo_dvb_dmxdev_init(dmxdev, dvb_adapter);
 	if (ret < 0)
 		return ret;
 
@@ -870,7 +879,7 @@ int my_dvb_dmxdev_ts_card_init(struct dmxdev *dmxdev,
 	dvbdemux->dmx.add_frontend(&dvbdemux->dmx, hw_frontend);
 	mem_frontend->source = DMX_MEMORY_FE;
 	dvbdemux->dmx.add_frontend(&dvbdemux->dmx, mem_frontend);
-	return dvbdemux->dmx.connect_frontend(&dvbdemux->dmx, hw_frontend); 
+	return dvbdemux->dmx.connect_frontend(&dvbdemux->dmx, hw_frontend);
 }
 
 
@@ -888,7 +897,7 @@ struct dvb_ca_en50221 ca_config = {
 static void tbs_adapters_remove(struct tbs_pcie_dev *dev)
 {
 	struct ca_channel *tbsca;
-	struct dvb_demux *dvbdemux;
+	struct neumo_dvb_demux *dvbdemux;
 	int i;
 	//printk("%s \n", __func__);
 
@@ -910,19 +919,19 @@ static void tbs_adapters_remove(struct tbs_pcie_dev *dev)
 	for(i=0;i<CHANNELS;i++){
 		tbsca = &dev->channnel[i];
 		dvbdemux = &tbsca->demux;
-		
+
 		dvb_net_release(&tbsca->dvbnet);
 		dvbdemux->dmx.close(&dvbdemux->dmx);
 		dvbdemux->dmx.remove_frontend(&dvbdemux->dmx, &tbsca->fe_mem);
 		dvbdemux->dmx.remove_frontend(&dvbdemux->dmx, &tbsca->fe_hw);
-		dvb_dmxdev_release(&tbsca->dmxdev);
-		dvb_dmx_release(&tbsca->demux);
-		dvb_unregister_frontend(&tbsca->fe);
+		neumo_dvb_dmxdev_release(&tbsca->dmxdev);
+		neumo_dvb_dmx_release(&tbsca->demux);
+		neumo_dvb_unregister_frontend(&tbsca->fe);
 
-		dvb_ca_en50221_release(&tbsca->ca);
+		neumo_dvb_ca_en50221_release(&tbsca->ca);
 		dvb_unregister_device(tbsca->ci_dev);
 	}
-	dvb_unregister_adapter(&dev->adapter);	
+	dvb_unregister_adapter(&dev->adapter);
 }
 
 static int tbs_adapters_init(struct tbs_pcie_dev *dev)
@@ -979,7 +988,7 @@ static int tbs_adapters_init(struct tbs_pcie_dev *dev)
 
 		if((pci->subsystem_vendor == 0x6900)&&(pci->subsystem_device == 0x0001))
 		{
-			ret = dvb_ca_en50221_init(&dev->adapter, &tbsca->ca, 0, 1);
+			ret = neumo_dvb_ca_en50221_init(&dev->adapter, &tbsca->ca, 0, 1);
 			if (ret < 0) {
 				printk("%s ERROR: dvb_ca_en50221_init\n", __func__);;
 				goto fail;
@@ -991,9 +1000,9 @@ static int tbs_adapters_init(struct tbs_pcie_dev *dev)
 			goto fail;
 		}
 
-		memcpy(&tbsca->fe.ops, &tas2101_ops,sizeof(struct dvb_frontend_ops));
+		memcpy(&tbsca->fe.ops, &tas2101_ops,sizeof(struct neumo_dvb_frontend_ops));
 		tbsca->fe.demodulator_priv = tbsca;
-		ret = dvb_register_frontend(&dev->adapter, &tbsca->fe) ;
+		ret = neumo_dvb_register_frontend(&dev->adapter, &tbsca->fe) ;
 		if (ret < 0) {
 			printk("%s ERROR: dvb_register_frontend\n", __func__);;
 			goto fail;
@@ -1006,10 +1015,10 @@ static int tbs_adapters_init(struct tbs_pcie_dev *dev)
 			printk("%s ERROR: my_dvb_dmx_ts_card_init\n", __func__);;
 			goto fail;
 		}
-						  
+
 		ret = my_dvb_dmxdev_ts_card_init(&tbsca->dmxdev, &tbsca->demux,
 						 &tbsca->fe_hw,
-						 &tbsca->fe_mem, &dev->adapter);  
+						 &tbsca->fe_mem, &dev->adapter);
 		if (ret < 0) {
 			printk("%s ERROR: my_dvb_dmxdev_ts_card_init\n", __func__);;
 			goto fail;
@@ -1093,7 +1102,7 @@ static int tbsci_probe(struct pci_dev *pdev,
 {
 	struct tbs_pcie_dev *dev;
 	int err = 0, ret = -ENODEV;
-	
+
 	dev = kzalloc(sizeof(struct tbs_pcie_dev), GFP_KERNEL);
 	if (dev == NULL)
 	{
@@ -1122,7 +1131,7 @@ static int tbsci_probe(struct pci_dev *pdev,
 	}
 
 	pci_set_drvdata(pdev, dev);
-			
+
 	ret = tbs_adapters_init(dev);
 	if (ret < 0)
 	{
@@ -1131,7 +1140,7 @@ static int tbsci_probe(struct pci_dev *pdev,
 		goto fail2;
 	}
 
-	//interrupts 
+	//interrupts
 	if (tbsci_enable_msi(pdev, dev)) {
 		printk("KBUILD_MODNAME : %s --MSI!\n",KBUILD_MODNAME);
 		dev->msi = true;

@@ -9,7 +9,7 @@
 #ifndef CXD2820R_H
 #define CXD2820R_H
 
-#include <linux/dvb/frontend.h>
+#include <dvb/neumo-frontend.h>
 
 #define CXD2820R_GPIO_D (0 << 0) /* disable */
 #define CXD2820R_GPIO_E (1 << 0) /* enable */
@@ -43,8 +43,8 @@ struct cxd2820r_platform_data {
 	bool spec_inv;
 	int **gpio_chip_base;
 
-	void (*set_lock_led)(struct dvb_frontend *fe, int offon);
-	struct dvb_frontend* (*get_dvb_frontend)(struct i2c_client *);
+	void (*set_lock_led)(struct neumo_dvb_frontend *fe, int offon);
+	struct neumo_dvb_frontend* (*get_dvb_frontend)(struct i2c_client *);
 /* private: For legacy media attach wrapper. Do not set value. */
 	bool attach_in_use;
 };
@@ -94,7 +94,7 @@ struct cxd2820r_config {
 	bool spec_inv;
 
 	/* Hook for Lock LED */
-	void (*set_lock_led)(struct dvb_frontend *fe, int offon);
+	void (*set_lock_led)(struct neumo_dvb_frontend *fe, int offon);
 };
 
 
@@ -111,13 +111,13 @@ struct cxd2820r_config {
  *
  * return: FE pointer on success, NULL on failure.
  */
-extern struct dvb_frontend *cxd2820r_attach(
+extern struct neumo_dvb_frontend *cxd2820r_attach(
 	const struct cxd2820r_config *config,
 	struct i2c_adapter *i2c,
 	int *gpio_chip_base
 );
 #else
-static inline struct dvb_frontend *cxd2820r_attach(
+static inline struct neumo_dvb_frontend *cxd2820r_attach(
 	const struct cxd2820r_config *config,
 	struct i2c_adapter *i2c,
 	int *gpio_chip_base

@@ -14,7 +14,7 @@
 #include <linux/slab.h>
 #include <linux/string.h>
 
-#include <media/dvb_frontend.h>
+#include <media/neumo-dvb-frontend.h>
 
 #include "stv6110x_reg.h"
 #include "stv6110x.h"
@@ -90,7 +90,7 @@ static int stv6110x_write_reg(struct stv6110x_state *stv6110x, u8 reg, u8 data)
 	return stv6110x_write_regs(stv6110x, reg, &tmp, 1);
 }
 
-static int stv6110x_init(struct dvb_frontend *fe)
+static int stv6110x_init(struct neumo_dvb_frontend *fe)
 {
 	struct stv6110x_state *stv6110x = fe->tuner_priv;
 	int ret;
@@ -105,7 +105,7 @@ static int stv6110x_init(struct dvb_frontend *fe)
 	return 0;
 }
 
-static int stv6110x_set_frequency(struct dvb_frontend *fe, u32 frequency)
+static int stv6110x_set_frequency(struct neumo_dvb_frontend *fe, u32 frequency)
 {
 	struct stv6110x_state *stv6110x = fe->tuner_priv;
 	u32 rDiv, divider;
@@ -166,7 +166,7 @@ static int stv6110x_set_frequency(struct dvb_frontend *fe, u32 frequency)
 	return 0;
 }
 
-static int stv6110x_get_frequency(struct dvb_frontend *fe, u32 *frequency)
+static int stv6110x_get_frequency(struct neumo_dvb_frontend *fe, u32 *frequency)
 {
 	struct stv6110x_state *stv6110x = fe->tuner_priv;
 
@@ -184,7 +184,7 @@ static int stv6110x_get_frequency(struct dvb_frontend *fe, u32 *frequency)
 	return 0;
 }
 
-static int stv6110x_set_bandwidth(struct dvb_frontend *fe, u32 bandwidth)
+static int stv6110x_set_bandwidth(struct neumo_dvb_frontend *fe, u32 bandwidth)
 {
 	struct stv6110x_state *stv6110x = fe->tuner_priv;
 	u32 halfbw;
@@ -218,7 +218,7 @@ static int stv6110x_set_bandwidth(struct dvb_frontend *fe, u32 bandwidth)
 	return 0;
 }
 
-static int stv6110x_get_bandwidth(struct dvb_frontend *fe, u32 *bandwidth)
+static int stv6110x_get_bandwidth(struct neumo_dvb_frontend *fe, u32 *bandwidth)
 {
 	struct stv6110x_state *stv6110x = fe->tuner_priv;
 
@@ -228,7 +228,7 @@ static int stv6110x_get_bandwidth(struct dvb_frontend *fe, u32 *bandwidth)
 	return 0;
 }
 
-static int stv6110x_set_refclock(struct dvb_frontend *fe, u32 refclock)
+static int stv6110x_set_refclock(struct neumo_dvb_frontend *fe, u32 refclock)
 {
 	struct stv6110x_state *stv6110x = fe->tuner_priv;
 
@@ -254,7 +254,7 @@ static int stv6110x_set_refclock(struct dvb_frontend *fe, u32 refclock)
 	return 0;
 }
 
-static int stv6110x_get_bbgain(struct dvb_frontend *fe, u32 *gain)
+static int stv6110x_get_bbgain(struct neumo_dvb_frontend *fe, u32 *gain)
 {
 	struct stv6110x_state *stv6110x = fe->tuner_priv;
 
@@ -264,7 +264,7 @@ static int stv6110x_get_bbgain(struct dvb_frontend *fe, u32 *gain)
 	return 0;
 }
 
-static int stv6110x_set_bbgain(struct dvb_frontend *fe, u32 gain)
+static int stv6110x_set_bbgain(struct neumo_dvb_frontend *fe, u32 gain)
 {
 	struct stv6110x_state *stv6110x = fe->tuner_priv;
 
@@ -274,7 +274,7 @@ static int stv6110x_set_bbgain(struct dvb_frontend *fe, u32 gain)
 	return 0;
 }
 
-static int stv6110x_set_mode(struct dvb_frontend *fe, enum tuner_mode mode)
+static int stv6110x_set_mode(struct neumo_dvb_frontend *fe, enum tuner_mode mode)
 {
 	struct stv6110x_state *stv6110x = fe->tuner_priv;
 	int ret;
@@ -302,7 +302,7 @@ static int stv6110x_set_mode(struct dvb_frontend *fe, enum tuner_mode mode)
 	return 0;
 }
 
-static int stv6110x_sleep(struct dvb_frontend *fe)
+static int stv6110x_sleep(struct neumo_dvb_frontend *fe)
 {
 	if (fe->tuner_priv)
 		return stv6110x_set_mode(fe, TUNER_SLEEP);
@@ -310,7 +310,7 @@ static int stv6110x_sleep(struct dvb_frontend *fe)
 	return 0;
 }
 
-static int stv6110x_get_status(struct dvb_frontend *fe, u32 *status)
+static int stv6110x_get_status(struct neumo_dvb_frontend *fe, u32 *status)
 {
 	struct stv6110x_state *stv6110x = fe->tuner_priv;
 
@@ -325,7 +325,7 @@ static int stv6110x_get_status(struct dvb_frontend *fe, u32 *status)
 }
 
 
-static void stv6110x_release(struct dvb_frontend *fe)
+static void stv6110x_release(struct neumo_dvb_frontend *fe)
 {
 	struct stv6110x_state *stv6110x = fe->tuner_priv;
 
@@ -368,7 +368,7 @@ static void stv6110x_setup_divider(struct stv6110x_state *stv6110x)
 	}
 }
 
-static const struct dvb_tuner_ops stv6110x_ops = {
+static const struct neumo_dvb_tuner_ops stv6110x_ops = {
 	.info = {
 		.name		  = "STV6110(A) Silicon Tuner",
 		.frequency_min_hz =  950 * MHz,
@@ -455,7 +455,7 @@ static void stv6110x_remove(struct i2c_client *client)
 #endif	
 }
 
-const struct stv6110x_devctl *stv6110x_attach(struct dvb_frontend *fe,
+const struct stv6110x_devctl *stv6110x_attach(struct neumo_dvb_frontend *fe,
 					const struct stv6110x_config *config,
 					struct i2c_adapter *i2c)
 {
@@ -503,3 +503,6 @@ module_i2c_driver(stv6110x_driver);
 MODULE_AUTHOR("Manu Abraham");
 MODULE_DESCRIPTION("STV6110x Silicon tuner");
 MODULE_LICENSE("GPL");
+
+//check for incorrect include files
+#include "linux/media/neumo-check.h"

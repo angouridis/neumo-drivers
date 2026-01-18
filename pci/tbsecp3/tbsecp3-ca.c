@@ -68,7 +68,7 @@ static int tbsecp3_ca_wr_attr_mem(struct dvb_ca_en50221 *ca,
 	return 0;
 }
 
-static int tbsecp3_ca_rd_cam_ctrl(struct dvb_ca_en50221 *ca, 
+static int tbsecp3_ca_rd_cam_ctrl(struct dvb_ca_en50221 *ca,
 	int slot, u8 address)
 {
 	struct tbsecp3_ca *tbsca = ca->data;
@@ -86,7 +86,7 @@ static int tbsecp3_ca_rd_cam_ctrl(struct dvb_ca_en50221 *ca,
 	data |= 0x02 << 16;
 	tbs_write(TBSECP3_CA_BASE(tbsca->nr), 0x00, data);
 	udelay(150);
-	
+
 	data = tbs_read(TBSECP3_CA_BASE(tbsca->nr), 0x08);
 
 	mutex_unlock(&tbsca->lock);
@@ -128,7 +128,7 @@ static int tbsecp3_ca_slot_reset(struct dvb_ca_en50221 *ca, int slot)
 
 	if (slot != 0)
 		return -EINVAL;
-	
+
 	mutex_lock(&tbsca->lock);
 
 	tbs_write(TBSECP3_CA_BASE(tbsca->nr), 0x04, 1);
@@ -145,7 +145,7 @@ static int tbsecp3_ca_slot_ctrl(struct dvb_ca_en50221 *ca,
 	int slot, int enable)
 {
 	struct tbsecp3_ca *tbsca = ca->data;
-	struct tbsecp3_adapter *adapter = 
+	struct tbsecp3_adapter *adapter =
 			(struct tbsecp3_adapter *) tbsca->adapter;
 	struct tbsecp3_dev *dev = adapter->dev;
 	u32 data;
@@ -177,7 +177,7 @@ static int tbsecp3_ca_slot_ts_enable(struct dvb_ca_en50221 *ca, int slot)
 	return tbsecp3_ca_slot_ctrl(ca, slot, 1);
 }
 
-static int tbsecp3_ca_poll_slot_status(struct dvb_ca_en50221 *ca, 
+static int tbsecp3_ca_poll_slot_status(struct dvb_ca_en50221 *ca,
 	int slot, int open)
 {
 	struct tbsecp3_ca *tbsca = ca->data;
@@ -248,13 +248,13 @@ int tbsecp3_ca_init(struct tbsecp3_adapter *adap, int nr)
 		"initializing CA slot %d on adapter %d\n",
 		nr, adap->dvb_adapter.num);
 
-	ret = dvb_ca_en50221_init(&adap->dvb_adapter, &tbsca->ca, 0, 1);
+	ret = neumo_dvb_ca_en50221_init(&adap->dvb_adapter, &tbsca->ca, 0, 1);
 	if (ret)
 		goto error2;
 
 	return 0;
 
-error2: 
+error2:
 	kfree(tbsca);
 error1:
 	dev_err(&dev->pci_dev->dev,
@@ -272,7 +272,10 @@ void tbsecp3_ca_release(struct tbsecp3_adapter *adap)
 		return;
 	if (!tbsca->ca.data)
 		return;
-	dvb_ca_en50221_release(&tbsca->ca);
+	neumo_dvb_ca_en50221_release(&tbsca->ca);
 	kfree(tbsca);
 }
 
+
+//check for incorrect include files
+#include <media/neumo-check.h>

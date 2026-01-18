@@ -79,33 +79,43 @@ struct stv090x_config {
 	bool diseqc_envelope_mode;
 
 	/* Hook for Lock LED */
-	void (*set_lock_led) (struct dvb_frontend *fe, int offon);
-	int (*tuner_init) (struct dvb_frontend *fe);
-	int (*tuner_sleep) (struct dvb_frontend *fe);
-	int (*tuner_set_mode) (struct dvb_frontend *fe, enum tuner_mode mode);
-	int (*tuner_set_frequency) (struct dvb_frontend *fe, u32 frequency);
-	int (*tuner_get_frequency) (struct dvb_frontend *fe, u32 *frequency);
-	int (*tuner_set_bandwidth) (struct dvb_frontend *fe, u32 bandwidth);
-	int (*tuner_get_bandwidth) (struct dvb_frontend *fe, u32 *bandwidth);
-	int (*tuner_set_bbgain) (struct dvb_frontend *fe, u32 gain);
-	int (*tuner_get_bbgain) (struct dvb_frontend *fe, u32 *gain);
-	int (*tuner_set_refclk)  (struct dvb_frontend *fe, u32 refclk);
-	int (*tuner_get_status) (struct dvb_frontend *fe, u32 *status);
-	void (*tuner_i2c_lock) (struct dvb_frontend *fe, int lock);
+	void (*set_lock_led) (struct neumo_dvb_frontend *fe, int offon);
+	int (*tuner_init) (struct neumo_dvb_frontend *fe);
+	int (*tuner_sleep) (struct neumo_dvb_frontend *fe);
+	int (*tuner_set_mode) (struct neumo_dvb_frontend *fe, enum tuner_mode mode);
+	int (*tuner_set_frequency) (struct neumo_dvb_frontend *fe, u32 frequency);
+	int (*tuner_get_frequency) (struct neumo_dvb_frontend *fe, u32 *frequency);
+	int (*tuner_set_bandwidth) (struct neumo_dvb_frontend *fe, u32 bandwidth);
+	int (*tuner_get_bandwidth) (struct neumo_dvb_frontend *fe, u32 *bandwidth);
+	int (*tuner_set_bbgain) (struct neumo_dvb_frontend *fe, u32 gain);
+	int (*tuner_get_bbgain) (struct neumo_dvb_frontend *fe, u32 *gain);
+	int (*tuner_set_refclk)  (struct neumo_dvb_frontend *fe, u32 refclk);
+	int (*tuner_get_status) (struct neumo_dvb_frontend *fe, u32 *status);
+	void (*tuner_i2c_lock) (struct neumo_dvb_frontend *fe, int lock);
 
 	/* dir = 0 -> output, dir = 1 -> input/open-drain */
-	int (*set_gpio) (struct dvb_frontend *fe, u8 gpio, u8 dir, u8 value,
+	int (*set_gpio) (struct neumo_dvb_frontend *fe, u8 gpio, u8 dir, u8 value,
 			u8 xor_value);
 
-	struct dvb_frontend* (*get_dvb_frontend)(struct i2c_client *i2c);
+	struct neumo_dvb_frontend* (*get_dvb_frontend)(struct i2c_client *i2c);
 };
 
+#if IS_REACHABLE(CONFIG_DVB_STV090x)
 
-
-struct dvb_frontend *stv090x_attach(struct stv090x_config *config,
+struct neumo_dvb_frontend *stv090x_attach(struct stv090x_config *config,
 				    struct i2c_adapter *i2c,
 				    enum stv090x_demodulator demod);
 
+#else
 
+static inline struct neumo_dvb_frontend *stv090x_attach(const struct stv090x_config *config,
+						  struct i2c_adapter *i2c,
+						  enum stv090x_demodulator demod)
+{
+	printk(KERN_WARNING "%s: driver disabled by Kconfig\n", __func__);
+	return NULL;
+}
+
+#endif /* CONFIG_DVB_STV090x */
 
 #endif /* __STV090x_H */

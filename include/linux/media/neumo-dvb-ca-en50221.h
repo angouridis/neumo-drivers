@@ -3,6 +3,7 @@
  *
  * Copyright (C) 2004 Andrew de Quincey
  *
+ * Copyright (C) 2025-2026 Deep Thought <deeptho@gmail.com>
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
  * as published by the Free Software Foundation; either version 2.1
@@ -14,13 +15,12 @@
  * GNU General Public License for more details.
  */
 
-#ifndef _DVB_CA_EN50221_H_
-#define _DVB_CA_EN50221_H_
+#pragma once
 
 #include <linux/list.h>
-#include <linux/dvb/ca.h>
+#include <linux/dvb/neumo-ca.h>
 
-#include <media/dvbdev.h>
+#include <media/neumo-dvbdev.h>
 
 #define DVB_CA_EN50221_POLL_CAM_PRESENT	1
 #define DVB_CA_EN50221_POLL_CAM_CHANGED	2
@@ -95,7 +95,7 @@ struct dvb_ca_en50221 {
  * @slot: Slot concerned.
  * @change_type: One of the DVB_CA_CAMCHANGE_* values
  */
-void dvb_ca_en50221_camchange_irq(struct dvb_ca_en50221 *pubca, int slot,
+void neumo_dvb_ca_en50221_camchange_irq(struct dvb_ca_en50221 *pubca, int slot,
 				  int change_type);
 
 /**
@@ -104,7 +104,7 @@ void dvb_ca_en50221_camchange_irq(struct dvb_ca_en50221 *pubca, int slot,
  * @pubca: CA instance.
  * @slot: Slot concerned.
  */
-void dvb_ca_en50221_camready_irq(struct dvb_ca_en50221 *pubca, int slot);
+void neumo_dvb_ca_en50221_camready_irq(struct dvb_ca_en50221 *pubca, int slot);
 
 /**
  * dvb_ca_en50221_frda_irq - An FR or a DA IRQ has occurred.
@@ -112,7 +112,7 @@ void dvb_ca_en50221_camready_irq(struct dvb_ca_en50221 *pubca, int slot);
  * @ca: CA instance.
  * @slot: Slot concerned.
  */
-void dvb_ca_en50221_frda_irq(struct dvb_ca_en50221 *ca, int slot);
+void neumo_dvb_ca_en50221_frda_irq(struct dvb_ca_en50221 *ca, int slot);
 
 /*
  * Initialisation/shutdown functions
@@ -128,7 +128,7 @@ void dvb_ca_en50221_frda_irq(struct dvb_ca_en50221 *ca, int slot);
  *
  * @return 0 on success, nonzero on failure
  */
-int dvb_ca_en50221_init(struct dvb_adapter *dvb_adapter,
+int neumo_dvb_ca_en50221_init(struct dvb_adapter *dvb_adapter,
 			struct dvb_ca_en50221 *ca, int flags,
 			       int slot_count);
 
@@ -137,6 +137,4 @@ int dvb_ca_en50221_init(struct dvb_adapter *dvb_adapter,
  *
  * @ca: The associated dvb_ca instance.
  */
-void dvb_ca_en50221_release(struct dvb_ca_en50221 *ca);
-
-#endif
+void neumo_dvb_ca_en50221_release(struct dvb_ca_en50221 *ca);

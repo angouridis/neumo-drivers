@@ -23,7 +23,7 @@
 #ifndef __ISL_6422_H
 #define __ISL_6422_H
 
-#include <linux/dvb/frontend.h>
+#include <dvb/neumo-frontend.h>
 
 enum isl6422_current {
 	SEC_CURRENT_305m = 0,
@@ -49,12 +49,12 @@ struct isl6422_config {
 #if IS_ENABLED(CONFIG_DVB_ISL6422)
 
 
-extern struct dvb_frontend *isl6422_attach(struct dvb_frontend *fe,
+extern struct neumo_dvb_frontend *isl6422_attach(struct neumo_dvb_frontend *fe,
 					   struct i2c_adapter *i2c,
 					   const struct isl6422_config *config);
 
 #else
-static inline struct dvb_frontend *isl6422_attach(struct dvb_frontend *fe,
+static inline struct neumo_dvb_frontend *isl6422_attach(struct neumo_dvb_frontend *fe,
 						  struct i2c_adapter *i2c,
 						  const struct isl6422_config *config)
 {

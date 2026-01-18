@@ -7,8 +7,8 @@
  *                    for convergence integrated media GmbH
  */
 
-#ifndef _DVBCA_H_
-#define _DVBCA_H_
+#ifndef __NEUMO_DVBCA_H_
+#define __NEUMO_DVBCA_H_
 
 /**
  * struct ca_slot_info - CA slot interface types and info.
@@ -137,4 +137,4 @@ typedef struct ca_descr ca_descr_t;
 #endif
 
 
-#endif
+#endif //_NEUMO_DVBCA_H_

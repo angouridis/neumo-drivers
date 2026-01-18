@@ -34,11 +34,11 @@ struct ca_channel
 	spinlock_t		writelock;
 
 	__le32			*w_dmavirt;
-	dma_addr_t		w_dmaphy;	
+	dma_addr_t		w_dmaphy;
 	__le32			*r_dmavirt;
-	dma_addr_t		r_dmaphy;	
-	struct kfifo 		w_fifo; 
-	struct kfifo 		r_fifo; 
+	dma_addr_t		r_dmaphy;
+	struct kfifo 		w_fifo;
+	struct kfifo 		r_fifo;
 	u8			channel_index;
 	u8			is_open;
 	u8 is_open_for_read;
@@ -52,13 +52,13 @@ struct ca_channel
 	struct dvb_device    	*ci_dev;
 
 	/* dvb */
-	struct dvb_frontend  	fe;	 
-	struct dmxdev         	dmxdev;
-	struct dvb_demux      	demux;
+	struct neumo_dvb_frontend  	fe;
+	struct neumo_dmxdev         	dmxdev;
+	struct neumo_dvb_demux      	demux;
 	struct dvb_net        	dvbnet;
 	struct dmx_frontend 	fe_hw;
 	struct dmx_frontend 	fe_mem;
-	struct dtv_frontend_properties 	dvt_properties;
+	struct neumo_driver_dtv_frontend_properties 	dvt_properties;
 	int feeds;
 
 	u32			w_bitrate;

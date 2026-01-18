@@ -395,3 +395,5 @@ int dvb_usb_nec_rc_key_to_event(struct dvb_usb_device *d,
 	return 0;
 }
 EXPORT_SYMBOL(dvb_usb_nec_rc_key_to_event);
+
+#include<media/neumo-check.h>

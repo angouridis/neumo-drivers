@@ -917,7 +917,7 @@ static struct tda18271_thermo_map tda18271_thermometer[] = {
 	{ .d = 0x00, .r0 =  0, .r1 =   0 }, /* end */
 };
 
-int tda18271_lookup_thermometer(struct dvb_frontend *fe)
+int tda18271_lookup_thermometer(struct neumo_dvb_frontend *fe)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
 	unsigned char *regs = priv->tda18271_regs;
@@ -963,7 +963,7 @@ static struct tda18271_cid_target_map tda18271_cid_target[] = {
 	{ .rfmax =      0, .target = 0x00, .limit =     0 }, /* end */
 };
 
-int tda18271_lookup_cid_target(struct dvb_frontend *fe,
+int tda18271_lookup_cid_target(struct neumo_dvb_frontend *fe,
 			       u32 *freq, u8 *cid_target, u16 *count_limit)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
@@ -1004,7 +1004,7 @@ static struct tda18271_rf_tracking_filter_cal tda18271_rf_band_template[] = {
 	  .rf1_def =      0, .rf2_def =      0, .rf3_def =      0 }, /* end */
 };
 
-int tda18271_lookup_rf_band(struct dvb_frontend *fe, u32 *freq, u8 *rf_band)
+int tda18271_lookup_rf_band(struct neumo_dvb_frontend *fe, u32 *freq, u8 *rf_band)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
 	struct tda18271_rf_tracking_filter_cal *map = priv->rf_cal_state;
@@ -1048,7 +1048,7 @@ struct tda18271_map_layout {
 
 /*---------------------------------------------------------------------*/
 
-int tda18271_lookup_pll_map(struct dvb_frontend *fe,
+int tda18271_lookup_pll_map(struct neumo_dvb_frontend *fe,
 			    enum tda18271_map_type map_type,
 			    u32 *freq, u8 *post_div, u8 *div)
 {
@@ -1099,7 +1099,7 @@ fail:
 	return ret;
 }
 
-int tda18271_lookup_map(struct dvb_frontend *fe,
+int tda18271_lookup_map(struct neumo_dvb_frontend *fe,
 			enum tda18271_map_type map_type,
 			u32 *freq, u8 *val)
 {
@@ -1266,7 +1266,7 @@ static struct tda18271_map_layout tda18271c2_map_layout = {
 	.ir_measure        = tda18271_ir_measure,
 };
 
-int tda18271_assign_map_layout(struct dvb_frontend *fe)
+int tda18271_assign_map_layout(struct neumo_dvb_frontend *fe)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
 	int ret = 0;
@@ -1289,3 +1289,6 @@ int tda18271_assign_map_layout(struct dvb_frontend *fe)
 
 	return ret;
 }
+
+//check for incorrect include files
+#include "linux/media/neumo-check.h"

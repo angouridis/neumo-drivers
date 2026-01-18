@@ -344,7 +344,7 @@ static u32 stv0900_get_err_count(struct stv0900_internal *intp, int cntr,
 	return err_val;
 }
 
-static int stv0900_i2c_gate_ctrl(struct dvb_frontend *fe, int enable)
+static int stv0900_i2c_gate_ctrl(struct neumo_dvb_frontend *fe, int enable)
 {
 	struct stv0900_state *state = fe->demodulator_priv;
 	struct stv0900_internal *intp = state->internal;
@@ -504,11 +504,11 @@ static void stv0900_set_ts_parallel_serial(struct stv0900_internal *intp,
 	stv0900_write_bits(intp, F0900_P1_RST_HWARE, 0);
 }
 
-void stv0900_set_tuner(struct dvb_frontend *fe, u32 frequency,
+void stv0900_set_tuner(struct neumo_dvb_frontend *fe, u32 frequency,
 							u32 bandwidth)
 {
-	struct dvb_frontend_ops *frontend_ops = NULL;
-	struct dvb_tuner_ops *tuner_ops = NULL;
+	struct neumo_dvb_frontend_ops *frontend_ops = NULL;
+	struct neumo_dvb_tuner_ops *tuner_ops = NULL;
 
 	frontend_ops = &fe->ops;
 	tuner_ops = &frontend_ops->tuner_ops;
@@ -530,10 +530,10 @@ void stv0900_set_tuner(struct dvb_frontend *fe, u32 frequency,
 	}
 }
 
-void stv0900_set_bandwidth(struct dvb_frontend *fe, u32 bandwidth)
+void stv0900_set_bandwidth(struct neumo_dvb_frontend *fe, u32 bandwidth)
 {
-	struct dvb_frontend_ops *frontend_ops = NULL;
-	struct dvb_tuner_ops *tuner_ops = NULL;
+	struct neumo_dvb_frontend_ops *frontend_ops = NULL;
+	struct neumo_dvb_tuner_ops *tuner_ops = NULL;
 
 	frontend_ops = &fe->ops;
 	tuner_ops = &frontend_ops->tuner_ops;
@@ -636,7 +636,7 @@ static s32 stv0900_get_rf_level(struct stv0900_internal *intp,
 	return rf_lvl;
 }
 
-static int stv0900_read_signal_strength(struct dvb_frontend *fe, u16 *strength)
+static int stv0900_read_signal_strength(struct neumo_dvb_frontend *fe, u16 *strength)
 {
 	struct stv0900_state *state = fe->demodulator_priv;
 	struct stv0900_internal *internal = state->internal;
@@ -655,7 +655,7 @@ static int stv0900_read_signal_strength(struct dvb_frontend *fe, u16 *strength)
 	return 0;
 }
 
-static s32 stv0900_carr_get_quality(struct dvb_frontend *fe,
+static s32 stv0900_carr_get_quality(struct neumo_dvb_frontend *fe,
 					const struct stv0900_table *lookup)
 {
 	struct stv0900_state *state = fe->demodulator_priv;
@@ -722,7 +722,7 @@ static s32 stv0900_carr_get_quality(struct dvb_frontend *fe,
 	return c_n;
 }
 
-static int stv0900_read_ucblocks(struct dvb_frontend *fe, u32 * ucblocks)
+static int stv0900_read_ucblocks(struct neumo_dvb_frontend *fe, u32 * ucblocks)
 {
 	struct stv0900_state *state = fe->demodulator_priv;
 	struct stv0900_internal *intp = state->internal;
@@ -749,7 +749,7 @@ static int stv0900_read_ucblocks(struct dvb_frontend *fe, u32 * ucblocks)
 	return 0;
 }
 
-static int stv0900_read_snr(struct dvb_frontend *fe, u16 *snr)
+static int stv0900_read_snr(struct neumo_dvb_frontend *fe, u16 *snr)
 {
 	s32 snrlcl = stv0900_carr_get_quality(fe,
 			(const struct stv0900_table *)&stv0900_s2_cn);
@@ -812,7 +812,7 @@ static u32 stv0900_get_ber(struct stv0900_internal *intp,
 	return ber;
 }
 
-static int stv0900_read_ber(struct dvb_frontend *fe, u32 *ber)
+static int stv0900_read_ber(struct neumo_dvb_frontend *fe, u32 *ber)
 {
 	struct stv0900_state *state = fe->demodulator_priv;
 	struct stv0900_internal *internal = state->internal;
@@ -948,7 +948,7 @@ void stv0900_activate_s2_modcod_single(struct stv0900_internal *intp,
 
 }
 
-static enum dvbfe_algo stv0900_frontend_algo(struct dvb_frontend *fe)
+static enum neumo_dvbfe_algo stv0900_frontend_algo(struct neumo_dvb_frontend *fe)
 {
 	return DVBFE_ALGO_CUSTOM;
 }
@@ -1328,7 +1328,7 @@ enum fe_stv0900_error stv0900_st_dvbs2_single(struct stv0900_internal *intp,
 	return STV0900_NO_ERROR;
 }
 
-static enum fe_stv0900_error stv0900_init_internal(struct dvb_frontend *fe,
+static enum fe_stv0900_error stv0900_init_internal(struct neumo_dvb_frontend *fe,
 					struct stv0900_init_params *p_init)
 {
 	struct stv0900_state *state = fe->demodulator_priv;
@@ -1559,12 +1559,12 @@ static int stv0900_set_mis(struct stv0900_internal *intp,
 }
 
 
-static enum dvbfe_search stv0900_search(struct dvb_frontend *fe)
+static enum neumo_dvbfe_search stv0900_search(struct neumo_dvb_frontend *fe)
 {
 	struct stv0900_state *state = fe->demodulator_priv;
 	struct stv0900_internal *intp = state->internal;
 	enum fe_stv0900_demod_num demod = state->demod;
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 
 	struct stv0900_search_params p_search;
 	struct stv0900_signal_info p_result = intp->result[demod];
@@ -1637,7 +1637,7 @@ static enum dvbfe_search stv0900_search(struct dvb_frontend *fe)
 
 }
 
-static int stv0900_read_status(struct dvb_frontend *fe, enum fe_status *status)
+static int stv0900_read_status(struct neumo_dvb_frontend *fe, enum fe_status *status)
 {
 	struct stv0900_state *state = fe->demodulator_priv;
 
@@ -1661,7 +1661,7 @@ static int stv0900_read_status(struct dvb_frontend *fe, enum fe_status *status)
 	return 0;
 }
 
-static int stv0900_stop_ts(struct dvb_frontend *fe, int stop_ts)
+static int stv0900_stop_ts(struct neumo_dvb_frontend *fe, int stop_ts)
 {
 
 	struct stv0900_state *state = fe->demodulator_priv;
@@ -1676,7 +1676,7 @@ static int stv0900_stop_ts(struct dvb_frontend *fe, int stop_ts)
 	return 0;
 }
 
-static int stv0900_diseqc_init(struct dvb_frontend *fe)
+static int stv0900_diseqc_init(struct neumo_dvb_frontend *fe)
 {
 	struct stv0900_state *state = fe->demodulator_priv;
 	struct stv0900_internal *intp = state->internal;
@@ -1689,7 +1689,7 @@ static int stv0900_diseqc_init(struct dvb_frontend *fe)
 	return 0;
 }
 
-static int stv0900_init(struct dvb_frontend *fe)
+static int stv0900_init(struct neumo_dvb_frontend *fe)
 {
 	dprintk("%s\n", __func__);
 
@@ -1722,7 +1722,7 @@ static int stv0900_diseqc_send(struct stv0900_internal *intp , u8 *data,
 	return 0;
 }
 
-static int stv0900_send_master_cmd(struct dvb_frontend *fe,
+static int stv0900_send_master_cmd(struct neumo_dvb_frontend *fe,
 					struct dvb_diseqc_master_cmd *cmd)
 {
 	struct stv0900_state *state = fe->demodulator_priv;
@@ -1733,7 +1733,7 @@ static int stv0900_send_master_cmd(struct dvb_frontend *fe,
 				state->demod);
 }
 
-static int stv0900_send_burst(struct dvb_frontend *fe,
+static int stv0900_send_burst(struct neumo_dvb_frontend *fe,
 			      enum fe_sec_mini_cmd burst)
 {
 	struct stv0900_state *state = fe->demodulator_priv;
@@ -1758,7 +1758,7 @@ static int stv0900_send_burst(struct dvb_frontend *fe,
 	return 0;
 }
 
-static int stv0900_recv_slave_reply(struct dvb_frontend *fe,
+static int stv0900_recv_slave_reply(struct neumo_dvb_frontend *fe,
 				struct dvb_diseqc_slave_reply *reply)
 {
 	struct stv0900_state *state = fe->demodulator_priv;
@@ -1783,7 +1783,7 @@ static int stv0900_recv_slave_reply(struct dvb_frontend *fe,
 	return 0;
 }
 
-static int stv0900_set_tone(struct dvb_frontend *fe,
+static int stv0900_set_tone(struct neumo_dvb_frontend *fe,
 			    enum fe_sec_tone_mode toneoff)
 {
 	struct stv0900_state *state = fe->demodulator_priv;
@@ -1816,7 +1816,7 @@ static int stv0900_set_tone(struct dvb_frontend *fe,
 	return 0;
 }
 
-static void stv0900_release(struct dvb_frontend *fe)
+static void stv0900_release(struct neumo_dvb_frontend *fe)
 {
 	struct stv0900_state *state = fe->demodulator_priv;
 
@@ -1836,7 +1836,7 @@ static void stv0900_release(struct dvb_frontend *fe)
 	kfree(state);
 }
 
-static int stv0900_sleep(struct dvb_frontend *fe)
+static int stv0900_sleep(struct neumo_dvb_frontend *fe)
 {
 	struct stv0900_state *state = fe->demodulator_priv;
 
@@ -1848,8 +1848,8 @@ static int stv0900_sleep(struct dvb_frontend *fe)
 	return 0;
 }
 
-static int stv0900_get_frontend(struct dvb_frontend *fe,
-				struct dtv_frontend_properties *p)
+static int stv0900_get_frontend(struct neumo_dvb_frontend *fe,
+				struct neumo_driver_dtv_frontend_properties *p)
 {
 	struct stv0900_state *state = fe->demodulator_priv;
 	struct stv0900_internal *intp = state->internal;
@@ -1861,7 +1861,7 @@ static int stv0900_get_frontend(struct dvb_frontend *fe,
 	return 0;
 }
 
-static const struct dvb_frontend_ops stv0900_ops = {
+static const struct neumo_dvb_frontend_ops stv0900_ops = {
 	.delsys = { SYS_DVBS, SYS_DVBS2, SYS_DSS },
 	.info = {
 		.name			= "STV0900 frontend",
@@ -1895,7 +1895,7 @@ static const struct dvb_frontend_ops stv0900_ops = {
 	.read_ucblocks                  = stv0900_read_ucblocks,
 };
 
-struct dvb_frontend *stv0900_attach(const struct stv0900_config *config,
+struct neumo_dvb_frontend *stv0900_attach(const struct stv0900_config *config,
 					struct i2c_adapter *i2c,
 					int demod)
 {
@@ -1912,7 +1912,7 @@ struct dvb_frontend *stv0900_attach(const struct stv0900_config *config,
 	state->i2c_adap		= i2c;
 
 	memcpy(&state->frontend.ops, &stv0900_ops,
-			sizeof(struct dvb_frontend_ops));
+			sizeof(struct neumo_dvb_frontend_ops));
 	state->frontend.demodulator_priv = state;
 
 	switch (demod) {

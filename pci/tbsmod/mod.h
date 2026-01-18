@@ -2,7 +2,7 @@
 #define _UAPI_DVBMOD_H_
 
 #include <linux/types.h>
-#include <linux/dvb/frontend.h>
+#include <linux/dvb/neumo-frontend.h>
 /*
 struct dvb_mod_params {
 	__u32 base_frequency;

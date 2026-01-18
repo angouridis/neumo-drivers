@@ -153,3 +153,5 @@ int dvb_usb_get_hexline(const struct firmware *fw, struct hexline *hx,
 	return *pos;
 }
 EXPORT_SYMBOL(dvb_usb_get_hexline);
+
+#include<media/neumo-check.h>

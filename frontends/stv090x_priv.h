@@ -10,7 +10,7 @@
 #ifndef __STV090x_PRIV_H
 #define __STV090x_PRIV_H
 
-#include <media/dvb_frontend.h>
+#include <media/neumo-dvb-frontend.h>
 
 #define FE_ERROR				0
 #define FE_NOTICE				1
@@ -238,7 +238,7 @@ struct stv090x_state {
 
 	struct i2c_adapter		*i2c;
 	struct stv090x_config	*config;
-	struct dvb_frontend		frontend;
+	struct neumo_dvb_frontend		frontend;
 
 	u32				*verbose; /* Cached module verbosity */
 

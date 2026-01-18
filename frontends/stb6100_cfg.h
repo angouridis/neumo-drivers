@@ -7,13 +7,13 @@
 
 */
 
-#include <linux/dvb/frontend.h>
-#include <media/dvb_frontend.h>
+#include <dvb/neumo-frontend.h>
+#include <media/neumo-dvb-frontend.h>
 
-static int stb6100_get_frequency(struct dvb_frontend *fe, u32 *frequency)
+static int stb6100_get_frequency(struct neumo_dvb_frontend *fe, u32 *frequency)
 {
-	struct dvb_frontend_ops	*frontend_ops = &fe->ops;
-	struct dvb_tuner_ops	*tuner_ops = &frontend_ops->tuner_ops;
+	struct neumo_dvb_frontend_ops	*frontend_ops = &fe->ops;
+	struct neumo_dvb_tuner_ops	*tuner_ops = &frontend_ops->tuner_ops;
 	int err = 0;
 
 	if (tuner_ops->get_frequency) {
@@ -26,11 +26,11 @@ static int stb6100_get_frequency(struct dvb_frontend *fe, u32 *frequency)
 	return 0;
 }
 
-static int stb6100_set_frequency(struct dvb_frontend *fe, u32 frequency)
+static int stb6100_set_frequency(struct neumo_dvb_frontend *fe, u32 frequency)
 {
-	struct dvb_frontend_ops	*frontend_ops = &fe->ops;
-	struct dvb_tuner_ops	*tuner_ops = &frontend_ops->tuner_ops;
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dvb_frontend_ops	*frontend_ops = &fe->ops;
+	struct neumo_dvb_tuner_ops	*tuner_ops = &frontend_ops->tuner_ops;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	u32 bw = c->bandwidth_hz;
 	int err = 0;
 
@@ -48,10 +48,10 @@ static int stb6100_set_frequency(struct dvb_frontend *fe, u32 frequency)
 	return 0;
 }
 
-static int stb6100_get_bandwidth(struct dvb_frontend *fe, u32 *bandwidth)
+static int stb6100_get_bandwidth(struct neumo_dvb_frontend *fe, u32 *bandwidth)
 {
-	struct dvb_frontend_ops	*frontend_ops = &fe->ops;
-	struct dvb_tuner_ops	*tuner_ops = &frontend_ops->tuner_ops;
+	struct neumo_dvb_frontend_ops	*frontend_ops = &fe->ops;
+	struct neumo_dvb_tuner_ops	*tuner_ops = &frontend_ops->tuner_ops;
 	int err = 0;
 
 	if (tuner_ops->get_bandwidth) {
@@ -64,11 +64,11 @@ static int stb6100_get_bandwidth(struct dvb_frontend *fe, u32 *bandwidth)
 	return 0;
 }
 
-static int stb6100_set_bandwidth(struct dvb_frontend *fe, u32 bandwidth)
+static int stb6100_set_bandwidth(struct neumo_dvb_frontend *fe, u32 bandwidth)
 {
-	struct dvb_frontend_ops	*frontend_ops = &fe->ops;
-	struct dvb_tuner_ops	*tuner_ops = &frontend_ops->tuner_ops;
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dvb_frontend_ops	*frontend_ops = &fe->ops;
+	struct neumo_dvb_tuner_ops	*tuner_ops = &frontend_ops->tuner_ops;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	u32 freq = c->frequency;
 	int err = 0;
 

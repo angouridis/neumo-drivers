@@ -20,8 +20,11 @@
 #include <linux/firmware.h>
 
 #include "tuner-i2c.h"
-#include <media/dvb_frontend.h>
+#include <media/neumo-dvb-frontend.h>
 #include "cx24117.h"
+
+#define dprintk(fmt, arg...)																					\
+	printk(KERN_DEBUG pr_fmt("%s:%d " fmt),  __func__, __LINE__, ##arg)
 
 
 #define CX24117_DEFAULT_FIRMWARE "dvb-fe-cx24117.fw"
@@ -196,7 +199,7 @@ struct cx24117_priv {
 /* one per each fe */
 struct cx24117_state {
 	struct cx24117_priv *priv;
-	struct dvb_frontend frontend;
+	struct neumo_dvb_frontend frontend;
 
 	struct cx24117_tuning dcur;
 	struct cx24117_tuning dnxt;
@@ -253,7 +256,7 @@ static struct cx24117_modfec {
 	 */
 };
 
-struct i2c_adapter *cx24117_get_i2c_adapter(struct dvb_frontend *fe)
+struct i2c_adapter *cx24117_get_i2c_adapter(struct neumo_dvb_frontend *fe)
 {
 	struct cx24117_state *state = fe->demodulator_priv;
 	return state->priv->i2c;
@@ -440,10 +443,10 @@ static int cx24117_set_symbolrate(struct cx24117_state *state, u32 rate)
 	return 0;
 }
 
-static int cx24117_load_firmware(struct dvb_frontend *fe,
+static int cx24117_load_firmware(struct neumo_dvb_frontend *fe,
 	const struct firmware *fw);
 
-static int cx24117_firmware_ondemand(struct dvb_frontend *fe)
+static int cx24117_firmware_ondemand(struct neumo_dvb_frontend *fe)
 {
 	struct cx24117_state *state = fe->demodulator_priv;
 	const struct firmware *fw;
@@ -497,7 +500,7 @@ __func__);
 /* Take a basic firmware command structure, format it
  * and forward it for processing
  */
-static int cx24117_cmd_execute_nolock(struct dvb_frontend *fe,
+static int cx24117_cmd_execute_nolock(struct neumo_dvb_frontend *fe,
 	struct cx24117_cmd *cmd)
 {
 	struct cx24117_state *state = fe->demodulator_priv;
@@ -530,7 +533,7 @@ static int cx24117_cmd_execute_nolock(struct dvb_frontend *fe,
 	return 0;
 }
 
-static int cx24117_cmd_execute(struct dvb_frontend *fe, struct cx24117_cmd *cmd)
+static int cx24117_cmd_execute(struct neumo_dvb_frontend *fe, struct cx24117_cmd *cmd)
 {
 	struct cx24117_state *state = fe->demodulator_priv;
 	int ret;
@@ -542,7 +545,7 @@ static int cx24117_cmd_execute(struct dvb_frontend *fe, struct cx24117_cmd *cmd)
 	return ret;
 }
 
-static int cx24117_load_firmware(struct dvb_frontend *fe,
+static int cx24117_load_firmware(struct neumo_dvb_frontend *fe,
 	const struct firmware *fw)
 {
 	struct cx24117_state *state = fe->demodulator_priv;
@@ -735,7 +738,7 @@ error:
 	return ret;
 }
 
-static int cx24117_read_status(struct dvb_frontend *fe, enum fe_status *status)
+static int cx24117_read_status(struct neumo_dvb_frontend *fe, enum fe_status *status)
 {
 	struct cx24117_state *state = fe->demodulator_priv;
 	int lock;
@@ -762,7 +765,7 @@ static int cx24117_read_status(struct dvb_frontend *fe, enum fe_status *status)
 	return 0;
 }
 
-static int cx24117_read_ber(struct dvb_frontend *fe, u32 *ber)
+static int cx24117_read_ber(struct neumo_dvb_frontend *fe, u32 *ber)
 {
 	struct cx24117_state *state = fe->demodulator_priv;
 	int ret;
@@ -784,7 +787,7 @@ static int cx24117_read_ber(struct dvb_frontend *fe, u32 *ber)
 	return 0;
 }
 
-static int cx24117_read_signal_strength(struct dvb_frontend *fe,
+static int cx24117_read_signal_strength(struct neumo_dvb_frontend *fe,
 	u16 *signal_strength)
 {
 	struct cx24117_state *state = fe->demodulator_priv;
@@ -817,7 +820,7 @@ static int cx24117_read_signal_strength(struct dvb_frontend *fe,
 	return 0;
 }
 
-static int cx24117_read_snr(struct dvb_frontend *fe, u16 *snr)
+static int cx24117_read_snr(struct neumo_dvb_frontend *fe, u16 *snr)
 {
 	struct cx24117_state *state = fe->demodulator_priv;
 	int ret;
@@ -838,7 +841,7 @@ static int cx24117_read_snr(struct dvb_frontend *fe, u16 *snr)
 	return ret;
 }
 
-static int cx24117_read_ucblocks(struct dvb_frontend *fe, u32 *ucblocks)
+static int cx24117_read_ucblocks(struct neumo_dvb_frontend *fe, u32 *ucblocks)
 {
 	struct cx24117_state *state = fe->demodulator_priv;
 	enum fe_delivery_system delsys = fe->dtv_property_cache.delivery_system;
@@ -870,14 +873,14 @@ static int cx24117_read_ucblocks(struct dvb_frontend *fe, u32 *ucblocks)
 }
 
 /* Overwrite the current tuning params, we are about to tune */
-static void cx24117_clone_params(struct dvb_frontend *fe)
+static void cx24117_clone_params(struct neumo_dvb_frontend *fe)
 {
 	struct cx24117_state *state = fe->demodulator_priv;
 	state->dcur = state->dnxt;
 }
 
 /* Wait for LNB */
-static int cx24117_wait_for_lnb(struct dvb_frontend *fe)
+static int cx24117_wait_for_lnb(struct neumo_dvb_frontend *fe)
 {
 	struct cx24117_state *state = fe->demodulator_priv;
 	int i;
@@ -901,7 +904,7 @@ static int cx24117_wait_for_lnb(struct dvb_frontend *fe)
 	return -ETIMEDOUT; /* -EBUSY ? */
 }
 
-static int cx24117_set_voltage(struct dvb_frontend *fe,
+static int cx24117_set_voltage(struct neumo_dvb_frontend *fe,
 			       enum fe_sec_voltage voltage)
 {
 	struct cx24117_state *state = fe->demodulator_priv;
@@ -960,7 +963,7 @@ static int cx24117_set_voltage(struct dvb_frontend *fe,
 	return ret;
 }
 
-static int cx24117_set_tone(struct dvb_frontend *fe,
+static int cx24117_set_tone(struct neumo_dvb_frontend *fe,
 			    enum fe_sec_tone_mode tone)
 {
 	struct cx24117_state *state = fe->demodulator_priv;
@@ -996,6 +999,9 @@ static int cx24117_set_tone(struct dvb_frontend *fe,
 	case SEC_TONE_OFF:
 		cmd.args[4] = 0x00;
 		break;
+	case SEC_TONE_NOTSET:
+		dprintk("Incorrect argument %d\n", tone);
+		break;
 	}
 
 	msleep(20);
@@ -1004,7 +1010,7 @@ static int cx24117_set_tone(struct dvb_frontend *fe,
 }
 
 /* Initialise DiSEqC */
-static int cx24117_diseqc_init(struct dvb_frontend *fe)
+static int cx24117_diseqc_init(struct neumo_dvb_frontend *fe)
 {
 	struct cx24117_state *state = fe->demodulator_priv;
 
@@ -1034,7 +1040,7 @@ static int cx24117_diseqc_init(struct dvb_frontend *fe)
 }
 
 /* Send DiSEqC message */
-static int cx24117_send_diseqc_msg(struct dvb_frontend *fe,
+static int cx24117_send_diseqc_msg(struct neumo_dvb_frontend *fe,
 	struct dvb_diseqc_master_cmd *d)
 {
 	struct cx24117_state *state = fe->demodulator_priv;
@@ -1116,7 +1122,7 @@ static int cx24117_send_diseqc_msg(struct dvb_frontend *fe,
 }
 
 /* Send DiSEqC burst */
-static int cx24117_diseqc_send_burst(struct dvb_frontend *fe,
+static int cx24117_diseqc_send_burst(struct neumo_dvb_frontend *fe,
 	enum fe_sec_mini_cmd burst)
 {
 	struct cx24117_state *state = fe->demodulator_priv;
@@ -1158,7 +1164,7 @@ static void cx24117_release_priv(struct cx24117_priv *priv)
 	mutex_unlock(&cx24117_list_mutex);
 }
 
-static void cx24117_release(struct dvb_frontend *fe)
+static void cx24117_release(struct neumo_dvb_frontend *fe)
 {
 	struct cx24117_state *state = fe->demodulator_priv;
 	dev_dbg(&state->priv->i2c->dev, "%s demod%d\n",
@@ -1167,9 +1173,9 @@ static void cx24117_release(struct dvb_frontend *fe)
 	kfree(state);
 }
 
-static const struct dvb_frontend_ops cx24117_ops;
+static const struct neumo_dvb_frontend_ops cx24117_ops;
 
-struct dvb_frontend *cx24117_attach(struct cx24117_config *config,
+struct neumo_dvb_frontend *cx24117_attach(struct cx24117_config *config,
 	struct i2c_adapter *i2c)
 {
 	struct cx24117_state *state = NULL;
@@ -1211,7 +1217,7 @@ struct dvb_frontend *cx24117_attach(struct cx24117_config *config,
 
 	/* create dvb_frontend */
 	memcpy(&state->frontend.ops, &cx24117_ops,
-		sizeof(struct dvb_frontend_ops));
+		sizeof(struct neumo_dvb_frontend_ops));
 	state->frontend.demodulator_priv = state;
 	return &state->frontend;
 
@@ -1227,7 +1233,7 @@ EXPORT_SYMBOL_GPL(cx24117_attach);
  *
  * Power config will reset and load initial firmware if required
  */
-static int cx24117_initfe(struct dvb_frontend *fe)
+static int cx24117_initfe(struct neumo_dvb_frontend *fe)
 {
 	struct cx24117_state *state = fe->demodulator_priv;
 	struct cx24117_cmd cmd;
@@ -1287,7 +1293,7 @@ exit:
 /*
  * Put device to sleep
  */
-static int cx24117_sleep(struct dvb_frontend *fe)
+static int cx24117_sleep(struct neumo_dvb_frontend *fe)
 {
 	struct cx24117_state *state = fe->demodulator_priv;
 	struct cx24117_cmd cmd;
@@ -1306,10 +1312,10 @@ static int cx24117_sleep(struct dvb_frontend *fe)
 /* dvb-core told us to tune, the tv property cache will be complete,
  * it's safe for is to pull values and use them for tuning purposes.
  */
-static int cx24117_set_frontend(struct dvb_frontend *fe)
+static int cx24117_set_frontend(struct neumo_dvb_frontend *fe)
 {
 	struct cx24117_state *state = fe->demodulator_priv;
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct cx24117_cmd cmd;
 	enum fe_status tunerstat;
 	int i, status, ret, retune = 1;
@@ -1541,7 +1547,7 @@ static int cx24117_set_frontend(struct dvb_frontend *fe)
 	return -EINVAL;
 }
 
-static int cx24117_tune(struct dvb_frontend *fe, bool re_tune,
+static int cx24117_tune(struct neumo_dvb_frontend *fe, bool re_tune,
 	unsigned int mode_flags, unsigned int *delay, enum fe_status *status)
 {
 	struct cx24117_state *state = fe->demodulator_priv;
@@ -1558,13 +1564,13 @@ static int cx24117_tune(struct dvb_frontend *fe, bool re_tune,
 	return cx24117_read_status(fe, status);
 }
 
-static enum dvbfe_algo cx24117_get_algo(struct dvb_frontend *fe)
+static enum neumo_dvbfe_algo cx24117_get_algo(struct neumo_dvb_frontend *fe)
 {
 	return DVBFE_ALGO_HW;
 }
 
-static int cx24117_get_frontend(struct dvb_frontend *fe,
-				struct dtv_frontend_properties *c)
+static int cx24117_get_frontend(struct neumo_dvb_frontend *fe,
+				struct neumo_driver_dtv_frontend_properties *c)
 {
 	struct cx24117_state *state = fe->demodulator_priv;
 	struct cx24117_cmd cmd;
@@ -1621,7 +1627,7 @@ static int cx24117_get_frontend(struct dvb_frontend *fe,
 	return 0;
 }
 
-static const struct dvb_frontend_ops cx24117_ops = {
+static const struct neumo_dvb_frontend_ops cx24117_ops = {
 	.delsys = { SYS_DVBS, SYS_DVBS2 },
 	.info = {
 		.name = "Conexant CX24117/CX24132",
@@ -1666,3 +1672,5 @@ MODULE_LICENSE("GPL");
 MODULE_VERSION("1.1");
 MODULE_FIRMWARE(CX24117_DEFAULT_FIRMWARE);
 
+//check for incorrect include files
+#include "linux/media/neumo-check.h"

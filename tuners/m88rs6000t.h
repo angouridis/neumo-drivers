@@ -8,13 +8,13 @@
 #ifndef _M88RS6000T_H_
 #define _M88RS6000T_H_
 
-#include <media/dvb_frontend.h>
+#include <media/neumo-dvb-frontend.h>
 
 struct m88rs6000t_config {
 	/*
 	 * pointer to DVB frontend
 	 */
-	struct dvb_frontend *fe;
+	struct neumo_dvb_frontend *fe;
 };
 
 #endif

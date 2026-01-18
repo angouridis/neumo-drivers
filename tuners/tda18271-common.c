@@ -8,7 +8,7 @@
 
 #include "tda18271-priv.h"
 
-static int tda18271_i2c_gate_ctrl(struct dvb_frontend *fe, int enable)
+static int tda18271_i2c_gate_ctrl(struct neumo_dvb_frontend *fe, int enable)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
 	enum tda18271_i2c_gate gate;
@@ -51,7 +51,7 @@ static int tda18271_i2c_gate_ctrl(struct dvb_frontend *fe, int enable)
 
 /*---------------------------------------------------------------------*/
 
-static void tda18271_dump_regs(struct dvb_frontend *fe, int extended)
+static void tda18271_dump_regs(struct neumo_dvb_frontend *fe, int extended)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
 	unsigned char *regs = priv->tda18271_regs;
@@ -106,7 +106,7 @@ static void tda18271_dump_regs(struct dvb_frontend *fe, int extended)
 	tda_reg("EXTENDED_BYTE_23   = 0x%02x\n", 0xff & regs[R_EB23]);
 }
 
-int tda18271_read_regs(struct dvb_frontend *fe)
+int tda18271_read_regs(struct neumo_dvb_frontend *fe)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
 	unsigned char *regs = priv->tda18271_regs;
@@ -135,7 +135,7 @@ int tda18271_read_regs(struct dvb_frontend *fe)
 	return (ret == 2 ? 0 : ret);
 }
 
-int tda18271_read_extended(struct dvb_frontend *fe)
+int tda18271_read_extended(struct neumo_dvb_frontend *fe)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
 	unsigned char *regs = priv->tda18271_regs;
@@ -175,7 +175,7 @@ int tda18271_read_extended(struct dvb_frontend *fe)
 	return (ret == 2 ? 0 : ret);
 }
 
-static int __tda18271_write_regs(struct dvb_frontend *fe, int idx, int len,
+static int __tda18271_write_regs(struct neumo_dvb_frontend *fe, int idx, int len,
 			bool lock_i2c)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
@@ -245,14 +245,14 @@ static int __tda18271_write_regs(struct dvb_frontend *fe, int idx, int len,
 	return (ret == 1 ? 0 : ret);
 }
 
-int tda18271_write_regs(struct dvb_frontend *fe, int idx, int len)
+int tda18271_write_regs(struct neumo_dvb_frontend *fe, int idx, int len)
 {
 	return __tda18271_write_regs(fe, idx, len, true);
 }
 
 /*---------------------------------------------------------------------*/
 
-static int __tda18271_charge_pump_source(struct dvb_frontend *fe,
+static int __tda18271_charge_pump_source(struct neumo_dvb_frontend *fe,
 					 enum tda18271_pll pll, int force,
 					 bool lock_i2c)
 {
@@ -267,14 +267,14 @@ static int __tda18271_charge_pump_source(struct dvb_frontend *fe,
 	return __tda18271_write_regs(fe, r_cp, 1, lock_i2c);
 }
 
-int tda18271_charge_pump_source(struct dvb_frontend *fe,
+int tda18271_charge_pump_source(struct neumo_dvb_frontend *fe,
 				enum tda18271_pll pll, int force)
 {
 	return __tda18271_charge_pump_source(fe, pll, force, true);
 }
 
 
-int tda18271_init_regs(struct dvb_frontend *fe)
+int tda18271_init_regs(struct neumo_dvb_frontend *fe)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
 	unsigned char *regs = priv->tda18271_regs;
@@ -528,7 +528,7 @@ int tda18271_init_regs(struct dvb_frontend *fe)
  *
  */
 
-int tda18271_set_standby_mode(struct dvb_frontend *fe,
+int tda18271_set_standby_mode(struct neumo_dvb_frontend *fe,
 			      int sm, int sm_lt, int sm_xt)
 {
 	struct tda18271_priv *priv = fe->tuner_priv;
@@ -547,7 +547,7 @@ int tda18271_set_standby_mode(struct dvb_frontend *fe,
 
 /*---------------------------------------------------------------------*/
 
-int tda18271_calc_main_pll(struct dvb_frontend *fe, u32 freq)
+int tda18271_calc_main_pll(struct neumo_dvb_frontend *fe, u32 freq)
 {
 	/* sets main post divider & divider bytes, but does not write them */
 	struct tda18271_priv *priv = fe->tuner_priv;
@@ -570,7 +570,7 @@ fail:
 	return ret;
 }
 
-int tda18271_calc_cal_pll(struct dvb_frontend *fe, u32 freq)
+int tda18271_calc_cal_pll(struct neumo_dvb_frontend *fe, u32 freq)
 {
 	/* sets cal post divider & divider bytes, but does not write them */
 	struct tda18271_priv *priv = fe->tuner_priv;
@@ -595,7 +595,7 @@ fail:
 
 /*---------------------------------------------------------------------*/
 
-int tda18271_calc_bp_filter(struct dvb_frontend *fe, u32 *freq)
+int tda18271_calc_bp_filter(struct neumo_dvb_frontend *fe, u32 *freq)
 {
 	/* sets bp filter bits, but does not write them */
 	struct tda18271_priv *priv = fe->tuner_priv;
@@ -612,7 +612,7 @@ fail:
 	return ret;
 }
 
-int tda18271_calc_km(struct dvb_frontend *fe, u32 *freq)
+int tda18271_calc_km(struct neumo_dvb_frontend *fe, u32 *freq)
 {
 	/* sets K & M bits, but does not write them */
 	struct tda18271_priv *priv = fe->tuner_priv;
@@ -629,7 +629,7 @@ fail:
 	return ret;
 }
 
-int tda18271_calc_rf_band(struct dvb_frontend *fe, u32 *freq)
+int tda18271_calc_rf_band(struct neumo_dvb_frontend *fe, u32 *freq)
 {
 	/* sets rf band bits, but does not write them */
 	struct tda18271_priv *priv = fe->tuner_priv;
@@ -646,7 +646,7 @@ fail:
 	return ret;
 }
 
-int tda18271_calc_gain_taper(struct dvb_frontend *fe, u32 *freq)
+int tda18271_calc_gain_taper(struct neumo_dvb_frontend *fe, u32 *freq)
 {
 	/* sets gain taper bits, but does not write them */
 	struct tda18271_priv *priv = fe->tuner_priv;
@@ -663,7 +663,7 @@ fail:
 	return ret;
 }
 
-int tda18271_calc_ir_measure(struct dvb_frontend *fe, u32 *freq)
+int tda18271_calc_ir_measure(struct neumo_dvb_frontend *fe, u32 *freq)
 {
 	/* sets IR Meas bits, but does not write them */
 	struct tda18271_priv *priv = fe->tuner_priv;
@@ -680,7 +680,7 @@ fail:
 	return ret;
 }
 
-int tda18271_calc_rf_cal(struct dvb_frontend *fe, u32 *freq)
+int tda18271_calc_rf_cal(struct neumo_dvb_frontend *fe, u32 *freq)
 {
 	/* sets rf cal byte (RFC_Cprog), but does not write it */
 	struct tda18271_priv *priv = fe->tuner_priv;
@@ -724,3 +724,6 @@ void _tda_printk(struct tda18271_priv *state, const char *level,
 
 	va_end(args);
 }
+
+//check for incorrect include files
+#include "linux/media/neumo-check.h"

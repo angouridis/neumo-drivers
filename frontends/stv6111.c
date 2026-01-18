@@ -16,7 +16,7 @@
 
 #include "stv6111.h"
 
-#include <media/dvb_frontend.h>
+#include <media/neumo-dvb-frontend.h>
 
 struct stv {
 	struct i2c_adapter *i2c;
@@ -405,13 +405,13 @@ static int attach_init(struct stv *state)
 	return 0;
 }
 
-static void release(struct dvb_frontend *fe)
+static void release(struct neumo_dvb_frontend *fe)
 {
 	kfree(fe->tuner_priv);
 	fe->tuner_priv = NULL;
 }
 
-static int set_bandwidth(struct dvb_frontend *fe, u32 cutoff_frequency)
+static int set_bandwidth(struct neumo_dvb_frontend *fe, u32 cutoff_frequency)
 {
 	struct stv *state = fe->tuner_priv;
 	u32 index = (cutoff_frequency + 999999) / 1000000;
@@ -507,10 +507,10 @@ static int set_lof(struct stv *state, u32 local_frequency, u32 cutoff_frequency)
 	return 0;
 }
 
-static int set_params(struct dvb_frontend *fe)
+static int set_params(struct neumo_dvb_frontend *fe)
 {
 	struct stv *state = fe->tuner_priv;
-	struct dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	u32 freq, cutoff;
 	int stat = 0;
 
@@ -562,7 +562,7 @@ static s32 table_lookup(const struct slookup *table,
 	return gain;
 }
 
-static int get_rf_strength(struct dvb_frontend *fe, u16 *st)
+static int get_rf_strength(struct neumo_dvb_frontend *fe, u16 *st)
 {
 	struct stv *state = fe->tuner_priv;
 	u16 rfagc = *st;
@@ -634,7 +634,7 @@ static int get_rf_strength(struct dvb_frontend *fe, u16 *st)
 	return 0;
 }
 
-static const struct dvb_tuner_ops tuner_ops = {
+static const struct neumo_dvb_tuner_ops tuner_ops = {
 	.info = {
 		.name		= "ST STV6111",
 		.frequency_min_hz =  950 * MHz,
@@ -646,7 +646,7 @@ static const struct dvb_tuner_ops tuner_ops = {
 	.set_bandwidth		= set_bandwidth,
 };
 
-struct dvb_frontend *stv6111_attach(struct dvb_frontend *fe,
+struct neumo_dvb_frontend *stv6111_attach(struct neumo_dvb_frontend *fe,
 				    struct i2c_adapter *i2c, u8 adr)
 {
 	struct stv *state;
@@ -658,7 +658,7 @@ struct dvb_frontend *stv6111_attach(struct dvb_frontend *fe,
 		return NULL;
 	state->adr = adr;
 	state->i2c = i2c;
-	memcpy(&fe->ops.tuner_ops, &tuner_ops, sizeof(struct dvb_tuner_ops));
+	memcpy(&fe->ops.tuner_ops, &tuner_ops, sizeof(struct neumo_dvb_tuner_ops));
 	init_state(state);
 
 	if (fe->ops.i2c_gate_ctrl)

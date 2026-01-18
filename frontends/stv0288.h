@@ -15,8 +15,8 @@
 #ifndef STV0288_H
 #define STV0288_H
 
-#include <linux/dvb/frontend.h>
-#include <media/dvb_frontend.h>
+#include <linux/dvb/neumo-frontend.h>
+#include <media/neumo-dvb-frontend.h>
 
 struct stv0288_config {
 	/* the demodulator's i2c address */
@@ -27,18 +27,18 @@ struct stv0288_config {
 	/* minimum delay before retuning */
 	int min_delay_ms;
 
-	int (*set_ts_params)(struct dvb_frontend *fe, int is_punctured);
+	int (*set_ts_params)(struct neumo_dvb_frontend *fe, int is_punctured);
 
 	/* Hook for Lock LED */
-	void (*set_lock_led)(struct dvb_frontend *fe, int offon);
+	void (*set_lock_led)(struct neumo_dvb_frontend *fe, int offon);
 };
 
 
-extern struct dvb_frontend *stv0288_attach(const struct stv0288_config *config,
+extern struct neumo_dvb_frontend *stv0288_attach(const struct stv0288_config *config,
 					   struct i2c_adapter *i2c);
 
 
-static inline int stv0288_writereg(struct dvb_frontend *fe, u8 reg, u8 val)
+static inline int stv0288_writereg(struct neumo_dvb_frontend *fe, u8 reg, u8 val)
 {
 	int r = 0;
 	u8 buf[] = { reg, val };

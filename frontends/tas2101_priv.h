@@ -20,6 +20,33 @@
 
 #ifndef TAS2101_PRIV_H
 #define TAS2101_PRIV_H
+#include <linux/version.h>
+
+enum tas2101_algo {
+	TAS2101_NOTUNE,
+	TAS2101_TUNE,
+};
+
+
+struct tas2101_spectrum_scan_state {
+	bool spectrum_present;
+	bool scan_in_progress;
+
+	s32* freq;
+	s32* spectrum;
+	int spectrum_len;
+
+};
+
+struct tas2101_constellation_scan_state {
+	bool constallation_present;
+	bool in_progress;
+
+	struct dtv_fe_constellation_sample* samples;
+	int num_samples;
+	int samples_len;
+	int constel_select;
+};
 
 struct tas2101_priv {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
@@ -35,9 +62,17 @@ struct tas2101_priv {
 	struct i2c_adapter *i2c_tuner;
 
 	int i2c_ch;
-
-	struct dvb_frontend fe;
+	int nr;
+	struct neumo_dvb_frontend fe;
 	const struct tas2101_config *cfg;
+	enum tas2101_algo algo;
+	bool timedout;
+	s32 tuner_freq; //frequency we asked the tuner to tune to
+	s32 tuner_bw;
+	u32 symbol_rate;
+
+	struct tas2101_spectrum_scan_state scan_state;
+	struct tas2101_constellation_scan_state constellation_scan_state;
 
 };
 
@@ -211,14 +246,16 @@ static struct tas2101_regtable tas2100_initfe1[] = {
 	{REG_06, 0x00, 0x1f, 0},
 };
 
+#if 0 //not used
 static struct tas2101_regtable tas2101_setfe[] = {
-	{REG_04, 0x08, 0x00, 0},
-	{0x36, 0x01, 0x00, 0},
-	{0x56, 0x01, 0x81, 0},
-	{0x05, 0x08, 0x00, 0},
-	{0x36, 0x40, 0x00, 0},
-	{0x58, 0x60, 0xe0, 0},
+	{REG_04, 0x08, 0x00, 0},  //TS_OUT enable
+	{0x36, 0x01, 0x00, 0},  //AUTO_RST - lock_TP (1)
+	{0x56, 0x01, 0x81, 0},  //BCS_RST   - Disable blindscan (1)
+	{0x05, 0x08, 0x00, 0},  //PLL_ADC_RD  - Enable Blindscan (4) -> anomaly
+	{0x36, 0x40, 0x00, 0},  //(AUTO_RST - Enable Blindscan (5) -> anomaly
+	{0x58, 0x60, 0xe0, 0},  //BCS_OUT_ADDR   lock_TP_BS (2)
 };
+#endif
 
 struct tas2101_snrtable_pair {
 	u16 snr;
@@ -264,11 +301,12 @@ struct tas2101_dbmtable_pair {
 	u16 raw;
 };
 
+#if 0 //not used
 static struct tas2101_dbmtable_pair tas2101_dbmtable[] =  {
 	{ -1000, 0xfff},
 	{ -900, 0x778},
 	{ -800, 0x621},
-	{ -700, 0x55c},  
+	{ -700, 0x55c},
 	{ -600, 0x40e},
 	{ -500, 0x343},
 	{ -400, 0x2b7},
@@ -276,6 +314,7 @@ static struct tas2101_dbmtable_pair tas2101_dbmtable[] =  {
 	{ -200, 0x1a1},
 	{ 0, 0},
 };
+#endif
 
 /* modfec (modulation and FEC) lookup table */
 struct tas2101_modfec {
@@ -295,6 +334,9 @@ static struct tas2101_modfec tas2101_modfec_modes[] = {
 	{ SYS_DVBS, QPSK, FEC_7_8 },
 	{ SYS_DVBS, QPSK, FEC_8_9 },
 
+	{ SYS_DVBS2, QPSK, FEC_1_4},
+	{ SYS_DVBS2, QPSK, FEC_1_3},
+	{ SYS_DVBS2, QPSK, FEC_2_5},
 	{ SYS_DVBS2, QPSK, FEC_1_2 },
 	{ SYS_DVBS2, QPSK, FEC_3_5 },
 	{ SYS_DVBS2, QPSK, FEC_2_3 },

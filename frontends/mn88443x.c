@@ -186,7 +186,7 @@ struct mn88443x_spec {
 struct mn88443x_priv {
 	const struct mn88443x_spec *spec;
 
-	struct dvb_frontend fe;
+	struct neumo_dvb_frontend fe;
 	struct clk *mclk;
 	struct gpio_desc *reset_gpio;
 	u32 clk_freq;
@@ -247,7 +247,7 @@ static void mn88443x_s_wake(struct mn88443x_priv *chip)
 }
 
 static void mn88443x_s_tune(struct mn88443x_priv *chip,
-			    struct dtv_frontend_properties *c)
+			    struct neumo_driver_dtv_frontend_properties *c)
 {
 	struct regmap *r_s = chip->regmap_s;
 
@@ -257,7 +257,7 @@ static void mn88443x_s_tune(struct mn88443x_priv *chip,
 }
 
 static int mn88443x_s_read_status(struct mn88443x_priv *chip,
-				  struct dtv_frontend_properties *c,
+				  struct neumo_driver_dtv_frontend_properties *c,
 				  enum fe_status *status)
 {
 	struct regmap *r_s = chip->regmap_s;
@@ -446,7 +446,7 @@ static int mn88443x_t_set_freq(struct mn88443x_priv *chip)
 }
 
 static void mn88443x_t_tune(struct mn88443x_priv *chip,
-			    struct dtv_frontend_properties *c)
+			    struct neumo_driver_dtv_frontend_properties *c)
 {
 	struct regmap *r_t = chip->regmap_t;
 	u32 m, v;
@@ -459,7 +459,7 @@ static void mn88443x_t_tune(struct mn88443x_priv *chip,
 }
 
 static int mn88443x_t_read_status(struct mn88443x_priv *chip,
-				  struct dtv_frontend_properties *c,
+				  struct neumo_driver_dtv_frontend_properties *c,
 				  enum fe_status *status)
 {
 	struct regmap *r_t = chip->regmap_t;
@@ -546,7 +546,7 @@ static int mn88443x_t_read_status(struct mn88443x_priv *chip,
 	return 0;
 }
 
-static int mn88443x_sleep(struct dvb_frontend *fe)
+static int mn88443x_sleep(struct neumo_dvb_frontend *fe)
 {
 	struct mn88443x_priv *chip = fe->demodulator_priv;
 
@@ -556,10 +556,10 @@ static int mn88443x_sleep(struct dvb_frontend *fe)
 	return 0;
 }
 
-static int mn88443x_set_frontend(struct dvb_frontend *fe)
+static int mn88443x_set_frontend(struct neumo_dvb_frontend *fe)
 {
 	struct mn88443x_priv *chip = fe->demodulator_priv;
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct regmap *r_s = chip->regmap_s;
 	struct regmap *r_t = chip->regmap_t;
 	u8 tssel = 0, intsel = 0;
@@ -607,10 +607,10 @@ static int mn88443x_set_frontend(struct dvb_frontend *fe)
 	return 0;
 }
 
-static int mn88443x_get_tune_settings(struct dvb_frontend *fe,
-				      struct dvb_frontend_tune_settings *s)
+static int mn88443x_get_tune_settings(struct neumo_dvb_frontend *fe,
+				      struct neumo_dvb_frontend_tune_settings *s)
 {
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 
 	s->min_delay_ms = 850;
 
@@ -625,10 +625,10 @@ static int mn88443x_get_tune_settings(struct dvb_frontend *fe,
 	return 0;
 }
 
-static int mn88443x_read_status(struct dvb_frontend *fe, enum fe_status *status)
+static int mn88443x_read_status(struct neumo_dvb_frontend *fe, enum fe_status *status)
 {
 	struct mn88443x_priv *chip = fe->demodulator_priv;
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
 
 	if (c->delivery_system == SYS_ISDBS)
 		return mn88443x_s_read_status(chip, c, status);
@@ -639,7 +639,7 @@ static int mn88443x_read_status(struct dvb_frontend *fe, enum fe_status *status)
 	return -EINVAL;
 }
 
-static const struct dvb_frontend_ops mn88443x_ops = {
+static const struct neumo_dvb_frontend_ops mn88443x_ops = {
 	.delsys = { SYS_ISDBS, SYS_ISDBT },
 	.info = {
 		.name = "Socionext MN88443x",

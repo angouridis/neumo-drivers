@@ -27,10 +27,10 @@ struct avl6882_config {
 
 
 #if IS_REACHABLE(CONFIG_DVB_AVL6882)
-extern struct dvb_frontend *avl6882_attach(struct avl6882_config *config,
+extern struct neumo_dvb_frontend *avl6882_attach(struct avl6882_config *config,
 					   struct i2c_adapter *i2c);
 #else
-static inline struct dvb_frontend *avl6882_attach(struct avl6882_config *config,
+static inline struct neumo_dvb_frontend *avl6882_attach(struct avl6882_config *config,
 					   struct i2c_adapter *i2c)
 {
 	printk(KERN_WARNING "%s: driver disabled by Kconfig\n", __func__);

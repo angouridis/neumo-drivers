@@ -8,7 +8,7 @@
 #ifndef SI2168_H
 #define SI2168_H
 
-#include <linux/dvb/frontend.h>
+#include <dvb/neumo-frontend.h>
 /**
  * struct si2168_config - configuration parameters for si2168
  *
@@ -33,7 +33,7 @@
  *	The I2C address of this demod is 0x64.
  */
 struct si2168_config {
-	struct dvb_frontend **fe;
+	struct neumo_dvb_frontend **fe;
 	struct i2c_adapter **i2c_adapter;
 
 #define SI2168_TS_PARALLEL	0x06

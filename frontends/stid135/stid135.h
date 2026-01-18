@@ -4,7 +4,7 @@
  * Copyright (C) CrazyCat <crazycat69@narod.ru>
  *
  * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
+ * modify it under the terms of the GNU Geeneral Public License
  * version 2 only, as published by the Free Software Foundation.
  *
  *
@@ -31,6 +31,8 @@ struct stid135_cfg {
 	u8  adr;
 	u32 clk;
 	u8  ts_mode;
+	u8 num_rf_inputs;
+	s8 rf_inputs[16];
 #define TS_2PAR 0
 #define TS_8SER 1
 #define TS_STFE 2
@@ -41,22 +43,22 @@ struct stid135_cfg {
 	void (*write_eeprom) (struct i2c_adapter *i2c,u8 reg, u8 buf);
 	void (*read_eeprom) (struct i2c_adapter *i2c,u8 reg, u8 *buf);
 	//for tbs6912
-	void (*set_TSsampling)(struct i2c_adapter *i2c,int tuner,int time);  
+	void (*set_TSsampling)(struct i2c_adapter *i2c,int tuner,int time);
 	u32  (*set_TSparam)(struct i2c_adapter *i2c,int tuner,int time,bool  flag);
-
-	// for stvlna
 	int vglna;
-	
-	//for tbs6916, because there are two stid135 (Demod 0 and Demod 1). 
-	//if two Demod send 22k simultaneity, it will be affect the signal . so disable the Demod1 22k function on mode 0&1
+
+	struct pci_dev *pci_dev; //for uniquely identifying frontend
+
+	//for tbs6916, because there are two stid135 (Demod 0 and Demod 1).
+	//if two Demod send 22k simultaneously, it will be affect the signal. So disable the Demod1 22k function on mode 0&1
 	//keep Demod 1 send diseqc function on unicable mode.
 	bool control_22k;
 };
 
+struct tbsecp3_dev;
 
-extern struct dvb_frontend *stid135_attach(struct i2c_adapter *i2c,
-					   struct stid135_cfg *cfg,
-					   int nr, int tuner_nr);
-
+extern struct neumo_dvb_frontend* stid135_attach(struct tbsecp3_dev* tbsecp3_dev, struct neumo_dvb_demux* demux,
+																					 struct i2c_adapter *i2c, struct stid135_cfg *cfg,
+																					 int nr, int tuner_nr);
 
 #endif

@@ -328,7 +328,7 @@ struct stv0900_state {
 	struct stv0900_internal		*internal;
 	struct i2c_adapter		*i2c_adap;
 	const struct stv0900_config	*config;
-	struct dvb_frontend		frontend;
+	struct neumo_dvb_frontend		frontend;
 	int demod;
 };
 
@@ -353,11 +353,11 @@ extern int stv0900_get_demod_lock(struct stv0900_internal *i_params,
 extern int stv0900_check_signal_presence(struct stv0900_internal *i_params,
 				enum fe_stv0900_demod_num demod);
 
-extern enum fe_stv0900_signal_type stv0900_algo(struct dvb_frontend *fe);
+extern enum fe_stv0900_signal_type stv0900_algo(struct neumo_dvb_frontend *fe);
 
-extern void stv0900_set_tuner(struct dvb_frontend *fe, u32 frequency,
+extern void stv0900_set_tuner(struct neumo_dvb_frontend *fe, u32 frequency,
 				u32 bandwidth);
-extern void stv0900_set_bandwidth(struct dvb_frontend *fe, u32 bandwidth);
+extern void stv0900_set_bandwidth(struct neumo_dvb_frontend *fe, u32 bandwidth);
 
 extern void stv0900_start_search(struct stv0900_internal *i_params,
 				enum fe_stv0900_demod_num demod);
@@ -380,7 +380,7 @@ extern void stv0900_activate_s2_modcod_single(struct stv0900_internal *i_params,
 				enum fe_stv0900_demod_num demod);
 
 extern enum
-fe_stv0900_tracking_standard stv0900_get_standard(struct dvb_frontend *fe,
+fe_stv0900_tracking_standard stv0900_get_standard(struct neumo_dvb_frontend *fe,
 				enum fe_stv0900_demod_num demod);
 
 extern u32

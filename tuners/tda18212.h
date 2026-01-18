@@ -8,7 +8,7 @@
 #ifndef TDA18212_H
 #define TDA18212_H
 
-#include <media/dvb_frontend.h>
+#include <media/neumo-dvb-frontend.h>
 
 struct tda18212_config {
 	u16 if_dvbt_6;
@@ -27,7 +27,7 @@ struct tda18212_config {
 	/*
 	 * pointer to DVB frontend
 	 */
-	struct dvb_frontend *fe;
+	struct neumo_dvb_frontend *fe;
 };
 
 #endif
