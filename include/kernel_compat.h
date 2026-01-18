@@ -25,4 +25,13 @@ struct v4l2_tbs_data
 #define  VFL_TYPE_VIDEO VFL_TYPE_GRABBER
 #endif
 
+
+
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(6, 16, 0)
+#define timer_container_of from_timer
+#define BIN_ATTR_CONST
+#else
+#define BIN_ATTR_CONST const
+#endif
+
 #endif

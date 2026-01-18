@@ -20,9 +20,9 @@
 #define dprintk(fmt, arg...)																					\
 	printk(KERN_DEBUG pr_fmt("%s:%d " fmt),  __func__, __LINE__, ##arg)
 
-static ssize_t stv_chip_registers_show(struct file* filp, struct kobject *kobj, const struct bin_attribute* bin_attr,
+static ssize_t stv_chip_registers_show(struct file* filp, struct kobject *kobj, BIN_ATTR_CONST struct bin_attribute* bin_attr,
 																			 char *buffer, loff_t pos, size_t size);
-static ssize_t stv_chip_registers_store(struct file* filp, struct kobject *kobj, const struct bin_attribute* bin_attr,
+static ssize_t stv_chip_registers_store(struct file* filp, struct kobject *kobj, BIN_ATTR_CONST struct bin_attribute* bin_attr,
 																				char *buffer, loff_t pos, size_t size);
 static ssize_t store_none(struct kobject* kobj, struct kobj_attribute *attr, const char *buf, size_t count);
 static ssize_t stv_card_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf);
@@ -337,7 +337,7 @@ static ssize_t stv_chip_show(struct kobject *kobj, struct kobj_attribute *attr,
 	return ret;
 }
 
-static ssize_t stv_chip_registers_show(struct file* filp, struct kobject *kobj, const struct bin_attribute* bin_attr,
+static ssize_t stv_chip_registers_show(struct file* filp, struct kobject *kobj, BIN_ATTR_CONST struct bin_attribute* bin_attr,
 																char *buffer, loff_t pos, size_t size) {
 	ssize_t ret=0;
 	const char *p="???";
@@ -371,7 +371,7 @@ static ssize_t stv_chip_registers_show(struct file* filp, struct kobject *kobj, 
 	return ret;
 }
 
-static ssize_t stv_chip_registers_store(struct file* filp, struct kobject *kobj, const struct bin_attribute* bin_attr,
+static ssize_t stv_chip_registers_store(struct file* filp, struct kobject *kobj, BIN_ATTR_CONST struct bin_attribute* bin_attr,
 																 char *buffer, loff_t pos, size_t size)  {
 	dprintk("STORE kobj=%p pos=%lld size=%lud\n", kobj, pos, size);
 
