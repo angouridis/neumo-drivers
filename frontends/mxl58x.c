@@ -736,6 +736,7 @@ static int get_frontend(struct neumo_dvb_frontend *fe, struct neumo_driver_dtv_f
 		default:
 			break;
 		}
+		break;
 	case SYS_DVBS:
 		switch ((MXL_HYDRA_MODULATION_E) regData[DMD_MODULATION_SCHEME_ADDR]) {
 		case MXL_HYDRA_MOD_QPSK:
