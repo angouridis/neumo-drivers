@@ -1906,7 +1906,7 @@ static void rtv_UpdateMon(struct mtv23x_dev*dev)
 }
 
 static int mtv23x_get_frontend(struct neumo_dvb_frontend *fe,
-				struct neumo_driver_dtv_frontend_properties *c)
+				struct neumo_dtv_frontend_properties *c)
 {
 	struct i2c_client*client = fe->demodulator_priv;
 	struct mtv23x_dev*dev = i2c_get_clientdata(client);
@@ -2032,7 +2032,7 @@ static int mtv23x_set_frontend(struct neumo_dvb_frontend *fe)
 {
 	struct i2c_client*client = fe->demodulator_priv;
 	struct mtv23x_dev*dev = i2c_get_clientdata(client);
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	enum E_RTV_BANDWIDTH_TYPE bandwidth ;
 	enum E_RTV_SERVICE_TYPE svc_type ;
 	int ret, subchannel_id;
@@ -2254,7 +2254,7 @@ static int mtv23x_read_status(struct neumo_dvb_frontend *fe, enum fe_status *sta
 {
 	struct i2c_client*client = fe->demodulator_priv;
 	struct mtv23x_dev*dev = i2c_get_clientdata(client);
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 
 	int  OFDMREG = 0, TMCCL = 0, OFDML = 0;
 	int lock_st = 0, rssi = 0, cnr = 0;
@@ -2319,7 +2319,7 @@ static int mtv23x_read_status(struct neumo_dvb_frontend *fe, enum fe_status *sta
 
 static int mtv23x_read_signal_strength(struct neumo_dvb_frontend *fe, u16 *strength)
 {
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int i;
 
 	*strength = 0;
@@ -2336,7 +2336,7 @@ static int mtv23x_read_signal_strength(struct neumo_dvb_frontend *fe, u16 *stren
 
 static int mtv23x_read_snr(struct neumo_dvb_frontend *fe, u16 *snr)
 {
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int i;
 
 	*snr = 0;
@@ -2350,7 +2350,7 @@ static int mtv23x_read_ber(struct neumo_dvb_frontend *fe,u32 *ber)
 {
 	struct i2c_client * client = fe->demodulator_priv;
 	struct mtv23x_dev * dev = i2c_get_clientdata(client);
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int FECL = 0, prd0 = 0, prd1 = 0, cnt0 = 0, cnt1 = 0, cnt2 = 0;
 	u32 count, period,ber_temp=10000;
 

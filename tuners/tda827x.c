@@ -141,7 +141,7 @@ static int tuner_transfer(struct neumo_dvb_frontend *fe,
 
 static int tda827xo_set_params(struct neumo_dvb_frontend *fe)
 {
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct tda827x_priv *priv = fe->tuner_priv;
 	u8 buf[14];
 	int rc;
@@ -500,7 +500,7 @@ static void tda827xa_lna_gain(struct neumo_dvb_frontend *fe, int high,
 
 static int tda827xa_set_params(struct neumo_dvb_frontend *fe)
 {
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct tda827x_priv *priv = fe->tuner_priv;
 	struct tda827xa_data *frequency_map = tda827xa_dvbt;
 	u8 buf[11];

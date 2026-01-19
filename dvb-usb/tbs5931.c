@@ -84,7 +84,7 @@ static int tbs5931_op_rw(struct usb_device *dev, u8 request, u16 value,
 static int tbs5931_i2c_transfer(struct i2c_adapter *adap,
 					struct i2c_msg msg[], int num)
 {
-	struct dvb_usb_device *d = i2c_get_adapdata(adap);
+	struct neumo_dvb_usb_device *d = i2c_get_adapdata(adap);
 	int i = 0;
 	u8 buf6[35];
 	u8 inbuf[35];
@@ -153,7 +153,7 @@ static struct i2c_algorithm tbs5931_i2c_algo = {
 	.functionality = tbs5931_i2c_func,
 };
 
-static int tbs5931_read_mac_address(struct dvb_usb_device *d, u8 mac[6])
+static int tbs5931_read_mac_address(struct neumo_dvb_usb_device *d, u8 mac[6])
 {
 	int i,ret;
 	u8 ibuf[3] = {0, 0,0};
@@ -184,11 +184,11 @@ static int tbs5931_read_mac_address(struct dvb_usb_device *d, u8 mac[6])
 	return 0;
 };
 
-static struct dvb_usb_device_properties tbs5931_properties;
+static struct neumo_dvb_usb_device_properties tbs5931_properties;
 
-static int tbs5931_frontend_attach(struct dvb_usb_adapter *adap)
+static int tbs5931_frontend_attach(struct neumo_dvb_usb_adapter *adap)
 {
-	struct dvb_usb_device *d = adap->dev;
+	struct neumo_dvb_usb_device *d = adap->dev;
 
 	u8 buf[20];
 	u8 a = 0,b = 0;
@@ -352,7 +352,7 @@ static int tbs5931_load_firmware(struct usb_device *dev,
 	return ret;
 }
 
-static struct dvb_usb_device_properties tbs5931_properties = {
+static struct neumo_dvb_usb_device_properties tbs5931_properties = {
 	.caps = DVB_USB_IS_AN_I2C_ADAPTER,
 	.usb_ctrl = DEVICE_SPECIFIC,
 	.firmware = "dvb-usb-id5931.fw",
@@ -400,7 +400,7 @@ static struct dvb_usb_device_properties tbs5931_properties = {
 static int tbs5931_probe(struct usb_interface *intf,
 		const struct usb_device_id *id)
 {
-	if (0 == dvb_usb_device_init(intf, &tbs5931_properties,
+	if (0 == neumo_dvb_usb_device_init(intf, &tbs5931_properties,
 			THIS_MODULE, NULL, adapter_nr)) {
 		return 0;
 	}
@@ -411,7 +411,7 @@ static int tbs5931_probe(struct usb_interface *intf,
 static struct usb_driver tbs5931_driver = {
 	.name = "tbs5931",
 	.probe = tbs5931_probe,
-	.disconnect = dvb_usb_device_exit,
+	.disconnect = neumo_dvb_usb_device_exit,
 	.id_table = tbs5931_table,
 };
 

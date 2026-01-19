@@ -45,7 +45,7 @@ legacy_dvb_usb_get_keymap_index(const struct input_keymap_entry *ke,
 static int legacy_dvb_usb_getkeycode(struct input_dev *dev,
 				     struct input_keymap_entry *ke)
 {
-	struct dvb_usb_device *d = input_get_drvdata(dev);
+	struct neumo_dvb_usb_device *d = input_get_drvdata(dev);
 	struct rc_map_table *keymap = d->props.rc.legacy.rc_map_table;
 	unsigned int keymap_size = d->props.rc.legacy.rc_map_size;
 	unsigned int index;
@@ -68,7 +68,7 @@ static int legacy_dvb_usb_setkeycode(struct input_dev *dev,
 				     const struct input_keymap_entry *ke,
 				     unsigned int *old_keycode)
 {
-	struct dvb_usb_device *d = input_get_drvdata(dev);
+	struct neumo_dvb_usb_device *d = input_get_drvdata(dev);
 	struct rc_map_table *keymap = d->props.rc.legacy.rc_map_table;
 	unsigned int keymap_size = d->props.rc.legacy.rc_map_size;
 	unsigned int index;
@@ -108,8 +108,8 @@ static int legacy_dvb_usb_setkeycode(struct input_dev *dev,
  */
 static void legacy_dvb_usb_read_remote_control(struct work_struct *work)
 {
-	struct dvb_usb_device *d =
-		container_of(work, struct dvb_usb_device, rc_query_work.work);
+	struct neumo_dvb_usb_device *d =
+		container_of(work, struct neumo_dvb_usb_device, rc_query_work.work);
 	u32 event;
 	int state;
 
@@ -187,7 +187,7 @@ schedule:
 	schedule_delayed_work(&d->rc_query_work,msecs_to_jiffies(d->props.rc.legacy.rc_interval));
 }
 
-static int legacy_dvb_usb_remote_init(struct dvb_usb_device *d)
+static int legacy_dvb_usb_remote_init(struct neumo_dvb_usb_device *d)
 {
 	int i, err, rc_interval;
 	struct input_dev *input_dev;
@@ -245,8 +245,8 @@ static int legacy_dvb_usb_remote_init(struct dvb_usb_device *d)
  */
 static void dvb_usb_read_remote_control(struct work_struct *work)
 {
-	struct dvb_usb_device *d =
-		container_of(work, struct dvb_usb_device, rc_query_work.work);
+	struct neumo_dvb_usb_device *d =
+		container_of(work, struct neumo_dvb_usb_device, rc_query_work.work);
 	int err;
 
 	/* TODO: need a lock here.  We can simply skip checking for the remote control
@@ -266,7 +266,7 @@ static void dvb_usb_read_remote_control(struct work_struct *work)
 			      msecs_to_jiffies(d->props.rc.core.rc_interval));
 }
 
-static int rc_core_dvb_usb_remote_init(struct dvb_usb_device *d)
+static int rc_core_dvb_usb_remote_init(struct neumo_dvb_usb_device *d)
 {
 	int err, rc_interval;
 	struct rc_dev *dev;
@@ -310,7 +310,7 @@ static int rc_core_dvb_usb_remote_init(struct dvb_usb_device *d)
 	return 0;
 }
 
-int dvb_usb_remote_init(struct dvb_usb_device *d)
+int dvb_usb_remote_init(struct neumo_dvb_usb_device *d)
 {
 	int err;
 
@@ -343,7 +343,7 @@ int dvb_usb_remote_init(struct dvb_usb_device *d)
 	return 0;
 }
 
-int dvb_usb_remote_exit(struct dvb_usb_device *d)
+int dvb_usb_remote_exit(struct neumo_dvb_usb_device *d)
 {
 	if (d->state & DVB_USB_STATE_REMOTE) {
 		cancel_delayed_work_sync(&d->rc_query_work);
@@ -359,7 +359,7 @@ int dvb_usb_remote_exit(struct dvb_usb_device *d)
 #define DVB_USB_RC_NEC_EMPTY           0x00
 #define DVB_USB_RC_NEC_KEY_PRESSED     0x01
 #define DVB_USB_RC_NEC_KEY_REPEATED    0x02
-int dvb_usb_nec_rc_key_to_event(struct dvb_usb_device *d,
+int neumo_dvb_usb_nec_rc_key_to_event(struct neumo_dvb_usb_device *d,
 		u8 keybuf[5], u32 *event, int *state)
 {
 	int i;
@@ -394,6 +394,6 @@ int dvb_usb_nec_rc_key_to_event(struct dvb_usb_device *d,
 	}
 	return 0;
 }
-EXPORT_SYMBOL(dvb_usb_nec_rc_key_to_event);
+EXPORT_SYMBOL(neumo_dvb_usb_nec_rc_key_to_event);
 
 #include<media/neumo-check.h>

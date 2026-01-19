@@ -817,7 +817,7 @@ static int avl6882_i2c_gate_ctrl(struct neumo_dvb_frontend *fe, int enable)
 static int avl6882_set_dvbs(struct neumo_dvb_frontend *fe)
 {
 	struct avl6882_priv *priv = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret;
 
 	//printk("[avl6882_set_dvbs] Freq:%d Mhz,sym:%d Khz\n", c->frequency, c->symbol_rate);
@@ -837,7 +837,7 @@ static int avl6882_set_dvbs(struct neumo_dvb_frontend *fe)
 static int avl6882_set_dvbc(struct neumo_dvb_frontend *fe)
 {
 	struct avl6882_priv *priv = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret;
 
 	//printk("[avl6882_set_dvbc] Freq:%d Mhz,sym:%d\n", c->frequency, c->symbol_rate);
@@ -852,7 +852,7 @@ static int avl6882_set_dvbc(struct neumo_dvb_frontend *fe)
 static int avl6882_set_dvbt(struct neumo_dvb_frontend *fe)
 {
 	struct avl6882_priv *priv = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	u32 bw_fft;
 	int ret;
 
@@ -916,7 +916,7 @@ static void avl6882_release(struct neumo_dvb_frontend *fe)
 static int avl6882_read_ber(struct neumo_dvb_frontend *fe, u32 *ber)
 {
 	struct avl6882_priv *priv = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret = 0;
 	u32 tmp;
 
@@ -1181,7 +1181,7 @@ static int avl6882fe_strength(struct neumo_dvb_frontend *fe, u16 *signal_strengt
 static int avl6882fe_snr(struct neumo_dvb_frontend *fe, u16 *snr)
 {
 	struct avl6882_priv *priv = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret = 0;
 	u32 tmp;
 
@@ -1219,7 +1219,7 @@ static enum neumo_dvbfe_algo avl6882fe_algo(struct neumo_dvb_frontend *fe)
 static int avl6882_set_frontend(struct neumo_dvb_frontend *fe)
 {
 	struct avl6882_priv *priv = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	u32 demod_mode;
 	int ret;
 
@@ -1294,7 +1294,7 @@ static int avl6882_tune(struct neumo_dvb_frontend *fe, bool re_tune,
 }
 
 static int avl6882_get_frontend(struct neumo_dvb_frontend *fe,
-				struct neumo_driver_dtv_frontend_properties *c)
+				struct neumo_dtv_frontend_properties *c)
 {
 	return 0;
 }

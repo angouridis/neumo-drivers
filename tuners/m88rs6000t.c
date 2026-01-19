@@ -24,7 +24,7 @@ struct m88rs6000t_reg_val {
 static int m88rs6000t_set_demod_mclk(struct neumo_dvb_frontend *fe)
 {
 	struct m88rs6000t_dev *dev = fe->tuner_priv;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	u8 reg11, reg15, reg16, reg1D, reg1E, reg1F;
 	u8 N, f0 = 0, f1 = 0, f2 = 0, f3 = 0;
 	u16 pll_div_fb;
@@ -385,7 +385,7 @@ static int m88rs6000t_set_bb(struct m88rs6000t_dev *dev,
 static int m88rs6000t_set_params(struct neumo_dvb_frontend *fe)
 {
 	struct m88rs6000t_dev *dev = fe->tuner_priv;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret;
 	s32 lpf_offset_KHz;
 	u32 realFreq, freq_MHz;

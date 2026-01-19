@@ -376,7 +376,7 @@ static void gx1133_set_work_bs_mode(struct gx1133_priv *priv,bool bs)
 static int gx1133_read_ber(struct neumo_dvb_frontend *fe, u32 *ber)
 {
 	struct gx1133_priv *priv = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 
 	dev_dbg(&priv->i2c->dev, "%s()\n", __func__);
 
@@ -436,7 +436,7 @@ static int gx1133_read_signal_strength(struct neumo_dvb_frontend *fe,
 static int gx1133_read_snr(struct neumo_dvb_frontend *fe, u16 *snr)
 {
 	struct gx1133_priv *priv = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret, i;
 	long val;
 	u16 snr_raw;
@@ -1455,7 +1455,7 @@ static int gx1133_set_pls_n(struct gx1133_priv *priv, u32 n)
 static int gx1133_set_frontend(struct neumo_dvb_frontend *fe)
 {
 	struct gx1133_priv *priv = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	enum fe_status tunerstat;
 	int ret, i;
 	u32 s, pls_mode, pls_code, modcode;
@@ -1607,7 +1607,7 @@ static int gx1133_set_frontend(struct neumo_dvb_frontend *fe)
 }
 
 static int gx1133_get_frontend(struct neumo_dvb_frontend *fe,
-				struct neumo_driver_dtv_frontend_properties *c)
+				struct neumo_dtv_frontend_properties *c)
 {
 	struct gx1133_priv *priv = fe->demodulator_priv;
 	int ret;

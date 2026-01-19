@@ -8,7 +8,7 @@
  *				      for convergence integrated media GmbH
  *
  * Copyright (C) 2004 Andrew de Quincey (tuning thread cleanup)
- * Copyright (C) 2020-2025 Deep Thought <deeptho@gmail.com> (modifications) *
+ * Copyright (C) 2020-2026 Deep Thought <deeptho@gmail.com> (modifications) *
  */
 
 /* Enables DVBv3 compatibility bits at the headers */
@@ -69,72 +69,12 @@ MODULE_PARM_DESC(dvb_mfe_wait_time, "Wait up to <mfe_wait_time> seconds on open(
 
 struct neumo_dvb_frontend_private;
 
-//indexed by fe; stores neumo_dvb_frontend_private*
-static struct xarray neumo_fes;
-
-
-struct neumo_dtv_fe_algo_state {
-	atomic_t task_should_stop;
-	atomic_t cur_index; //used to measure progress; should be updated from time to time
-	atomic_t max_index; //when cur_inde==max_index task is done
-	wait_queue_head_t wait_queue;
-};
-
-
-struct neumo_user_data {
-	bool has_selected_api;
-	bool uses_neumo_api; //which api the opener has selected (activated by ioctl)
-};
-
-static void user_data_init(void) {
-
-};
-
-
-struct neumo_dvb_extra {
-	struct neumo_dvb_fe_events events;
-	struct dtv_fe_spectrum spectrum;
-	struct dtv_fe_constellation constellation;
-	struct neumo_dtv_fe_algo_state algo_state;
-	struct xarray users; //indexed by dvbdev; stores neumo_user_data
-};
-
-static void neumo_dvb_extra_init(struct neumo_dvb_extra* extra) {
-	xa_init(&extra->users);
-}
-
-static void neumo_dvb_extra_free_users(struct neumo_dvb_extra* extra) {
-	unsigned long index;
-	void *entry;
-	xa_for_each(&extra->users, index, entry){
-		kfree(entry);
-	}
-	xa_destroy(&extra->users);
-}
-
-
-void neumo_dvb_frontend_private_free(struct neumo_dvb_frontend_private* fepriv, struct dvb_adapter* adapter)
+static void neumo_dvb_frontend_private_init(struct neumo_dvb_frontend_private *fepriv)
 {
-	adapter_dprintk(adapter, "calling kfree(fepriv)\n");
-	neumo_dvb_extra_free_users(fepriv->extra);
-	kfree(fepriv->extra);
-	kfree(fepriv);
-	adapter_dprintk(adapter, "setting frontend_priv=NULL\n");
-}
-
-static void neumo_dvb_frontend_private_init(struct neumo_dvb_frontend_private *fepriv,
-																						struct dvb_frontend* dvb_api_fe,
-																						struct neumo_dvb_frontend* neumo_api_fe)
-{
-	fepriv->extra = kzalloc(sizeof(struct neumo_dvb_extra), GFP_KERNEL);
-	fepriv->neumo_api_fe = neumo_api_fe;
-	fepriv->dvb_api_fe = dvb_api_fe;
-	struct neumo_dvb_extra* extra = fepriv->extra;
-	neumo_dvb_extra_init(extra);
 	sema_init(&fepriv->sem, 1);
 	init_waitqueue_head(&fepriv->wait_queue);
-	init_waitqueue_head(&extra->events.wait_queue);
-	mutex_init(&extra->events.mtx);
+	init_waitqueue_head(&fepriv->events.wait_queue);
+	mutex_init(&fepriv->events.mtx);
 	fepriv->inversion = INVERSION_OFF;
 }
 
@@ -173,34 +113,32 @@ static void neumo_dvb_frontend_private_init(struct neumo_dvb_frontend_private *f
 DEFINE_MUTEX(frontend_mutex);
 
 
-static void neumo_driver_dvb_frontend_invoke_release(struct neumo_dvb_frontend *fe,
-					void (*release)(struct neumo_dvb_frontend *fe));
+static void dvb_frontend_invoke_release(struct neumo_dvb_frontend* fe,
+					void (*release)(struct neumo_dvb_frontend* fe));
 
 
-static void __neumo_driver_dvb_frontend_free(struct neumo_dvb_frontend *fe)
+static void __dvb_frontend_free(struct neumo_dvb_frontend* fe)
 {
 	struct neumo_dvb_frontend_private* fepriv = fe->frontend_priv;
-	struct dvb_adapter* adapter = fe->dvb;
-
-	adapter_dprintk(adapter, "Start freeing frontend\n");
+	fe_dprintk(fe, "Start freeing frontend\n");
 	if (fepriv)
 		dvb_device_put(fepriv->dvbdev);
-	adapter_dprintk(adapter, "calling neumo_driver_dvb_frontend_invoke_release\n");
-	neumo_driver_dvb_frontend_invoke_release(fe, fe->ops.release); //decreases demod refcount by 1
-	neumo_dvb_frontend_private_free(fepriv, adapter);
+	fe_dprintk(fe, "calling dvb_frontend_invoke_release\n");
+	dvb_frontend_invoke_release(fe, fe->ops.release); //decreases demod refcount by 1
+	kfree(fepriv);
 	fe->frontend_priv = NULL;
-	adapter_dprintk(adapter, "End freeing frontend\n");
+	fe_dprintk(fe, "End freeing frontend\n");
 }
 
-static void neumo_driver_dvb_frontend_free(struct kref *ref)
+static void dvb_frontend_free(struct kref *ref)
 {
-	struct neumo_dvb_frontend *fe =
+	struct neumo_dvb_frontend* fe =
 		container_of(ref, struct neumo_dvb_frontend, refcount);
 
-	__neumo_driver_dvb_frontend_free(fe);
+	__dvb_frontend_free(fe);
 }
 
-static void neumo_driver_dvb_frontend_put(struct neumo_dvb_frontend *fe)
+static void dvb_frontend_put(struct neumo_dvb_frontend* fe)
 {
 	/* call detach before dropping the reference count */
 	if (fe->ops.detach)
@@ -212,29 +150,27 @@ static void neumo_driver_dvb_frontend_put(struct neumo_dvb_frontend *fe)
 	if (fe->frontend_priv) {
 		int cnt = kref_read(&fe->refcount);
 		fe_dprintk(fe, "refcount %p=%d fe=%p\n", (void*)&fe->refcount, cnt, fe);
-		kref_put(&fe->refcount, neumo_driver_dvb_frontend_free);
+		kref_put(&fe->refcount, dvb_frontend_free);
 	}
 	else {
-		fe_dprintk(fe, "calling __neumo_driver_dvb_frontend_free fe=%p\n", fe);
-		__neumo_driver_dvb_frontend_free(fe);
+		fe_dprintk(fe, "calling __dvb_frontend_free fe=%p\n", fe);
+		__dvb_frontend_free(fe);
 	}
 }
 
-static int neumo_driver_dtv_get_frontend(struct neumo_dvb_frontend *fe,
-			    struct neumo_driver_dtv_frontend_properties *c,
+static int dtv_get_frontend(struct neumo_dvb_frontend* fe,
+			    struct neumo_dtv_frontend_properties *c,
 			    struct dvb_frontend_parameters *p_out);
-
-
 static int
-neumo_driver_dtv_property_legacy_params_sync(struct neumo_dvb_frontend* fe,
-																						 struct dvb_frontend_parameters *p);
+dtv_property_legacy_params_sync(struct neumo_dvb_frontend* fe,
+																const struct neumo_dtv_frontend_properties *c,
+																struct dvb_frontend_parameters *p);
 
 /*
  * Due to DVBv3 API calls, a delivery system should be mapped into one of
  * the 4 DVBv3 delivery systems (FE_QPSK, FE_QAM, FE_OFDM or FE_ATSC),
  * otherwise, a DVBv3 call will fail.
  */
-//phase out?
 enum dvbv3_emulation_type {
 	DVBV3_UNKNOWN,
 	DVBV3_QPSK,
@@ -243,7 +179,6 @@ enum dvbv3_emulation_type {
 	DVBV3_ATSC,
 };
 
-//phase out?
 static enum dvbv3_emulation_type dvbv3_type(u32 delivery_system)
 {
 	switch (delivery_system) {
@@ -281,12 +216,19 @@ static enum dvbv3_emulation_type dvbv3_type(u32 delivery_system)
 	}
 }
 
-void neumo_dvb_frontend_add_event_fepriv(struct neumo_dvb_frontend_private* fepriv,
-																								enum fe_status status)
+static void neumo_dvb_frontend_add_event(struct neumo_dvb_frontend* fe,
+																	 enum fe_status status)
 {
-	struct neumo_dvb_fe_events *events = &((struct neumo_dvb_extra*)fepriv->extra)->events;
+	struct neumo_dvb_frontend_private *fepriv = fe->frontend_priv;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dvb_fe_events *events = &fepriv->events;
 	struct dvb_frontend_event *e;
 	int wp;
+
+	dev_dbg(fe->dvb->device, "%s:\n", __func__);
+
+	if ((status & FE_HAS_LOCK) &&  fe->ops.get_frontend)
+		dtv_get_frontend(fe, c, &fepriv->dvb_parameters_out);
 
 	mutex_lock(&events->mtx);
 
@@ -307,19 +249,6 @@ void neumo_dvb_frontend_add_event_fepriv(struct neumo_dvb_frontend_private* fepr
 	wake_up_interruptible(&events->wait_queue);
 }
 
-static void neumo_driver_dvb_frontend_add_event(struct neumo_dvb_frontend* neumo_fe, enum fe_status status)
-{
-	struct neumo_dvb_frontend_private *fepriv = neumo_fe->frontend_priv;
-	struct neumo_driver_dtv_frontend_properties *c = &neumo_fe->dtv_property_cache;
-
-	dev_dbg(neumo_fe->dvb->device, "%s:\n", __func__);
-
-	if ((status & FE_HAS_LOCK) && neumo_fe->ops.get_frontend)
-		neumo_driver_dtv_get_frontend(neumo_fe, c, &fepriv->dvb_parameters_out);
-
-	neumo_dvb_frontend_add_event_fepriv(fepriv, status);
-}
-
 static int dvb_frontend_test_event(struct neumo_dvb_frontend_private *fepriv,
 					 struct neumo_dvb_fe_events *events)
 {
@@ -332,16 +261,15 @@ static int dvb_frontend_test_event(struct neumo_dvb_frontend_private *fepriv,
 	return ret;
 }
 
-static int dvb_frontend_get_event_fepriv(struct neumo_dvb_frontend_private *fepriv,
-																	struct dvb_adapter* adapter,
+static int dvb_frontend_get_event(struct neumo_dvb_frontend* fe,
 																	struct dvb_frontend_event *event, int flags)
 {
-	struct neumo_dvb_fe_events *events = &((struct neumo_dvb_extra*)fepriv->extra)->events;
-
+	struct neumo_dvb_frontend_private *fepriv = fe->frontend_priv;
+	struct neumo_dvb_fe_events *events = &fepriv->events;
 	if (events->overflow) {
 		events->overflow = 0;
 		events->eventr = events->eventw;
-		adapter_dprintk(adapter, "Returning -EOVERFLOW=%d adapter=%d\n", -EOVERFLOW, adapter->num);
+		fe_dprintk(fe, "Returning -EOVERFLOW=%d\n", -EOVERFLOW);
 		return -EOVERFLOW;
 	}
 
@@ -349,7 +277,7 @@ static int dvb_frontend_get_event_fepriv(struct neumo_dvb_frontend_private *fepr
 		int ret;
 
 		if (flags & O_NONBLOCK) {
-			adapter_dprintk(adapter, "Returning -EWOULDBLOCK=%d\n", -EWOULDBLOCK);
+			fe_dprintk(fe, "Returning -EWOULDBLOCK=%d\n", -EWOULDBLOCK);
 			return -EWOULDBLOCK;
 		}
 
@@ -357,7 +285,7 @@ static int dvb_frontend_get_event_fepriv(struct neumo_dvb_frontend_private *fepr
 																	 dvb_frontend_test_event(fepriv, events));
 
 		if (ret < 0) {
-			adapter_dprintk(adapter, "Retuning -ret=%d\n", ret);
+			fe_dprintk(fe, "Retuning -ret=%d\n", ret);
 			return ret;
 		}
 	}
@@ -370,16 +298,17 @@ static int dvb_frontend_get_event_fepriv(struct neumo_dvb_frontend_private *fepr
 	return 0;
 }
 
-void neumo_dvb_frontend_clear_events_fepriv(struct neumo_dvb_frontend_private *fepriv)
+static void neumo_dvb_frontend_clear_events(struct neumo_dvb_frontend* fe)
 {
-	struct neumo_dvb_fe_events* events = &((struct neumo_dvb_extra*)fepriv->extra)->events;
+	struct neumo_dvb_frontend_private *fepriv = fe->frontend_priv;
+	struct neumo_dvb_fe_events *events = &fepriv->events;
 
 	mutex_lock(&events->mtx);
 	events->eventr = events->eventw;
 	mutex_unlock(&events->mtx);
 }
 
-static void neumo_driver_dvb_frontend_init(struct neumo_dvb_frontend *fe)
+static void dvb_frontend_init(struct neumo_dvb_frontend* fe)
 {
 	dev_dbg(fe->dvb->device,
 		"%s: initialising adapter %i frontend %i (%s)...\n",
@@ -396,9 +325,9 @@ static void neumo_driver_dvb_frontend_init(struct neumo_dvb_frontend *fe)
 	}
 }
 
-
-static int neumo_dvb_frontend_is_exiting_fepriv(struct neumo_dvb_frontend_private *fepriv)
+static int neumo_dvb_frontend_is_exiting(struct neumo_dvb_frontend* fe)
 {
+	struct neumo_dvb_frontend_private *fepriv = fe->frontend_priv;
 	if (fepriv->exit != DVB_FE_NO_EXIT)
 		return 1;
 
@@ -410,20 +339,12 @@ static int neumo_dvb_frontend_is_exiting_fepriv(struct neumo_dvb_frontend_privat
 	return 0;
 }
 
-
-static int neumo_driver_dvb_frontend_is_exiting(struct neumo_dvb_frontend *fe)
+int neumo_dvb_frontend_task_should_stop(struct neumo_dvb_frontend* fe)
 {
 	struct neumo_dvb_frontend_private *fepriv = fe->frontend_priv;
-	return neumo_dvb_frontend_is_exiting_fepriv(fepriv);
-}
-
-int neumo_dvb_frontend_task_should_stop(struct neumo_dvb_frontend *fe)
-{
-	struct neumo_dvb_frontend_private *fepriv = fe->frontend_priv;
-	struct neumo_dvb_extra* extra = fepriv->extra;
-	if(neumo_driver_dvb_frontend_is_exiting(fe))
+	if(neumo_dvb_frontend_is_exiting(fe))
 		return 1;
-	if(atomic_read(&extra->algo_state.task_should_stop))
+	if(atomic_read(&fepriv->algo_state.task_should_stop))
 		return 1;
 	return 0;
 }
@@ -432,7 +353,7 @@ int neumo_dvb_frontend_task_should_stop(struct neumo_dvb_frontend *fe)
 EXPORT_SYMBOL(neumo_dvb_frontend_task_should_stop);
 
 
-static int dvb_frontend_should_wakeup(struct neumo_dvb_frontend *fe)
+static int dvb_frontend_should_wakeup(struct neumo_dvb_frontend* fe)
 {
 	struct neumo_dvb_frontend_private *fepriv = fe->frontend_priv;
 
@@ -440,49 +361,33 @@ static int dvb_frontend_should_wakeup(struct neumo_dvb_frontend *fe)
 		fepriv->wakeup = 0;
 		return 1;
 	}
-	return neumo_driver_dvb_frontend_is_exiting(fe);
+	return neumo_dvb_frontend_is_exiting(fe);
 }
 
-void neumo_dvb_frontend_wakeup_fepriv(struct neumo_dvb_frontend_private *fepriv)
+static void neumo_dvb_frontend_wakeup(struct neumo_dvb_frontend* fe)
 {
+	struct neumo_dvb_frontend_private *fepriv = fe->frontend_priv;
+
 	fepriv->wakeup = 1;
 	wake_up_interruptible(&fepriv->wait_queue);
 }
 
-#ifdef UNUSED
-static void neumo_driver_dvb_frontend_restart(struct neumo_dvb_frontend* fe)
-{
-	struct neumo_dvb_frontend_private* fepriv = fe->frontend_priv;
-	dprintk("calling dvb_driver_dvb_frontend_init\n");
-	neumo_driver_dvb_frontend_init(fe);
-	if (fe->ops.set_tone && fepriv->tone != -1) {
-		fe_dprintk(fe, "calling set_tone: tone=%d\n", fepriv->tone);
-		fe->ops.set_tone(fe, fepriv->tone);
-	}
-	if (fe->ops.set_voltage && fepriv->voltage != -1) {
-		fe_dprintk(fe, "calling set_voltage: voltage=%d\n", fepriv->voltage);
-		fe->ops.set_voltage(fe, fepriv->voltage);
-	}
-}
-#endif
-
-static void neumo_driver_hw_algo(struct neumo_dvb_frontend_private *fepriv,
-																 struct neumo_dvb_frontend* fe,
-																 bool* re_tune, enum fe_status* status)
+static void hw_algo(struct neumo_dvb_frontend_private *fepriv,
+										struct neumo_dvb_frontend* fe,
+										bool* re_tune, enum fe_status* status)
 {
 	struct dvb_adapter* adapter = fe->dvb;
-	struct neumo_dvb_extra* extra = fepriv->extra;
 	if (fepriv->state & FESTATE_SCANNING) {
-		adapter_dprintk(adapter, "Scan requested, FESTATE_SCANNING state=%d\n", fepriv->state);
-		if (fepriv->neumo_api_fe->ops.scan)
+		fe_dprintk(fe, "Scan requested, FESTATE_SCANNING state=%d\n", fepriv->state);
+		if (fe->ops.scan)
 			fe->ops.scan(fe, fepriv->state & FESTATE_SCAN_NEXT , &fepriv->delay, status);
 		fepriv->state = FESTATE_IDLE;
 	}	 else if (fepriv->state & FESTATE_GETTING_SPECTRUM) {
-		adapter_dprintk(adapter, "starting spectrum scan\n");
+		fe_dprintk(fe, "starting spectrum scan\n");
 		if (fe->ops.spectrum_start)
-			fe->ops.spectrum_start(fe,  &extra->spectrum,
+			fe->ops.spectrum_start(fe,  &fepriv->spectrum,
 														 &fepriv->delay, status);
-		adapter_dprintk(adapter, "spectrum scan ended s=0x%x\n", *status);
+		fe_dprintk(fe, "spectrum scan ended s=0x%x\n", *status);
 		fepriv->state = FESTATE_IDLE;
 	} else {
 		if (fepriv->state & FESTATE_RETUNE) {
@@ -493,12 +398,12 @@ static void neumo_driver_hw_algo(struct neumo_dvb_frontend_private *fepriv,
 			*re_tune = false;
 		}
 		if (fe->ops.tune) {
-			fe->ops.tune(fe, re_tune, fepriv->tune_mode_flags, &fepriv->delay, status);
+			fe->ops.tune(fe, *re_tune, fepriv->tune_mode_flags, &fepriv->delay, status);
 		}
 	}
 	if ((*status != fepriv->status && !(fepriv->tune_mode_flags & FE_TUNE_MODE_ONESHOT))
 			|| (fepriv->heartbeat_interval>0)) {
-		neumo_driver_dvb_frontend_add_event(fe, *status);
+		neumo_dvb_frontend_add_event(fe, *status);
 		fepriv->status = *status;
 	}
 }
@@ -555,12 +460,11 @@ static void neumo_driver_hw_algo(struct neumo_dvb_frontend_private *fepriv,
 
  */
 
-static int neumo_driver_dvb_frontend_thread(void *data)
+static int dvb_frontend_thread(void *data)
 {
-	struct neumo_dvb_frontend_private *fepriv = data;
-	struct neumo_dvb_frontend* fe = fepriv->dvbdev->priv;
-	struct neumo_dvb_extra* extra = fepriv->extra;
-	struct dvb_adapter* adapter = fe->dvb;
+	struct neumo_dvb_frontend* fe = data;
+	struct neumo_dvb_frontend_private *fepriv = fe->frontend_priv;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	enum fe_status status = FE_NONE;
 	enum neumo_dvbfe_algo algo;
 	bool re_tune = false;
@@ -575,8 +479,8 @@ static int neumo_driver_dvb_frontend_thread(void *data)
 	fepriv->wakeup = 0;
 	fepriv->reinitialise = 0;
 
-	dprintk("calling neumo_driver_dvb_frontend_init\n");
-	neumo_driver_dvb_frontend_init(fe);
+	dprintk("calling dvb_frontend_init\n");
+	dvb_frontend_init(fe);
 
 	set_freezable();
 	while (1) {
@@ -589,7 +493,7 @@ restart:
             (fepriv->heartbeat_interval > 0 ) ? (fepriv->heartbeat_interval*HZ)/1000 :
 																		 fepriv->delay);
 
-		if (kthread_should_stop() || neumo_driver_dvb_frontend_is_exiting(fe)) {
+		if (kthread_should_stop() || neumo_dvb_frontend_is_exiting(fe)) {
 			/* got signal or quitting */
 			if (!down_interruptible(&fepriv->sem))
 				semheld = true;
@@ -604,8 +508,16 @@ restart:
 			break;
 
 		if (fepriv->reinitialise) {
-			dprintk("calling neumo_driver_dvb_frontend_init\n");
-			neumo_driver_dvb_frontend_init(fe);
+			dprintk("calling dvb_frontend_init\n");
+			dvb_frontend_init(fe);
+			if (fe->ops.set_tone && fepriv->tone != -1) {
+				fe_dprintk(fe, "calling set_tone: tone=%d\n", fepriv->tone);
+				fe->ops.set_tone(fe, fepriv->tone);
+			}
+			if (fe->ops.set_voltage && fepriv->voltage != -1) {
+				fe_dprintk(fe, "calling set_voltage: voltage=%d\n", fepriv->voltage);
+				fe->ops.set_voltage(fe, fepriv->voltage);
+			}
 			fepriv->reinitialise = 0;
 		}
 		if(fepriv->state == FESTATE_IDLE || fepriv->state == FESTATE_DISEQC)
@@ -614,26 +526,56 @@ restart:
 		if (fe->ops.get_frontend_algo) {
 			algo = fe->ops.get_frontend_algo(fe);
 			switch (algo) {
-			case DVBFE_ALGO_NOTUNE:
-				break;
 			case DVBFE_ALGO_HW:
-				adapter_dprintk(adapter, "Frontend ALGO = DVBFE_ALGO_HW\n");
-				neumo_driver_hw_algo(fepriv, fe, &re_tune, &status);
-				atomic_set(&extra->algo_state.task_should_stop, false);
-				break;
-			case DVBFE_ALGO_SW:
-				adapter_dprintk(adapter, "No DVBFE_ALGO_SW for neumo_dvb_frontend\n");
+				fe_dprintk(fe, "Frontend ALGO = DVBFE_ALGO_HW\n");
+				hw_algo(fepriv, fe, &re_tune, &status);
+				atomic_set(&fepriv->algo_state.task_should_stop, false);
 				break;
 			case DVBFE_ALGO_CUSTOM:
-				adapter_dprintk(adapter, "No DVBFE_ALGO_CUSTOM for neumo_dvb_frontend\n");
+				dev_dbg(fe->dvb->device, "%s: Frontend ALGO = DVBFE_ALGO_CUSTOM, state=%d\n", __func__, fepriv->state);
+				if (fepriv->state & FESTATE_RETUNE) {
+					dev_dbg(fe->dvb->device, "%s: Retune requested, FESTAT_RETUNE\n", __func__);
+					fepriv->state = FESTATE_TUNED;
+				}
+				/* Case where we are going to search for a carrier
+				 * User asked us to retune again for some reason, possibly
+				 * requesting a search with a new set of parameters
+				 */
+				if (fepriv->algo_status & DVBFE_ALGO_SEARCH_AGAIN) {
+					if (fe->ops.search) {
+						fepriv->algo_status = fe->ops.search(fe);
+						/* We did do a search as was requested, the flags are
+						 * now unset as well and has the flags wrt to search.
+						 */
+					} else {
+						fepriv->algo_status &= ~DVBFE_ALGO_SEARCH_AGAIN;
+					}
+				}
+				/* Track the carrier if the search was successful */
+				if (fepriv->algo_status != DVBFE_ALGO_SEARCH_SUCCESS) {
+					fepriv->algo_status |= DVBFE_ALGO_SEARCH_AGAIN;
+					fepriv->delay = HZ / 2;
+				}
+				dtv_property_legacy_params_sync(fe, c, &fepriv->dvb_parameters_out);
+				fe->ops.read_status(fe, &status);
+				if (status != fepriv->status) {
+					neumo_dvb_frontend_add_event(fe, status); /* update event list */
+					fepriv->status = status;
+					if (!(status & FE_HAS_LOCK)) {
+						fepriv->delay = HZ / 10;
+						fepriv->algo_status |= DVBFE_ALGO_SEARCH_AGAIN;
+					} else {
+						fepriv->delay = 60 * HZ;
+					}
+				}
 				break;
 			default:
-				adapter_dprintk(adapter, "UNDEFINED ALGO !\n");
+				fe_dprintk(fe, "UNDEFINED ALGO !\n");
 				break;
 			}
 		}
 	}
-	adapter_dprintk(adapter, "Exiting frontend thread\n");
+	fe_dprintk(fe, "Exiting frontend thread\n");
 	if (dvb_powerdown_on_sleep) {
 		if (fe->ops.set_voltage) {
 			fe_dprintk(fe, "calling set_voltage OFF: old voltage=%d\n", fepriv->voltage);
@@ -664,14 +606,14 @@ restart:
 
 	if (semheld)
 		up(&fepriv->sem);
-	neumo_dvb_frontend_wakeup_fepriv(fepriv);
+	neumo_dvb_frontend_wakeup(fe);
 	return 0;
 }
 
-void neumo_dvb_frontend_stop_fepriv(struct neumo_dvb_frontend_private* fepriv, struct dvb_adapter* adapter)
+static void neumo_dvb_frontend_stop(struct neumo_dvb_frontend* fe)
 {
-
-	adapter_dprintk(adapter, "\n");
+	struct neumo_dvb_frontend_private* fepriv = fe->frontend_priv;
+	fe_dprintk(fe, "\n");
 
 	if (fepriv->exit != DVB_FE_DEVICE_REMOVED)
 		fepriv->exit = DVB_FE_NORMAL_EXIT;
@@ -687,45 +629,22 @@ void neumo_dvb_frontend_stop_fepriv(struct neumo_dvb_frontend_private* fepriv, s
 
 	/* paranoia check in case a signal arrived */
 	if (fepriv->thread)
-		adapter_dprintk(adapter,
+		fe_dprintk(fe,
 			 "warning: thread %p won't exit\n", fepriv->thread);
 }
 
-/*
- * Sleep for the amount of time given by add_usec parameter
- *
- * This needs to be as precise as possible, as it affects the detection of
- * the dish tone command at the satellite subsystem. The precision is improved
- * by using a scheduled msleep followed by udelay for the remainder.
- */
-void dvb_frontend_sleep_until(ktime_t *waketime, u32 add_usec)
-{
-	s32 delta;
 
-	*waketime = ktime_add_us(*waketime, add_usec);
-	delta = ktime_us_delta(ktime_get_boottime(), *waketime);
-	if (delta > 2500) {
-		msleep((delta - 1500) / 1000);
-		delta = ktime_us_delta(ktime_get_boottime(), *waketime);
-	}
-	if (delta > 0)
-		udelay(delta);
-}
-EXPORT_SYMBOL(dvb_frontend_sleep_until);
-
-
-static int neumo_dvb_frontend_start_fepriv(struct neumo_dvb_frontend_private* fepriv, struct dvb_adapter* adapter, int fe_id)
+static int neumo_dvb_frontend_start(struct neumo_dvb_frontend* fe)
 {
 	int ret;
+	struct neumo_dvb_frontend_private* fepriv = fe->frontend_priv;
 	struct task_struct *fe_thread;
-
-	dev_dbg(adapter->device, "%s:\n", __func__);
 
 	if (fepriv->thread) {
 		if (fepriv->exit == DVB_FE_NO_EXIT)
 			return 0;
 		else
-			neumo_dvb_frontend_stop_fepriv(fepriv, adapter);
+			neumo_dvb_frontend_stop(fe);
 	}
 
 	if (signal_pending(current))
@@ -738,17 +657,12 @@ static int neumo_dvb_frontend_start_fepriv(struct neumo_dvb_frontend_private* fe
 	fepriv->thread = NULL;
 	mb();
 
-	if(fepriv->dvb_api_fe)  {
-		fe_thread = kthread_run(dvb_driver_dvb_frontend_thread, fepriv,
-														"kdvb-ad-%i-fe-%i", adapter->num, fe_id);
-	} else if (fepriv->neumo_api_fe) {
-		fe_thread = kthread_run(neumo_driver_dvb_frontend_thread, fepriv,
-														"kdvb-ad-%i-fe-%i", adapter->num, fe_id);
-	}
+	fe_thread = kthread_run(dvb_frontend_thread, fe,
+				"kdvb-ad-%i-fe-%i", fe->dvb->num, fe->id);
 	if (IS_ERR(fe_thread)) {
 		ret = PTR_ERR(fe_thread);
-		adapter_dprintk(adapter,
-			 "dvb_frontend_start: failed to start kthread (%d)\n",
+		fe_dprintk(fe,
+			 "neumo_dvb_frontend_start: failed to start kthread (%d)\n",
 			 ret);
 		up(&fepriv->sem);
 		return ret;
@@ -757,7 +671,7 @@ static int neumo_dvb_frontend_start_fepriv(struct neumo_dvb_frontend_private* fe
 	return 0;
 }
 
-static bool neumo_driver_is_sat_fe(struct neumo_dvb_frontend* fe) {
+static bool is_sat_fe(struct neumo_dvb_frontend* fe) {
 	int i;
 	for (i=0; i< sizeof(fe->ops.delsys)/sizeof(fe->ops.delsys); ++i) {
 		switch(fe->ops.delsys[i]) {
@@ -770,7 +684,7 @@ static bool neumo_driver_is_sat_fe(struct neumo_dvb_frontend* fe) {
 	return false;
 }
 
-static bool neumo_driver_is_symbol_rate_fe(struct neumo_dvb_frontend* fe) {
+static bool is_symbol_rate_fe(struct neumo_dvb_frontend* fe) {
 	int i;
 	for (i=0; i< sizeof(fe->ops.delsys)/sizeof(fe->ops.delsys); ++i) {
 		switch(fe->ops.delsys[i]) {
@@ -785,7 +699,7 @@ static bool neumo_driver_is_symbol_rate_fe(struct neumo_dvb_frontend* fe) {
 	return false;
 }
 
-static void neumo_driver_dvb_frontend_get_frequency_limits(struct neumo_dvb_frontend *fe,
+static void dvb_frontend_get_frequency_limits(struct neumo_dvb_frontend* fe,
 								u32 *freq_min, u32 *freq_max,
 								u32 *tolerance)
 {
@@ -814,7 +728,7 @@ static void neumo_driver_dvb_frontend_get_frequency_limits(struct neumo_dvb_fron
 		tuner_min, tuner_max, frontend_min, frontend_max);
 
 	/* If the standard is for satellite, convert frequencies to kHz */
-	if(neumo_driver_is_sat_fe(fe)) {
+	if(is_sat_fe(fe)) {
 		*freq_min /= kHz;
 		*freq_max /= kHz;
 		fe_dprintk(fe, "This is a sat_fe returning %u %d\n", *freq_min, *freq_max);
@@ -825,9 +739,9 @@ static void neumo_driver_dvb_frontend_get_frequency_limits(struct neumo_dvb_fron
 	fe_dprintk(fe, "Returning %u %d\n", *freq_min, *freq_max);
 }
 
-static u32 neumo_driver_neumo_dvb_frontend_get_stepsize(struct neumo_dvb_frontend *fe)
+static u32 neumo_dvb_frontend_get_stepsize(struct neumo_dvb_frontend* fe)
 {
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	u32 fe_step = fe->ops.info.frequency_stepsize_hz;
 	u32 tuner_step = fe->ops.tuner_ops.info.frequency_step_hz;
 	u32 step = max(fe_step, tuner_step);
@@ -846,9 +760,9 @@ static u32 neumo_driver_neumo_dvb_frontend_get_stepsize(struct neumo_dvb_fronten
 	return step;
 }
 
-static int dvb_frontend_check_parameters(struct neumo_dvb_frontend *fe)
+static int dvb_frontend_check_parameters(struct neumo_dvb_frontend* fe)
 {
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	u32 freq_min;
 	u32 freq_max;
 	bool need_nonzero_symbol_rate= c->algorithm != ALGORITHM_BLIND;
@@ -861,7 +775,7 @@ static int dvb_frontend_check_parameters(struct neumo_dvb_frontend *fe)
 	case ALGORITHM_COLD_BEST_GUESS:
 		fe_dprintk(fe, "checking frequency\n");
 		/* range check: frequency */
-		neumo_driver_dvb_frontend_get_frequency_limits(fe, &freq_min, &freq_max, NULL);
+		dvb_frontend_get_frequency_limits(fe, &freq_min, &freq_max, NULL);
 		if ((freq_min && c->frequency < freq_min) ||
 				(freq_max && c->frequency > freq_max)) {
 			fe_dprintk(fe, "DVB: adapter %i frontend %i frequency %u out of range (%u..%u)\n",
@@ -871,7 +785,7 @@ static int dvb_frontend_check_parameters(struct neumo_dvb_frontend *fe)
 		}
 	}
 	/* range check: symbol rate */
-	if(neumo_driver_is_symbol_rate_fe(fe) && (c->symbol_rate > 0 || need_nonzero_symbol_rate)) {
+	if(is_symbol_rate_fe(fe) && (c->symbol_rate > 0 || need_nonzero_symbol_rate)) {
 		fe_dprintk(fe, "checking symbol_rate: %d range: %d %d\n", c->symbol_rate, fe->ops.info.symbol_rate_min, fe->ops.info.symbol_rate_max);
 		if ((fe->ops.info.symbol_rate_min &&
 				 c->symbol_rate < fe->ops.info.symbol_rate_min) ||
@@ -892,15 +806,15 @@ static int dvb_frontend_check_parameters(struct neumo_dvb_frontend *fe)
 	return 0;
 }
 
-static int neumo_driver_dvb_frontend_clear_cache(struct neumo_dvb_frontend *fe)
+static int dvb_frontend_clear_cache(struct neumo_dvb_frontend* fe)
 {
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct neumo_dvb_frontend_private *fepriv = fe->frontend_priv;
 	int i;
 	u32 delsys;
 
 	delsys = c->delivery_system;
-	memset(c, 0, offsetof(struct neumo_driver_dtv_frontend_properties, strength));
+	memset(c, 0, offsetof(struct neumo_dtv_frontend_properties, strength));
 	c->delivery_system = delsys;
 
 	dev_dbg(fe->dvb->device, "%s: Clearing cache for delivery system %d\n",
@@ -1097,8 +1011,8 @@ int dtv_max_command = (sizeof(dtv_cmds) /sizeof(dtv_cmds[0]) -1);
  * drivers can use a single set_frontend tuning function, regardless of whether
  * it's being used for the legacy or new API, reducing code and complexity.
  */
-static int dtv_property_cache_sync(struct neumo_dvb_frontend *fe,
-					 struct neumo_driver_dtv_frontend_properties *c,
+static int dtv_property_cache_sync(struct neumo_dvb_frontend* fe,
+					 struct neumo_dtv_frontend_properties *c,
 					 const struct dvb_frontend_parameters *p)
 {
 	c->frequency = p->frequency;
@@ -1173,32 +1087,31 @@ static int dtv_property_cache_sync(struct neumo_dvb_frontend *fe,
  * legacy tuning structures, for the advanced tuning API.
  */
 static int
-neumo_driver_dtv_property_legacy_params_sync(struct neumo_dvb_frontend* fe,
-																						 struct dvb_frontend_parameters *p)
+dtv_property_legacy_params_sync(struct neumo_dvb_frontend* fe,
+																const struct neumo_dtv_frontend_properties *c,
+																struct dvb_frontend_parameters *p)
 {
-	const struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
-	struct dvb_adapter* adapter = fe->dvb;
 	p->frequency = c->frequency;
 	p->inversion = c->inversion;
 
 	switch (dvbv3_type(c->delivery_system)) {
 	case DVBV3_UNKNOWN:
-		adapter_dprintk(adapter, "%s: doesn't know how to handle a DVBv3 call to delivery system %i\n",
+		fe_dprintk(fe, "%s: doesn't know how to handle a DVBv3 call to delivery system %i\n",
 			__func__, c->delivery_system);
 		return -EINVAL;
 	case DVBV3_QPSK:
-		adapter_dprintk(adapter, "%s: Preparing QPSK req\n", __func__);
+		fe_dprintk(fe, "%s: Preparing QPSK req\n", __func__);
 		p->u.qpsk.symbol_rate = c->symbol_rate;
 		p->u.qpsk.fec_inner = c->fec_inner;
 		break;
 	case DVBV3_QAM:
-		adapter_dprintk(adapter, "%s: Preparing QAM req\n", __func__);
+		fe_dprintk(fe, "%s: Preparing QAM req\n", __func__);
 		p->u.qam.symbol_rate = c->symbol_rate;
 		p->u.qam.fec_inner = c->fec_inner;
 		p->u.qam.modulation = c->modulation;
 		break;
 	case DVBV3_OFDM:
-		adapter_dprintk(adapter, "%s: Preparing OFDM req\n", __func__);
+		fe_dprintk(fe, "%s: Preparing OFDM req\n", __func__);
 		switch (c->bandwidth_hz) {
 		case 10000000:
 			p->u.ofdm.bandwidth = BANDWIDTH_10_MHZ;
@@ -1230,7 +1143,7 @@ neumo_driver_dtv_property_legacy_params_sync(struct neumo_dvb_frontend* fe,
 		p->u.ofdm.hierarchy_information = c->hierarchy;
 		break;
 	case DVBV3_ATSC:
-		adapter_dprintk(adapter, "%s: Preparing VSB req\n", __func__);
+		fe_dprintk(fe, "%s: Preparing VSB req\n", __func__);
 		p->u.vsb.modulation = c->modulation;
 		break;
 	}
@@ -1238,17 +1151,17 @@ neumo_driver_dtv_property_legacy_params_sync(struct neumo_dvb_frontend* fe,
 }
 
 /**
- * neumo_driver_dtv_get_frontend - calls a callback for retrieving DTV parameters
+ * dtv_get_frontend - calls a callback for retrieving DTV parameters
  * @fe:		struct neumo_dvb_frontend pointer
- * @c:		struct neumo_driver_dtv_frontend_properties pointer (DVBv5 cache)
+ * @c:		struct neumo_dtv_frontend_properties pointer (DVBv5 cache)
  * @p_out:	struct dvb_frontend_parameters pointer (DVBv3 FE struct)
  *
  * This routine calls either the DVBv3 or DVBv5 get_frontend call.
  * If c is not null, it will update the DVBv5 cache struct pointed by it.
  * If p_out is not null, it will update the DVBv3 params pointed by it.
  */
-static int neumo_driver_dtv_get_frontend(struct neumo_dvb_frontend *fe,
-					struct neumo_driver_dtv_frontend_properties *c,
+static int dtv_get_frontend(struct neumo_dvb_frontend* fe,
+					struct neumo_dtv_frontend_properties *c,
 					struct dvb_frontend_parameters *p_out)
 {
 	int r;
@@ -1258,7 +1171,7 @@ static int neumo_driver_dtv_get_frontend(struct neumo_dvb_frontend *fe,
 		if (unlikely(r < 0))
 			return r;
 		if (p_out)
-			neumo_driver_dtv_property_legacy_params_sync(fe, p_out);
+			dtv_property_legacy_params_sync(fe, c, p_out);
 		return 0;
 	}
 
@@ -1266,25 +1179,25 @@ static int neumo_driver_dtv_get_frontend(struct neumo_dvb_frontend *fe,
 	return 0;
 }
 
-static int neumo_driver_dvb_frontend_handle_ioctl(struct file *file,
-						 unsigned int cmd, void *parg);
+static int dvb_frontend_handle_ioctl(struct file *file,
+																		 unsigned int cmd, void *parg);
 
-static int neumo_driver_dvb_frontend_handle_algo_ctrl_ioctl(struct file *file,
+static int dvb_frontend_handle_algo_ctrl_ioctl(struct file *file,
 																							 unsigned int cmd, void *parg);
 
-static int dtv_set_sat_scan(struct neumo_dvb_frontend *fe, bool scan_continue);
-static int dtv_set_spectrum(struct neumo_dvb_frontend *fe, enum dtv_fe_spectrum_method method);
-static int dtv_get_spectrum(struct neumo_dvb_frontend *fe, struct dtv_fe_spectrum*user);
-static int dtv_set_pls_search_list(struct neumo_dvb_frontend *fe, struct dtv_pls_search_list* user);
-static int dtv_get_pls_search_list(struct neumo_dvb_frontend *fe, struct dtv_pls_search_list* user);
-static int dtv_set_constellation(struct neumo_dvb_frontend *fe, struct dtv_fe_constellation* constellation);
-static int dtv_get_constellation(struct neumo_dvb_frontend *fe, struct dtv_fe_constellation* user);
-static int dtv_get_matype_list(struct neumo_dvb_frontend *fe, struct dtv_matype_list* user);
+static int dtv_set_sat_scan(struct neumo_dvb_frontend* fe, bool scan_continue);
+static int dtv_set_spectrum(struct neumo_dvb_frontend* fe, enum dtv_fe_spectrum_method method);
+static int dtv_get_spectrum(struct neumo_dvb_frontend* fe, struct dtv_fe_spectrum*user);
+static int dtv_set_pls_search_list(struct neumo_dvb_frontend* fe, struct dtv_pls_search_list* user);
+static int dtv_get_pls_search_list(struct neumo_dvb_frontend* fe, struct dtv_pls_search_list* user);
+static int dtv_set_constellation(struct neumo_dvb_frontend* fe, struct dtv_fe_constellation* constellation);
+static int dtv_get_constellation(struct neumo_dvb_frontend* fe, struct dtv_fe_constellation* user);
+static int dtv_get_matype_list(struct neumo_dvb_frontend* fe, struct dtv_matype_list* user);
 
-static int neumo_driver_dtv_property_process_get(struct neumo_dvb_frontend *fe,
-						const struct neumo_driver_dtv_frontend_properties *c,
-						struct dtv_property *tvp,
-						struct file *file)
+static int neumouapi_dtv_property_process_get(struct neumo_dvb_frontend* fe,
+																							const struct neumo_dtv_frontend_properties *c,
+																							struct dtv_property *tvp,
+																							struct file *file)
 {
 	int ncaps;
 	struct neumo_dvb_frontend_private *fepriv = fe->frontend_priv;
@@ -1594,8 +1507,250 @@ static int neumo_driver_dtv_property_process_get(struct neumo_dvb_frontend *fe,
 	return 0;
 }
 
-static int neumo_driver_dtv_set_frontend(struct neumo_dvb_frontend *fe);
-static int neumo_driver_dtv_set_sec_configured(struct neumo_dvb_frontend *fe);
+static int dvbuapi_dtv_property_process_get(struct neumo_dvb_frontend* fe,
+																						const struct neumo_dtv_frontend_properties *c,
+																						struct dvb_api_dtv_property *tvp,
+																						struct file *file)
+{
+	int ncaps;
+	struct neumo_dvb_frontend_private *fepriv = fe->frontend_priv;
+	switch (tvp->cmd) {
+	case DTV_ENUM_DELSYS:
+		ncaps = 0;
+		while (ncaps < MAX_DELSYS && fe->ops.delsys[ncaps]) {
+			tvp->u.buffer.data[ncaps] = fe->ops.delsys[ncaps];
+			ncaps++;
+		}
+		tvp->u.buffer.len = ncaps;
+		break;
+
+	case DTV_FREQUENCY:
+		tvp->u.data = c->frequency;
+		break;
+	case DTV_MODULATION:
+		tvp->u.data = c->modulation;
+		break;
+	case DTV_BANDWIDTH_HZ:
+		tvp->u.data = c->bandwidth_hz;
+		break;
+	case DTV_INVERSION:
+		tvp->u.data = c->inversion;
+		break;
+	case DTV_SYMBOL_RATE:
+		tvp->u.data = c->symbol_rate;
+		break;
+	case DTV_INNER_FEC:
+		tvp->u.data = c->fec_inner;
+		break;
+	case DTV_PILOT:
+		tvp->u.data = c->pilot;
+		break;
+	case DTV_ROLLOFF:
+		tvp->u.data = c->rolloff;
+		break;
+	case DTV_DELIVERY_SYSTEM:
+		tvp->u.data = c->delivery_system;
+		break;
+	case DTV_VOLTAGE:
+		tvp->u.data = c->voltage;
+		break;
+	case DTV_TONE:
+		tvp->u.data = c->sectone;
+		break;
+	case DTV_API_VERSION:
+		tvp->u.data = (DVB_API_VERSION << 8) | DVB_API_VERSION_MINOR;
+		break;
+	case DTV_CODE_RATE_HP:
+		tvp->u.data = c->code_rate_HP;
+		break;
+	case DTV_CODE_RATE_LP:
+		tvp->u.data = c->code_rate_LP;
+		break;
+	case DTV_GUARD_INTERVAL:
+		tvp->u.data = c->guard_interval;
+		break;
+	case DTV_TRANSMISSION_MODE:
+		tvp->u.data = c->transmission_mode;
+		break;
+	case DTV_HIERARCHY:
+		tvp->u.data = c->hierarchy;
+		break;
+	case DTV_INTERLEAVING:
+		tvp->u.data = c->interleaving;
+		break;
+
+	/* ISDB-T Support here */
+	case DTV_ISDBT_PARTIAL_RECEPTION:
+		tvp->u.data = c->isdbt_partial_reception;
+		break;
+	case DTV_ISDBT_SOUND_BROADCASTING:
+		tvp->u.data = c->isdbt_sb_mode;
+		break;
+	case DTV_ISDBT_SB_SUBCHANNEL_ID:
+		tvp->u.data = c->isdbt_sb_subchannel;
+		break;
+	case DTV_ISDBT_SB_SEGMENT_IDX:
+		tvp->u.data = c->isdbt_sb_segment_idx;
+		break;
+	case DTV_ISDBT_SB_SEGMENT_COUNT:
+		tvp->u.data = c->isdbt_sb_segment_count;
+		break;
+	case DTV_ISDBT_LAYER_ENABLED:
+		tvp->u.data = c->isdbt_layer_enabled;
+		break;
+	case DTV_ISDBT_LAYERA_FEC:
+		tvp->u.data = c->layer[0].fec;
+		break;
+	case DTV_ISDBT_LAYERA_MODULATION:
+		tvp->u.data = c->layer[0].modulation;
+		break;
+	case DTV_ISDBT_LAYERA_SEGMENT_COUNT:
+		tvp->u.data = c->layer[0].segment_count;
+		break;
+	case DTV_ISDBT_LAYERA_TIME_INTERLEAVING:
+		tvp->u.data = c->layer[0].interleaving;
+		break;
+	case DTV_ISDBT_LAYERB_FEC:
+		tvp->u.data = c->layer[1].fec;
+		break;
+	case DTV_ISDBT_LAYERB_MODULATION:
+		tvp->u.data = c->layer[1].modulation;
+		break;
+	case DTV_ISDBT_LAYERB_SEGMENT_COUNT:
+		tvp->u.data = c->layer[1].segment_count;
+		break;
+	case DTV_ISDBT_LAYERB_TIME_INTERLEAVING:
+		tvp->u.data = c->layer[1].interleaving;
+		break;
+	case DTV_ISDBT_LAYERC_FEC:
+		tvp->u.data = c->layer[2].fec;
+		break;
+	case DTV_ISDBT_LAYERC_MODULATION:
+		tvp->u.data = c->layer[2].modulation;
+		break;
+	case DTV_ISDBT_LAYERC_SEGMENT_COUNT:
+		tvp->u.data = c->layer[2].segment_count;
+		break;
+	case DTV_ISDBT_LAYERC_TIME_INTERLEAVING:
+		tvp->u.data = c->layer[2].interleaving;
+		break;
+
+	/* Multistream support */
+	case DTV_STREAM_ID:
+		tvp->u.data = c->stream_id;
+		break;
+
+	/* Modcode support */
+	case DTV_MODCODE:
+		tvp->u.data = c->modcode;
+		break;
+
+	/* Physical layer scrambling support */
+	case DTV_SCRAMBLING_SEQUENCE_INDEX:
+		tvp->u.data = c->scrambling_sequence_index;
+		break;
+
+	/* ATSC-MH */
+	case DTV_ATSCMH_FIC_VER:
+		tvp->u.data = fe->dtv_property_cache.atscmh_fic_ver;
+		break;
+	case DTV_ATSCMH_PARADE_ID:
+		tvp->u.data = fe->dtv_property_cache.atscmh_parade_id;
+		break;
+	case DTV_ATSCMH_NOG:
+		tvp->u.data = fe->dtv_property_cache.atscmh_nog;
+		break;
+	case DTV_ATSCMH_TNOG:
+		tvp->u.data = fe->dtv_property_cache.atscmh_tnog;
+		break;
+	case DTV_ATSCMH_SGN:
+		tvp->u.data = fe->dtv_property_cache.atscmh_sgn;
+		break;
+	case DTV_ATSCMH_PRC:
+		tvp->u.data = fe->dtv_property_cache.atscmh_prc;
+		break;
+	case DTV_ATSCMH_RS_FRAME_MODE:
+		tvp->u.data = fe->dtv_property_cache.atscmh_rs_frame_mode;
+		break;
+	case DTV_ATSCMH_RS_FRAME_ENSEMBLE:
+		tvp->u.data = fe->dtv_property_cache.atscmh_rs_frame_ensemble;
+		break;
+	case DTV_ATSCMH_RS_CODE_MODE_PRI:
+		tvp->u.data = fe->dtv_property_cache.atscmh_rs_code_mode_pri;
+		break;
+	case DTV_ATSCMH_RS_CODE_MODE_SEC:
+		tvp->u.data = fe->dtv_property_cache.atscmh_rs_code_mode_sec;
+		break;
+	case DTV_ATSCMH_SCCC_BLOCK_MODE:
+		tvp->u.data = fe->dtv_property_cache.atscmh_sccc_block_mode;
+		break;
+	case DTV_ATSCMH_SCCC_CODE_MODE_A:
+		tvp->u.data = fe->dtv_property_cache.atscmh_sccc_code_mode_a;
+		break;
+	case DTV_ATSCMH_SCCC_CODE_MODE_B:
+		tvp->u.data = fe->dtv_property_cache.atscmh_sccc_code_mode_b;
+		break;
+	case DTV_ATSCMH_SCCC_CODE_MODE_C:
+		tvp->u.data = fe->dtv_property_cache.atscmh_sccc_code_mode_c;
+		break;
+	case DTV_ATSCMH_SCCC_CODE_MODE_D:
+		tvp->u.data = fe->dtv_property_cache.atscmh_sccc_code_mode_d;
+		break;
+
+	case DTV_LNA:
+		tvp->u.data = c->lna;
+		break;
+
+	/* Fill quality measures */
+	case DTV_STAT_SIGNAL_STRENGTH:
+		tvp->u.st = c->strength;
+		break;
+	case DTV_STAT_CNR:
+		tvp->u.st = c->cnr;
+		break;
+	case DTV_STAT_PRE_ERROR_BIT_COUNT:
+		tvp->u.st = c->pre_bit_error;
+		break;
+	case DTV_STAT_PRE_TOTAL_BIT_COUNT:
+		tvp->u.st = c->pre_bit_count;
+		break;
+	case DTV_STAT_POST_ERROR_BIT_COUNT:
+		tvp->u.st = c->post_bit_error;
+		break;
+	case DTV_STAT_POST_TOTAL_BIT_COUNT:
+		tvp->u.st = c->post_bit_count;
+		break;
+	case DTV_STAT_ERROR_BLOCK_COUNT:
+		tvp->u.st = c->block_error;
+		break;
+	case DTV_STAT_TOTAL_BLOCK_COUNT:
+		tvp->u.st = c->block_count;
+		break;
+	default:
+		dev_dbg(fe->dvb->device,
+			"%s: FE property %d doesn't exist\n",
+			__func__, tvp->cmd);
+		return -EINVAL;
+	}
+
+	if (!dtv_cmds[tvp->cmd].buffer)
+		dev_dbg(fe->dvb->device,
+						"%s: GET cmd 0x%08x (%s) = 0x%08x\n",
+			__func__, tvp->cmd, dtv_cmds[tvp->cmd].name,
+						tvp->u.data);
+	else
+		dev_dbg(fe->dvb->device,
+			"%s: GET cmd 0x%08x (%s) len %d: %*ph\n",
+						__func__,
+						tvp->cmd, dtv_cmds[tvp->cmd].name,
+			tvp->u.buffer.len,
+						tvp->u.buffer.len, tvp->u.buffer.data);
+
+	return 0;
+}
+
+static int dtv_set_frontend(struct neumo_dvb_frontend* fe);
+static int dtv_set_sec_configured(struct neumo_dvb_frontend* fe);
 
 static bool is_dvbv3_delsys(u32 delsys)
 {
@@ -1604,7 +1759,7 @@ static bool is_dvbv3_delsys(u32 delsys)
 }
 
 /**
- * neumo_driver_emulate_delivery_system - emulate a DVBv5 delivery system with a DVBv3 type
+ * emulate_delivery_system - emulate a DVBv5 delivery system with a DVBv3 type
  * @fe:			struct frontend;
  * @delsys:			DVBv5 type that will be used for emulation
  *
@@ -1613,10 +1768,10 @@ static bool is_dvbv3_delsys(u32 delsys)
  * using a DVB-S2 only frontend just like it were a DVB-S, if the frontend
  * parameters are compatible with DVB-S spec.
  */
-static int neumo_driver_emulate_delivery_system(struct neumo_dvb_frontend *fe, u32 delsys)
+static int emulate_delivery_system(struct neumo_dvb_frontend* fe, u32 delsys)
 {
 	int i;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 
 	c->delivery_system = delsys;
 	if(delsys == SYS_AUTO)
@@ -1668,13 +1823,12 @@ static int neumo_driver_emulate_delivery_system(struct neumo_dvb_frontend *fe, u
  *    example, SYS_DVBT instead of SYS_ISDBT. This is because early usage of
  *    ISDB-T provided backward compat with DVB-T.
  */
-static int dvbv5_set_delivery_system(struct neumo_dvb_frontend *fe,
-						 u32 desired_system)
+static int dvbv5_set_delivery_system(struct neumo_dvb_frontend* fe,
+																		 u32 desired_system)
 {
 	int ncaps;
 	u32 delsys = SYS_UNDEFINED;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
-	//	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	enum dvbv3_emulation_type type;
 	fe_dprintk(fe, "adapter=%d desired_system=%d\n", fe->dvb->num, desired_system);
 	/*
@@ -1746,7 +1900,7 @@ static int dvbv5_set_delivery_system(struct neumo_dvb_frontend *fe,
 					"%s: Using delivery system %d emulated as if it were %d\n",
 					__func__, delsys, desired_system);
 
-	return neumo_driver_emulate_delivery_system(fe, desired_system);
+	return emulate_delivery_system(fe, desired_system);
 }
 
 /**
@@ -1777,11 +1931,11 @@ static int dvbv5_set_delivery_system(struct neumo_dvb_frontend *fe,
  *	SYS_DVBS entry before the SYS_DVBS2, otherwise it won't switch back
  *	to DVB-S.
  */
-static int dvbv3_set_delivery_system(struct neumo_dvb_frontend *fe)
+static int dvbv3_set_delivery_system(struct neumo_dvb_frontend* fe)
 {
 	int ncaps;
 	u32 delsys = SYS_UNDEFINED;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 
 	/* If not set yet, defaults to the first supported delivery system */
 	if (c->delivery_system == SYS_UNDEFINED)
@@ -1816,16 +1970,16 @@ static int dvbv3_set_delivery_system(struct neumo_dvb_frontend *fe)
 			__func__);
 		return -EINVAL;
 	}
-	return neumo_driver_emulate_delivery_system(fe, delsys);
+	return emulate_delivery_system(fe, delsys);
 }
 
-static int neumo_driver_dtv_property_process_set_int(struct neumo_dvb_frontend *fe,
-						struct file *file,
-						u32 cmd, u32 data)
+static int dtv_property_process_set_int(struct neumo_dvb_frontend* fe,
+																				struct file *file,
+																				u32 cmd, u32 data)
 {
 	int r = 0;
 	struct neumo_dvb_frontend_private *fepriv = fe->frontend_priv;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 
 	/* Allow the frontend to validate incoming properties */
 	if (fe->ops.set_property) {
@@ -1856,7 +2010,6 @@ static int neumo_driver_dtv_property_process_set_int(struct neumo_dvb_frontend *
 	case DTV_SCAN_FFT_SIZE:
 		c->scan_fft_size = data;
 		break;
-
 	case DTV_SEARCH_RANGE:
 		c->search_range = data;
 		break;
@@ -1889,15 +2042,15 @@ static int neumo_driver_dtv_property_process_set_int(struct neumo_dvb_frontend *
 		break;
 	case DTV_VOLTAGE:
 		c->voltage = data;
-		r = neumo_driver_dvb_frontend_handle_ioctl(file, FE_SET_VOLTAGE,
-								(void *)c->voltage);
+		r = dvb_frontend_handle_ioctl(file, FE_SET_VOLTAGE,
+																	(void *)c->voltage);
 		fe_dprintk(fe, "DTV_VOLTAGE: %d r=%d\n", c->voltage, r);
 		break;
 	case DTV_TONE:
 		c->sectone = data;
 		fe_dprintk(fe, "DTV_TONE: %d\n", c->sectone);
-		r = neumo_driver_dvb_frontend_handle_ioctl(file, FE_SET_TONE,
-								(void *)c->sectone);
+		r = dvb_frontend_handle_ioctl(file, FE_SET_TONE,
+																	(void *)c->sectone);
 		break;
 	case DTV_CODE_RATE_HP:
 		c->code_rate_HP = data;
@@ -2023,7 +2176,7 @@ static int neumo_driver_dtv_property_process_set_int(struct neumo_dvb_frontend *
 }
 
 /**
- * neumo_driver_dtv_property_process_set -  Sets a single DTV property
+ * neumouapi_dtv_property_process_set -  Sets a single DTV property
  * @fe:		Pointer to &struct neumo_dvb_frontend
  * @file:	Pointer to &struct file
  * @cmd:	Digital TV command
@@ -2031,17 +2184,17 @@ static int neumo_driver_dtv_property_process_set_int(struct neumo_dvb_frontend *
  *
  * This routine assigns the property
  * value to the corresponding member of
- * &struct neumo_driver_dtv_frontend_properties
+ * &struct neumo_dtv_frontend_properties
  *
  * Returns:
  * Zero on success, negative errno on failure.
  */
-static int neumo_driver_dtv_property_process_set(struct neumo_dvb_frontend *fe,
-																		struct file *file,
-																		u32 cmd, struct dtv_property *tvp)
+static int neumouapi_dtv_property_process_set(struct neumo_dvb_frontend* fe,
+																								 struct file *file,
+																								 u32 cmd, struct dtv_property *tvp)
 {
 	int r = 0;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 
 
 	if (!cmd || cmd > dtv_max_command) {
@@ -2061,7 +2214,7 @@ static int neumo_driver_dtv_property_process_set(struct neumo_dvb_frontend *fe,
 		 * Reset a cache of data specific to the frontend here. This does
 		 * not effect hardware.
 		 */
-		neumo_driver_dvb_frontend_clear_cache(fe);
+		dvb_frontend_clear_cache(fe);
 		break;
 	case DTV_TUNE:
 		/*
@@ -2071,7 +2224,7 @@ static int neumo_driver_dtv_property_process_set(struct neumo_dvb_frontend *fe,
 		dev_dbg(fe->dvb->device,
 			"%s: Setting the frontend from property cache\n",
 			__func__);
-		r = neumo_driver_dtv_set_frontend(fe);
+		r = dtv_set_frontend(fe);
 		fe_dprintk(fe, "cmd=DTV_TUNE r=%d adapter=%d", r, fe->dvb->num);
 		break;
 	case DTV_SET_SEC_CONFIGURED:
@@ -2082,8 +2235,8 @@ static int neumo_driver_dtv_property_process_set(struct neumo_dvb_frontend *fe,
 			"%s: Setting the frontend from property cache\n",
 			__func__);
 
-		r = neumo_driver_dtv_set_sec_configured(fe);
-		fe_dprintk(fe, "cmd=NEUMO_DRIVER_DTV_SET_SEC_CONFIGURED r=%d adapter=%d", r, fe->dvb->num);
+		r = dtv_set_sec_configured(fe);
+		fe_dprintk(fe, "cmd=DTV_SET_SEC_CONFIGURED r=%d adapter=%d", r, fe->dvb->num);
 		break;
 	case DTV_SCAN:
 		/*
@@ -2137,14 +2290,74 @@ static int neumo_driver_dtv_property_process_set(struct neumo_dvb_frontend *fe,
 	}
 		break;
 	default:
-		r = neumo_driver_dtv_property_process_set_int(fe, file, cmd, tvp->u.data);
+		r = dtv_property_process_set_int(fe, file, cmd, tvp->u.data);
 		fe_dprintk(fe, "adapter=%d: cmd=%d data=%d ret=%d", fe->dvb->num, cmd, tvp->u.data, r);
 	}
 
 	return r;
 }
 
-static int init_dtv_fe_spectrum_scan(struct dtv_fe_spectrum* s, struct neumo_driver_dtv_frontend_properties *p,
+/**
+ * dvbuapi_driver_dtv_property_process_set -  Sets a single DTV property
+ * @fe:		Pointer to &struct neumo_dvb_frontend
+ * @file:	Pointer to &struct file
+ * @cmd:	Digital TV command
+ * @data:	An unsigned 32-bits number
+ *
+ * This routine assigns the property
+ * value to the corresponding member of
+ * &struct neumo_dtv_frontend_properties
+ *
+ * Returns:
+ * Zero on success, negative errno on failure.
+ */
+static int dvbuapi_dtv_property_process_set(struct neumo_dvb_frontend* fe,
+																						struct file *file,
+																						u32 cmd, struct dvb_api_dtv_property *tvp)
+{
+	int r = 0;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
+
+
+	if (!cmd || cmd > dtv_max_command) {
+		dev_warn(fe->dvb->device, "%s: SET cmd 0x%08x undefined\n",
+						 __func__, cmd);
+		return -EINVAL;
+	}
+	/** Dump DTV command name*/
+	dev_dbg(fe->dvb->device,
+					"%s: SET cmd 0x%08x (%s) to 0x%08x\n",
+					__func__, cmd, dtv_cmds[cmd].name, tvp->u.data);
+
+	switch(cmd) {
+	case DTV_CLEAR:
+		fe_dprintk(fe, "cmd=DTV_CLEAR");
+		/*
+		 * Reset a cache of data specific to the frontend here. This does
+		 * not effect hardware.
+		 */
+		dvb_frontend_clear_cache(fe);
+		break;
+	case DTV_TUNE:
+		/*
+		 * Use the cached Digital TV properties to tune the
+		 * frontend
+		 */
+		dev_dbg(fe->dvb->device,
+			"%s: Setting the frontend from property cache\n",
+			__func__);
+		r = dtv_set_frontend(fe);
+		fe_dprintk(fe, "cmd=DTV_TUNE r=%d adapter=%d", r, fe->dvb->num);
+		break;
+	default:
+		r = dtv_property_process_set_int(fe, file, cmd, tvp->u.data);
+		fe_dprintk(fe, "adapter=%d: cmd=%d data=%d ret=%d", fe->dvb->num, cmd, tvp->u.data, r);
+	}
+
+	return r;
+}
+
+static int init_dtv_fe_spectrum_scan(struct dtv_fe_spectrum* s, struct neumo_dtv_frontend_properties *p,
 																		 enum dtv_fe_spectrum_method method)
 {
 	switch(method) {
@@ -2160,28 +2373,15 @@ static int init_dtv_fe_spectrum_scan(struct dtv_fe_spectrum* s, struct neumo_dri
 	return 0;
 }
 
-
-
-static inline void stop_task(struct neumo_dvb_frontend_private* fepriv) {
-	if(fepriv->neumo_api_fe) {
-		if(fepriv->neumo_api_fe->ops.stop_task) {
-			fepriv->neumo_api_fe->ops.stop_task(fepriv->neumo_api_fe);
-		}
-	} else {
-		BUG_ON(!fepriv->dvb_api_fe);
-	}
-}
-
 /*
 	This handles all ioctls which can access data without locking the fe_priv structure
  */
-static int neumo_driver_dvb_frontend_handle_algo_ctrl_ioctl(struct file *file,
+static int dvb_frontend_handle_algo_ctrl_ioctl(struct file *file,
 																							 unsigned int cmd, void *parg)
 {
 	struct dvb_device *dvbdev = file->private_data;
-	struct neumo_dvb_frontend *fe = dvbdev->priv;
+	struct neumo_dvb_frontend* fe = dvbdev->priv;
 	struct neumo_dvb_frontend_private *fepriv = fe->frontend_priv;
-	struct neumo_dvb_extra* extra = fepriv->extra;
 
 	struct dtv_algo_ctrl* p  = parg;
 	int err = -ENOTSUPP;
@@ -2191,19 +2391,18 @@ static int neumo_driver_dvb_frontend_handle_algo_ctrl_ioctl(struct file *file,
 	case DTV_STOP:
 		//this will request the task to stop processing
 		fe_dprintk(fe, "entering DTV_STOP: stop_task\n");
-		atomic_set(&extra->algo_state.task_should_stop, true);
+		atomic_set(&fepriv->algo_state.task_should_stop, true);
 		if (down_interruptible(&fepriv->sem))
 			return -ERESTARTSYS;
-		adapter_dprintk(fe->dvb, "DTV_STOP starts stop_task\n");
+		fe_dprintk(fe, "DTV_STOP starts stop_task\n");
 		if (fe->ops.stop_task)
 			fe->ops.stop_task(fe);
-
 		fepriv->state = FESTATE_IDLE;
 
-		atomic_set(&extra->algo_state.task_should_stop, false);
+		atomic_set(&fepriv->algo_state.task_should_stop, false);
 
-		neumo_dvb_frontend_clear_events_fepriv(fepriv);
-		neumo_driver_dvb_frontend_add_event(fe, FE_IDLE);
+		neumo_dvb_frontend_clear_events(fe);
+		neumo_dvb_frontend_add_event(fe, FE_IDLE);
 
 		up(&fepriv->sem);
 		return 0;
@@ -2238,15 +2437,17 @@ static int neumo_driver_dvb_frontend_handle_algo_ctrl_ioctl(struct file *file,
 }
 
 //main entry point; semaphore not held yet
-static int neumo_driver_dvb_frontend_do_ioctl(struct neumo_dvb_frontend* fe,
-																					 struct file *file, unsigned int cmd, void *parg) {
+static int dvb_frontend_do_ioctl(struct file *file, unsigned int cmd, void *parg)
+{
+	struct dvb_device *dvbdev = file->private_data;
+	struct neumo_dvb_frontend* fe = dvbdev->priv;
 	struct neumo_dvb_frontend_private* fepriv = fe->frontend_priv;
-	struct dvb_adapter* adapter = fe->dvb;
-	adapter_dprintk(adapter, "%s: (%d)\n", __func__, _IOC_NR(cmd));
+	dprintk("fepriv=%p\n", fepriv);
+	fe_dprintk(fe, "%s: (%d)\n", __func__, _IOC_NR(cmd));
 	if((file->f_flags & O_ACCMODE) != O_RDONLY)  {
 		if(cmd == DTV_STOP) {
 			static struct dtv_algo_ctrl algo_ctrl = {.cmd= DTV_STOP};
-			fe_dprintk(fe, "BAD CALL: DTV_STOP insted of FE_ALGO_CTRL\n");
+			fe_dprintk(fe, "BAD CALL: DTV_STOP instead of FE_ALGO_CTRL\n");
 			parg = &algo_ctrl;
 			//	cmd = FE_ALGO_CTRL;
 		}
@@ -2258,11 +2459,11 @@ static int neumo_driver_dvb_frontend_do_ioctl(struct neumo_dvb_frontend* fe,
 							|| cmd == DTV_STOP)) {
 				return -EPERM;
 			}
-			return neumo_driver_dvb_frontend_handle_algo_ctrl_ioctl(file, cmd, parg);
+			return dvb_frontend_handle_algo_ctrl_ioctl(file, cmd, parg);
 
 		}
 		if(cmd == FE_GET_EVENT) {
-			return dvb_frontend_get_event_fepriv(fepriv, adapter, parg, file->f_flags);
+			return dvb_frontend_get_event(fe, parg, file->f_flags);
 		}
 	}
 
@@ -2295,83 +2496,19 @@ static int neumo_driver_dvb_frontend_do_ioctl(struct neumo_dvb_frontend* fe,
 		return -EPERM;
 	}
 
-	int err = neumo_driver_dvb_frontend_handle_ioctl(file, cmd, parg);
+	int err = dvb_frontend_handle_ioctl(file, cmd, parg);
 
 	up(&fepriv->sem);
 	return err;
 }
 
-static struct neumo_user_data* get_user_data(	struct neumo_dvb_frontend_private* fepriv,
-																							struct dvb_device *dvbdev)
-{
-	struct neumo_user_data* user_data = xa_load(&fepriv->extra->users, (intptr_t) dvbdev);
-	if(!user_data) {
-		user_data =kzalloc(sizeof(struct neumo_dvb_extra), GFP_KERNEL);;
-		user_data_init();
-	}
-	xa_store(&fepriv->extra->users, (intptr_t) dvbdev, user_data, GFP_KERNEL);
-	return user_data;
-}
-
-static void neumo_dvb_free_user_data(struct neumo_dvb_extra* extra, struct dvb_device* dvbdev) {
-	unsigned long index;
-	void *entry;
-	struct neumo_user_data* user_data = xa_load(&extra->users, (intptr_t) dvbdev);
-	if(user_data) {
-		kfree(user_data);
-		xa_erase(&extra->users, (intptr_t) dvbdev);
-	}
-	xa_destroy(&extra->users);
-}
-
-//main entry point; semaphore not held yet
-static int dvb_frontend_do_ioctl(struct file *file, unsigned int cmd, void *parg)
-{
-	struct dvb_device *dvbdev = file->private_data;
-	void* fe_ = dvbdev->priv; //do not know type yet
-	struct neumo_dvb_frontend_private* fepriv = xa_load(&neumo_fes, (intptr_t) fe_);
-	struct dvb_adapter* adapter;
-	if(fepriv->dvb_api_fe) {
-		adapter = dvb_driver_get_adapter(fepriv);
-	} else {
-		BUG_ON(!fepriv->neumo_api_fe);
-		struct neumo_dvb_frontend* fe = fepriv->neumo_api_fe;
-		adapter = fe->dvb;
-	}
-	struct neumo_user_data* user_data = get_user_data(fepriv, dvbdev);
-
-	if(cmd == FE_SELECT_API) {
-		struct dvb_select_api* api = parg;
-		int requested= api->api_type;
-		if(user_data->has_selected_api) {
-			if(api->api_type == API_TYPE_DVB_API || api->api_type == API_TYPE_NEUMO) {
-				user_data->uses_neumo_api = (api->api_type == API_TYPE_NEUMO);
-			} else
-				api->api_type = user_data->uses_neumo_api ? API_TYPE_NEUMO : API_TYPE_DVB_API;
-			api->api_version = DTV_API_VERSION;
-			adapter_dprintk(adapter, "switching API; requested=%d selected=%d vers=%d\n", requested,
-											api->api_type, api->api_version);
-		}
-		return 0;
-	}
-
-	if(user_data->uses_neumo_api) {
-		struct neumo_dvb_frontend* fe = fe_;
-		return neumo_driver_dvb_frontend_do_ioctl(fe, file, cmd, parg);
-	} else  {
-		struct dvb_frontend* fe = fe_;
-		return dvb_driver_dvb_frontend_do_ioctl(fe, file, cmd, parg);
-	}
-	return -1;
-}
-
-static long neumo_dvb_frontend_ioctl(struct file *file, unsigned int cmd,
-																		 unsigned long arg)
+static long dvb_frontend_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	struct dvb_device *dvbdev = file->private_data;
 
 	if (!dvbdev)
 		return -ENODEV;
+
 	return dvb_usercopy(file, cmd, arg, dvb_frontend_do_ioctl);
 }
 
@@ -2400,11 +2537,11 @@ struct compat_dtv_properties {
 #define COMPAT_FE_SET_PROPERTY		 _IOW('o', 82, struct compat_dtv_properties)
 #define COMPAT_FE_GET_PROPERTY		 _IOR('o', 83, struct compat_dtv_properties)
 
-static int neumo_driver_dvb_frontend_handle_compat_ioctl(struct file *file, unsigned int cmd,
-							unsigned long arg)
+static int dvb_frontend_handle_compat_ioctl(struct file *file, unsigned int cmd,
+																						unsigned long arg)
 {
 	struct dvb_device *dvbdev = file->private_data;
-	struct neumo_dvb_frontend *fe = dvbdev->priv;
+	struct neumo_dvb_frontend* fe = dvbdev->priv;
 	struct neumo_dvb_frontend_private *fepriv = fe->frontend_priv;
 	int i, err = 0;
 	if (cmd == COMPAT_FE_SET_PROPERTY) {
@@ -2423,12 +2560,13 @@ static int neumo_driver_dvb_frontend_handle_compat_ioctl(struct file *file, unsi
 		if (!tvps->num || (tvps->num > DTV_IOCTL_MAX_MSGS))
 			return -EINVAL;
 
-		tvp = memdup_user(compat_ptr(tvps->props), tvps->num * sizeof(*tvp));
+		tvp = memdup_array_user(compat_ptr(tvps->props),
+														tvps->num, sizeof(*tvp));
 		if (IS_ERR(tvp))
 			return PTR_ERR(tvp);
 
 		for (i = 0; i < tvps->num; i++) {
-			err = neumo_driver_dtv_property_process_set_int(fe, file,
+			err = dtv_property_process_set_int(fe, file,
 																				 (tvp + i)->cmd,
 																				 (tvp + i)->u.data);
 			if (err < 0) {
@@ -2440,7 +2578,7 @@ static int neumo_driver_dvb_frontend_handle_compat_ioctl(struct file *file, unsi
 	} else if (cmd == COMPAT_FE_GET_PROPERTY) {
 		struct compat_dtv_properties prop, *tvps = NULL;
 		struct compat_dtv_property *tvp = NULL;
-		struct neumo_driver_dtv_frontend_properties getp = fe->dtv_property_cache;
+		struct neumo_dtv_frontend_properties getp = fe->dtv_property_cache;
 
 		if (copy_from_user(&prop, compat_ptr(arg), sizeof(prop)))
 			return -EFAULT;
@@ -2454,7 +2592,8 @@ static int neumo_driver_dvb_frontend_handle_compat_ioctl(struct file *file, unsi
 		if (!tvps->num || (tvps->num > DTV_IOCTL_MAX_MSGS))
 			return -EINVAL;
 
-		tvp = memdup_user(compat_ptr(tvps->props), tvps->num * sizeof(*tvp));
+		tvp = memdup_array_user(compat_ptr(tvps->props),
+														tvps->num, sizeof(*tvp));
 		if (IS_ERR(tvp))
 			return PTR_ERR(tvp);
 
@@ -2465,15 +2604,15 @@ static int neumo_driver_dvb_frontend_handle_compat_ioctl(struct file *file, unsi
 		 * before updating the properties cache.
 		 */
 		if (fepriv->state != FESTATE_IDLE && fepriv->state != FESTATE_DISEQC) {
-			err = neumo_driver_dtv_get_frontend(fe, &getp, NULL);
+			err = dtv_get_frontend(fe, &getp, NULL);
 			if (err < 0) {
 				kfree(tvp);
 				return err;
 			}
 		}
 		for (i = 0; i < tvps->num; i++) {
-			err = neumo_driver_dtv_property_process_get(
-					fe, &getp, (struct dtv_property *)(tvp + i), file);
+			err = dvbuapi_dtv_property_process_get(
+			    fe, &getp, (struct dvb_api_dtv_property *)(tvp + i), file);
 			if (err < 0) {
 				kfree(tvp);
 				return err;
@@ -2492,11 +2631,11 @@ static int neumo_driver_dvb_frontend_handle_compat_ioctl(struct file *file, unsi
 }
 
 static long neumo_dvb_frontend_compat_ioctl(struct file *file, unsigned int cmd,
-							unsigned long arg)
+																						unsigned long arg)
 {
 	struct dvb_device *dvbdev = file->private_data;
-	void* fe_ = dvbdev->priv; //do not know type yet
-	struct neumo_dvb_frontend_private* fepriv = xa_load(&neumo_fes, (intptr_t) fe_);
+	struct neumo_dvb_frontend* fe = dvbdev->priv;
+	struct neumo_dvb_frontend_private *fepriv = fe->frontend_priv;
 
 	int err;
 
@@ -2504,20 +2643,20 @@ static long neumo_dvb_frontend_compat_ioctl(struct file *file, unsigned int cmd,
 		if (down_interruptible(&fepriv->sem))
 			return -ERESTARTSYS;
 
-		err = neumo_driver_dvb_frontend_handle_compat_ioctl(file, cmd, arg);
+		err = dvb_frontend_handle_compat_ioctl(file, cmd, arg);
 
 		up(&fepriv->sem);
 		return err;
 	}
 
-	return neumo_dvb_frontend_ioctl(file, cmd, (unsigned long)compat_ptr(arg));
+	return dvb_frontend_ioctl(file, cmd, (unsigned long)compat_ptr(arg));
 }
 #endif
 
-static int neumo_driver_dtv_set_frontend(struct neumo_dvb_frontend *fe)
+static int dtv_set_frontend(struct neumo_dvb_frontend* fe)
 {
 	struct neumo_dvb_frontend_private *fepriv = fe->frontend_priv;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct neumo_dvb_frontend_tune_settings fetunesettings;
 	u32 rolloff = 0;
 
@@ -2531,7 +2670,7 @@ static int neumo_driver_dtv_set_frontend(struct neumo_dvb_frontend *fe)
 	 * the user. FE_SET_FRONTEND triggers an initial frontend event
 	 * with status = 0, which copies output parameters to userspace.
 	 */
-	neumo_driver_dtv_property_legacy_params_sync(fe, &fepriv->dvb_parameters_out);
+	dtv_property_legacy_params_sync(fe, c, &fepriv->dvb_parameters_out);
 
 	/*
 	 * Be sure that the bandwidth will be filled for all
@@ -2625,8 +2764,8 @@ static int neumo_driver_dtv_set_frontend(struct neumo_dvb_frontend *fe)
 		case SYS_ISDBT:
 		case SYS_DTMB:
 			fepriv->min_delay = HZ / 20;
-			fepriv->step_size = neumo_driver_neumo_dvb_frontend_get_stepsize(fe) * 2;
-			fepriv->max_drift = (neumo_driver_neumo_dvb_frontend_get_stepsize(fe) * 2) + 1;
+			fepriv->step_size = neumo_dvb_frontend_get_stepsize(fe) * 2;
+			fepriv->max_drift = (neumo_dvb_frontend_get_stepsize(fe) * 2) + 1;
 			break;
 		default:
 			/*
@@ -2647,15 +2786,15 @@ static int neumo_driver_dtv_set_frontend(struct neumo_dvb_frontend *fe)
 	/* Request the search algorithm to search */
 	fepriv->algo_status |= DVBFE_ALGO_SEARCH_AGAIN;
 
-	neumo_dvb_frontend_clear_events_fepriv(fepriv);
-	neumo_dvb_frontend_add_event_fepriv(fepriv, 0);
-	neumo_dvb_frontend_wakeup_fepriv(fepriv);
+	neumo_dvb_frontend_clear_events(fe);
+	neumo_dvb_frontend_add_event(fe, 0);
+	neumo_dvb_frontend_wakeup(fe);
 	fepriv->status = 0;
 
 	return 0;
 }
 
-static int neumo_driver_dtv_set_sec_configured(struct neumo_dvb_frontend *fe)
+static int dtv_set_sec_configured(struct neumo_dvb_frontend* fe)
 {
 	if (fe->ops.set_sec_ready) {
 		fe_dprintk(fe, "calling set_sec_ready: num=%d\n", fe->dvb->num);
@@ -2666,22 +2805,22 @@ static int neumo_driver_dtv_set_sec_configured(struct neumo_dvb_frontend *fe)
 	return 0; //deliberately do not output error when not supported
 }
 
-static int dtv_set_sat_scan(struct neumo_dvb_frontend *fe, bool scan_continue)
+static int dtv_set_sat_scan(struct neumo_dvb_frontend* fe, bool scan_continue)
 {
 	struct neumo_dvb_frontend_private *fepriv = fe->frontend_priv;
  	/* Request the search algorithm to search */
 	fepriv->state = scan_continue ? FESTATE_SCAN_NEXT : FESTATE_SCAN_FIRST;
-	neumo_dvb_frontend_clear_events_fepriv(fepriv);
-	neumo_driver_dvb_frontend_add_event(fe, 0);
-	neumo_dvb_frontend_wakeup_fepriv(fepriv);
+	neumo_dvb_frontend_clear_events(fe);
+	neumo_dvb_frontend_add_event(fe, 0);
+	neumo_dvb_frontend_wakeup(fe);
 	fepriv->status = 0;
 
 	return 0;
 }
 
-static int dtv_get_pls_search_list(struct neumo_dvb_frontend *fe, struct dtv_pls_search_list* user)
+static int dtv_get_pls_search_list(struct neumo_dvb_frontend* fe, struct dtv_pls_search_list* user)
 {
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int len = c->pls_search_codes_len;
 	if(user->num_codes < len)
 		len = user->num_codes;
@@ -2692,10 +2831,10 @@ static int dtv_get_pls_search_list(struct neumo_dvb_frontend *fe, struct dtv_pls
 	return 0;
 }
 
-static int dtv_set_pls_search_list(struct neumo_dvb_frontend *fe, struct dtv_pls_search_list* user)
+static int dtv_set_pls_search_list(struct neumo_dvb_frontend* fe, struct dtv_pls_search_list* user)
 {
 	int i;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	c->pls_search_codes_len = sizeof(c->pls_search_codes)/sizeof(c->pls_search_codes[0]);
 	if(user->num_codes < c->pls_search_codes_len)
 		c->pls_search_codes_len = user->num_codes;
@@ -2714,28 +2853,27 @@ static int dtv_set_pls_search_list(struct neumo_dvb_frontend *fe, struct dtv_pls
 	return 0;
 }
 
-static int dtv_set_spectrum(struct neumo_dvb_frontend *fe, enum dtv_fe_spectrum_method method)
+static int dtv_set_spectrum(struct neumo_dvb_frontend* fe, enum dtv_fe_spectrum_method method)
 {
 	struct neumo_dvb_frontend_private *fepriv = fe->frontend_priv;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
-	struct neumo_dvb_extra* extra = fepriv->extra;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret;
 	if (!fe->ops.spectrum_get || !fe->ops.spectrum_start)
 		return  -ENOTSUPP;
-	ret = init_dtv_fe_spectrum_scan(&extra->spectrum, c, method);
+	ret = init_dtv_fe_spectrum_scan(&fepriv->spectrum, c, method);
 	if(ret<0)
 		return ret;
  	/* Request the search algorithm to search */
 	fepriv->state = FESTATE_GETTING_SPECTRUM;
-	neumo_dvb_frontend_clear_events_fepriv(fepriv);
-	neumo_driver_dvb_frontend_add_event(fe, 0);
-	neumo_dvb_frontend_wakeup_fepriv(fepriv);
+	neumo_dvb_frontend_clear_events(fe);
+	neumo_dvb_frontend_add_event(fe, 0);
+	neumo_dvb_frontend_wakeup(fe);
 	fepriv->status = 0;
 
 	return 0;
 }
 
-static int dtv_get_spectrum(struct neumo_dvb_frontend *fe, struct dtv_fe_spectrum* user)
+static int dtv_get_spectrum(struct neumo_dvb_frontend* fe, struct dtv_fe_spectrum* user)
 {
 	int err = 0;
 	fe_dprintk(fe, "spectrum retrieved user: n=%d\n", user->num_freq);
@@ -2746,9 +2884,9 @@ static int dtv_get_spectrum(struct neumo_dvb_frontend *fe, struct dtv_fe_spectru
 	return err;
 }
 
-static int dtv_set_constellation(struct neumo_dvb_frontend *fe, struct dtv_fe_constellation* constellation)
+static int dtv_set_constellation(struct neumo_dvb_frontend* fe, struct dtv_fe_constellation* constellation)
 {
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	if (!fe->ops.constellation_get)
 		return  -ENOTSUPP;
 	c->constellation.num_samples = constellation->num_samples;
@@ -2759,7 +2897,7 @@ static int dtv_set_constellation(struct neumo_dvb_frontend *fe, struct dtv_fe_co
 	return 0;
 }
 
-static int dtv_get_constellation(struct neumo_dvb_frontend *fe, struct dtv_fe_constellation* user)
+static int dtv_get_constellation(struct neumo_dvb_frontend* fe, struct dtv_fe_constellation* user)
 {
 	int err = 0;
 
@@ -2774,10 +2912,10 @@ static int dtv_get_constellation(struct neumo_dvb_frontend *fe, struct dtv_fe_co
 	return err;
 }
 
-static int dtv_get_matype_list(struct neumo_dvb_frontend *fe, struct dtv_matype_list* user)
+static int dtv_get_matype_list(struct neumo_dvb_frontend* fe, struct dtv_matype_list* user)
 {
 	//fe_dprintk(fe, "constellation retrieved user->num_samples=%d\n", user->num_samples);
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 
 	if(!user)
 		return -1;
@@ -2792,12 +2930,12 @@ static int dtv_get_matype_list(struct neumo_dvb_frontend *fe, struct dtv_matype_
 	return 0;
 }
 
-static int neumo_driver_dvb_get_property(struct neumo_dvb_frontend *fe, struct file *file,
-					struct dtv_properties *tvps)
+static int neumouapi_dvb_get_properties(struct neumo_dvb_frontend* fe, struct file *file,
+																				struct dtv_properties *tvps)
 {
 	struct neumo_dvb_frontend_private* fepriv = fe->frontend_priv;
 	struct dtv_property *tvp = NULL;
-	struct neumo_driver_dtv_frontend_properties getp;
+	struct neumo_dtv_frontend_properties getp;
 	int i, err;
 
 	memcpy(&getp, &fe->dtv_property_cache, sizeof(getp));
@@ -2818,7 +2956,8 @@ static int neumo_driver_dvb_get_property(struct neumo_dvb_frontend *fe, struct f
 #if 0
 	fe_dprintk(fe, "num_props=%d\n", tvps->num);
 #endif
-	tvp = memdup_user((void __user *)tvps->props, tvps->num * sizeof(*tvp));
+	tvp = memdup_array_user((void __user *)tvps->props,
+				tvps->num, sizeof(*tvp));
 	if (IS_ERR(tvp))
 		return PTR_ERR(tvp);
 #if 0
@@ -2832,7 +2971,7 @@ static int neumo_driver_dvb_get_property(struct neumo_dvb_frontend *fe, struct f
 	 */
 	if (fepriv->state != FESTATE_IDLE && fepriv->state != FESTATE_DISEQC) {
 		if(tvps->num > 1 || (tvp[0].cmd != DTV_SPECTRUM || tvp[0].cmd != DTV_CONSTELLATION)) {
-			err = neumo_driver_dtv_get_frontend(fe, &getp, NULL);
+			err = dtv_get_frontend(fe, &getp, NULL);
 			if(err<0) {
 				fe_dprintk(fe, "FAILED: prop=%d err=%d\n", tvp[i].cmd, err);
 			}
@@ -2841,7 +2980,7 @@ static int neumo_driver_dvb_get_property(struct neumo_dvb_frontend *fe, struct f
 		}
 	}
 	for (i = 0; i < tvps->num; i++) {
-		err = neumo_driver_dtv_property_process_get(fe, &getp,
+		err = neumouapi_dtv_property_process_get(fe, &getp,
 								 tvp + i, file);
 		if(err<0) {
 			fe_dprintk(fe, "FAILED: prop=%d err=%d\n", tvp[i].cmd, err);
@@ -2862,36 +3001,20 @@ out:
 	return err;
 }
 
-static int neumo_driver_dvb_get_frontend(struct neumo_dvb_frontend *fe,
-																				 struct dvb_frontend_parameters *p_out)
-{
-	struct neumo_driver_dtv_frontend_properties getp;
-
-	/*
-	 * Let's use our own copy of property cache, in order to
-	 * avoid mangling with DTV zigzag logic, as drivers might
-	 * return crap, if they don't check if the data is available
-	 * before updating the properties cache.
-	 */
-	memcpy(&getp, &fe->dtv_property_cache, sizeof(getp));
-
-	return neumo_driver_dtv_get_frontend(fe, &getp, p_out);
-}
-
-static int neumo_driver_dvb_get_dvb_api_property(struct neumo_dvb_frontend *fe, struct file *file,
-					struct dvb_api_dtv_properties* dvb_api_tvps)
+static int dvbuapi_dvb_get_properties(struct neumo_dvb_frontend* fe, struct file *file,
+																			struct dvb_api_dtv_properties* tvps)
 {
 	struct neumo_dvb_frontend_private* fepriv = fe->frontend_priv;
-	struct dvb_api_dtv_property* dvb_api_tvp = NULL;
-	struct neumo_driver_dtv_frontend_properties getp;
+	struct dvb_api_dtv_property* tvp = NULL;
+	struct neumo_dtv_frontend_properties getp;
 	int i, err;
 
 	memcpy(&getp, &fe->dtv_property_cache, sizeof(getp));
 
 	dev_dbg(fe->dvb->device, "%s: properties.num = %d\n",
-		__func__, dvb_api_tvps->num);
+		__func__, tvps->num);
 	dev_dbg(fe->dvb->device, "%s: properties.props = %p\n",
-		__func__, dvb_api_tvps->props);
+		__func__, tvps->props);
 #if 0
 	fe_dprintk(fe, "num_props=%d\n", tvps->num);
 #endif
@@ -2899,17 +3022,18 @@ static int neumo_driver_dvb_get_dvb_api_property(struct neumo_dvb_frontend *fe, 
 	 * Put an arbitrary limit on the number of messages that can
 	 * be sent at once
 	 */
-	if (!dvb_api_tvps->num || dvb_api_tvps->num > DTV_IOCTL_MAX_MSGS)
+	if (!tvps->num || tvps->num > DTV_IOCTL_MAX_MSGS)
 		return -EINVAL;
 #if 0
-	fe_dprintk(fe, "num_props=%d\n", dvb_api_tvps->num);
+	fe_dprintk(fe, "num_props=%d\n", tvps->num);
 #endif
-	dvb_api_tvp = memdup_user((void __user *)dvb_api_tvps->props, dvb_api_tvps->num * sizeof(*dvb_api_tvp));
-	if (IS_ERR(dvb_api_tvp))
-		return PTR_ERR(dvb_api_tvp);
+	tvp = memdup_array_user((void __user *)tvps->props, tvps->num, sizeof(*tvp));
+	if (IS_ERR(tvp))
+		return PTR_ERR(tvp);
 #if 0
-	fe_dprintk(fe, "num_props=%d\n", dvb_api_tvps->num);
+	fe_dprintk(fe, "num_props=%d\n", tvps->num);
 #endif
+
 	/*
 	 * Let's use our own copy of property cache, in order to
 	 * avoid mangling with DTV zigzag logic, as drivers might
@@ -2917,49 +3041,55 @@ static int neumo_driver_dvb_get_dvb_api_property(struct neumo_dvb_frontend *fe, 
 	 * before updating the properties cache.
 	 */
 	if (fepriv->state != FESTATE_IDLE && fepriv->state != FESTATE_DISEQC) {
-		if(dvb_api_tvps->num > 1) {
-			err = neumo_driver_dtv_get_frontend(fe, &getp, NULL);
+		if(tvps->num > 1) {
+			err = dtv_get_frontend(fe, &getp, NULL);
 			if(err<0) {
-				fe_dprintk(fe, "FAILED: prop=%d err=%d\n", dvb_api_tvp[i].cmd, err);
+				fe_dprintk(fe, "FAILED: prop=%d err=%d\n", tvp[i].cmd, err);
 			}
 			if (err < 0)
 				goto out;
 		}
 	}
-	for (i = 0; i < dvb_api_tvps->num; i++) {
-		struct dtv_property temp;
-		struct dvb_api_dtv_property* x = &dvb_api_tvp[i];
-		err = neumo_driver_dtv_property_process_get(fe, &getp,
-								 &temp, file);
-		x->cmd = temp.cmd;
-		memcpy(&x->u, &temp.u, sizeof(x->u));
-		x->result = temp.result;
-		if(err<0) {
-			fe_dprintk(fe, "FAILED: prop=%d err=%d\n", dvb_api_tvp[i].cmd, err);
-		}
+	for (i = 0; i < tvps->num; i++) {
+		err = dvbuapi_dtv_property_process_get(fe, &getp, tvp + i, file);
 		if (err < 0)
 			goto out;
 	}
 
-	if (copy_to_user((void __user *)dvb_api_tvps->props, dvb_api_tvp,
-			 dvb_api_tvps->num * sizeof(struct dvb_api_dtv_property))) {
+	if (copy_to_user((void __user *)tvps->props, tvp,
+			 tvps->num * sizeof(struct dvb_api_dtv_property))) {
 		err = -EFAULT;
 		goto out;
 	}
 
 	err = 0;
 out:
-	kfree(dvb_api_tvp);
+	kfree(tvp);
 	return err;
 }
 
-static int neumo_driver_dvb_frontend_handle_ioctl(struct file *file, unsigned int cmd, void *parg)
+static int dvb_get_frontend(struct neumo_dvb_frontend* fe,
+																				 struct dvb_frontend_parameters *p_out)
+{
+	struct neumo_dtv_frontend_properties getp;
+
+	/*
+	 * Let's use our own copy of property cache, in order to
+	 * avoid mangling with DTV zigzag logic, as drivers might
+	 * return crap, if they don't check if the data is available
+	 * before updating the properties cache.
+	 */
+	memcpy(&getp, &fe->dtv_property_cache, sizeof(getp));
+
+	return dtv_get_frontend(fe, &getp, p_out);
+}
+
+static int dvb_frontend_handle_ioctl(struct file *file, unsigned int cmd, void *parg)
 {
 	struct dvb_device *dvbdev = file->private_data;
-	struct neumo_dvb_frontend *fe = dvbdev->priv;
+	struct neumo_dvb_frontend* fe = dvbdev->priv;
 	struct neumo_dvb_frontend_private *fepriv = fe->frontend_priv;
-	struct dvb_adapter* adapter = fe->dvb;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int i, err = -ENOTSUPP;
 
 	dev_dbg(fe->dvb->device, "%s:\n", __func__);
@@ -3035,6 +3165,42 @@ static int neumo_driver_dvb_frontend_handle_ioctl(struct file *file, unsigned in
 		err = 0;
 		break;
 
+	case DVB_API_FE_SET_PROPERTY: {
+		struct dvb_api_dtv_properties *tvps = parg;
+		struct dvb_api_dtv_property *tvp = NULL;
+
+		dev_dbg(fe->dvb->device, "%s: properties.num = %d\n",
+			__func__, tvps->num);
+		dev_dbg(fe->dvb->device, "%s: properties.props = %p\n",
+			__func__, tvps->props);
+
+		/*
+		 * Put an arbitrary limit on the number of messages that can
+		 * be sent at once
+		 */
+		if (!tvps->num || (tvps->num > DTV_IOCTL_MAX_MSGS))
+			return -EINVAL;
+
+		tvp = memdup_array_user((void __user *)tvps->props,
+					tvps->num, sizeof(*tvp));
+		if (IS_ERR(tvp))
+			return PTR_ERR(tvp);
+
+		for (i = 0; i < tvps->num; i++) {
+			err = dvbuapi_dtv_property_process_set(fe, file,
+																		 (tvp + i)->cmd,
+																		 (tvp + i));
+			if (err < 0) {
+				fe_dprintk(fe, "DVB_API_FE_SET_PROPERTY %d failed\n",  (tvp + i)->cmd);
+				kfree(tvp);
+				return err;
+			}
+		}
+		kfree(tvp);
+		err = 0;
+		break;
+	}
+
 	case FE_SET_PROPERTY: {
 		struct dtv_properties *tvps = parg;
 		struct dtv_property *tvp = NULL;
@@ -3056,7 +3222,7 @@ static int neumo_driver_dvb_frontend_handle_ioctl(struct file *file, unsigned in
 			return PTR_ERR(tvp);
 
 		for (i = 0; i < tvps->num; i++) {
-			err = neumo_driver_dtv_property_process_set(fe, file,
+			err = neumouapi_dtv_property_process_set(fe, file,
 																		 (tvp + i)->cmd,
 																		 (tvp + i));
 			if (err < 0) {
@@ -3071,47 +3237,66 @@ static int neumo_driver_dvb_frontend_handle_ioctl(struct file *file, unsigned in
 	}
 
 	case DVB_API_FE_GET_PROPERTY:
-		err = neumo_driver_dvb_get_dvb_api_property(fe, file, parg);
+		err = dvbuapi_dvb_get_properties(fe, file, parg);
 		break;
 
-	case DVB_API_FE_SET_PROPERTY: {
-		struct dtv_properties *tvps = parg;
-		struct dtv_property *tvp = NULL;
+	case FE_GET_PROPERTY: //neumo
+		err = neumouapi_dvb_get_properties(fe, file, parg);
+		break;
 
-		dev_dbg(fe->dvb->device, "%s: properties.num = %d\n",
-			__func__, tvps->num);
-		dev_dbg(fe->dvb->device, "%s: properties.props = %p\n",
-			__func__, tvps->props);
+	case FE_GET_INFO: {
+		struct dvb_frontend_info *info = parg;
+		memset(info, 0, sizeof(*info));
+
+		strscpy(info->name, fe->ops.info.name, sizeof(info->name));
+		info->symbol_rate_min = fe->ops.info.symbol_rate_min;
+		info->symbol_rate_max = fe->ops.info.symbol_rate_max;
+		info->symbol_rate_tolerance = fe->ops.info.symbol_rate_tolerance;
+		info->caps = fe->ops.info.caps;
+		info->frequency_stepsize = neumo_dvb_frontend_get_stepsize(fe);
+		dvb_frontend_get_frequency_limits(fe, &info->frequency_min,
+																			&info->frequency_max,
+																			&info->frequency_tolerance);
 
 		/*
-		 * Put an arbitrary limit on the number of messages that can
-		 * be sent at once
+		 * Associate the 4 delivery systems supported by DVBv3
+		 * API with their DVBv5 counterpart. For the other standards,
+		 * use the closest type, assuming that it would hopefully
+		 * work with a DVBv3 application.
+		 * It should be noticed that, on multi-frontend devices with
+		 * different types (terrestrial and cable, for example),
+		 * a pure DVBv3 application won't be able to use all delivery
+		 * systems. Yet, changing the DVBv5 cache to the other delivery
+		 * system should be enough for making it work.
 		 */
-		if (!tvps->num || (tvps->num > DTV_IOCTL_MAX_MSGS))
-			return -EINVAL;
-
-		tvp = memdup_user((void __user *)tvps->props, tvps->num * sizeof(*tvp));
-		if (IS_ERR(tvp))
-			return PTR_ERR(tvp);
-
-		for (i = 0; i < tvps->num; i++) {
-			err = neumo_driver_dtv_property_process_set(fe, file,
-																		 (tvp + i)->cmd,
-																		 (tvp + i));
-			if (err < 0) {
-				fe_dprintk(fe, "FE_SET_PROPERTY %d failed\n",  (tvp + i)->cmd);
-				kfree(tvp);
-				return err;
-			}
+		switch (dvbv3_type(c->delivery_system)) {
+		case DVBV3_QPSK:
+			info->type = FE_QPSK;
+			break;
+		case DVBV3_ATSC:
+			info->type = FE_ATSC;
+			break;
+		case DVBV3_QAM:
+			info->type = FE_QAM;
+			break;
+		case DVBV3_OFDM:
+			info->type = FE_OFDM;
+			break;
+		default:
+			dev_err(fe->dvb->device,
+				"%s: doesn't know how to handle a DVBv3 call to delivery system %i\n",
+				__func__, c->delivery_system);
+			info->type = FE_OFDM;
 		}
-		kfree(tvp);
+		dev_dbg(fe->dvb->device, "%s: current delivery system on cache: %d, V3 type: %d\n",
+			__func__, c->delivery_system, info->type);
+
+		/* Set CAN_INVERSION_AUTO bit on in other than oneshot mode */
+		if (!(fepriv->tune_mode_flags & FE_TUNE_MODE_ONESHOT))
+			info->caps |= FE_CAN_INVERSION_AUTO;
 		err = 0;
 		break;
 	}
-	case FE_GET_PROPERTY:
-		err = neumo_driver_dvb_get_property(fe, file, parg);
-		break;
-
 
 	case FE_GET_EXTENDED_INFO: {
 		struct dvb_frontend_extended_info *info = parg;
@@ -3167,8 +3352,8 @@ static int neumo_driver_dvb_frontend_handle_ioctl(struct file *file, unsigned in
 		info->symbol_rate_tolerance = fe->ops.info.symbol_rate_tolerance;
 		info->caps = fe->ops.info.caps;
 		info->extended_caps = fe->ops.info.extended_caps;
-		info->frequency_stepsize = neumo_driver_neumo_dvb_frontend_get_stepsize(fe);
-		neumo_driver_dvb_frontend_get_frequency_limits(fe, &info->frequency_min,
+		info->frequency_stepsize = neumo_dvb_frontend_get_stepsize(fe);
+		dvb_frontend_get_frequency_limits(fe, &info->frequency_min,
 							&info->frequency_max,
 							&info->frequency_tolerance);
 
@@ -3262,8 +3447,7 @@ static int neumo_driver_dvb_frontend_handle_ioctl(struct file *file, unsigned in
 
 	case FE_DISEQC_SEND_BURST:
 		if (fe->ops.diseqc_send_burst) {
-			err = fe->ops.diseqc_send_burst(fe,
-						(enum fe_sec_mini_cmd)parg);
+			err = fe->ops.diseqc_send_burst(fe, (enum fe_sec_mini_cmd)parg);
 			if(fepriv->state == FESTATE_IDLE)
 				fepriv->state = FESTATE_DISEQC;
 			fepriv->status = 0;
@@ -3416,15 +3600,15 @@ static int neumo_driver_dvb_frontend_handle_ioctl(struct file *file, unsigned in
 		err = dtv_property_cache_sync(fe, c, parg);
 		if (err)
 			break;
-		err = neumo_driver_dtv_set_frontend(fe);
+		err = dtv_set_frontend(fe);
 		break;
 
-	case FE_GET_EVENT: //already handled in neumo_driver_dvb_frontend_handle_ioctl above
-		err = dvb_frontend_get_event_fepriv(fepriv, adapter, parg, file->f_flags);
+	case FE_GET_EVENT: //already handled in dvb_frontend_handle_ioctl above
+		err = dvb_frontend_get_event(fe, parg, file->f_flags);
 		break;
 
 	case FE_GET_FRONTEND:
-		err = neumo_driver_dvb_get_frontend(fe, parg);
+		err = dvb_get_frontend(fe, parg);
 		break;
 
 	default:
@@ -3435,10 +3619,13 @@ static int neumo_driver_dvb_frontend_handle_ioctl(struct file *file, unsigned in
 	return err;
 }
 
-__poll_t neumo_dvb_frontend_poll_fepriv(struct neumo_dvb_frontend_private* fepriv, struct file *file, struct poll_table_struct *wait)
+static __poll_t neumo_dvb_frontend_poll(struct file *file, struct poll_table_struct *wait)
 {
-	struct neumo_dvb_extra* extra = fepriv->extra;
-	struct neumo_dvb_fe_events* events = &extra->events;
+	struct dvb_device *dvbdev = file->private_data;
+	struct neumo_dvb_frontend* fe = dvbdev->priv;
+	struct neumo_dvb_frontend_private *fepriv = fe->frontend_priv;
+
+	struct neumo_dvb_fe_events* events = &fepriv->events;
 
 	poll_wait(file, &events->wait_queue, wait);
 
@@ -3446,14 +3633,6 @@ __poll_t neumo_dvb_frontend_poll_fepriv(struct neumo_dvb_frontend_private* fepri
 		return (EPOLLIN | EPOLLRDNORM | EPOLLPRI);
 
 	return 0;
-}
-
-static __poll_t neumo_dvb_frontend_poll(struct file *file, struct poll_table_struct *wait)
-{
-	struct dvb_device* dvbdev = file->private_data;
-	void* fe_ = dvbdev->priv; //do not know type yet
-	struct neumo_dvb_frontend_private* fepriv = xa_load(&neumo_fes, (intptr_t) fe_);
-	return neumo_dvb_frontend_poll_fepriv(fepriv, file, wait);
 }
 
 static int neumo_dvb_frontend_open_mfe(	struct neumo_dvb_frontend_private* fepriv,
@@ -3512,43 +3691,20 @@ static int neumo_dvb_frontend_open_mfe(	struct neumo_dvb_frontend_private* fepri
 	return 0;
 }
 
-/*returns negative when bus control was executed with an error
-	returns when bus_ctrl was exexcuted without an error
-	returns 1 if there is no bus_ctrl
-*/
-inline static int ts_bus_ctrl(struct neumo_dvb_frontend_private* fepriv, struct dvb_device *dvbdev, int acquire) {
-	if(fepriv->dvb_api_fe) {
-		if(dvbdev->users == -1 && dvb_driver_has_ts_bus_ctrl(fepriv))
-			return dvb_driver_ts_bus_ctrl(fepriv, acquire);
-		else return 1;
-	}
-	struct neumo_dvb_frontend* fe = fepriv->neumo_api_fe;
-	BUG_ON(!fe);
-	if (dvbdev->users == -1  && fe->ops.ts_bus_ctrl) {
-		return fe->ops.ts_bus_ctrl(fe, acquire);
-	}
-	return 1;
-}
-
-
-static int neumo_dvb_frontend_open_fepriv(struct neumo_dvb_frontend_private *fepriv,
-																					struct dvb_adapter *adapter,
-																					struct inode *inode, struct file *file, int fe_id,
-																					struct kref* fe_refcount)
+static int neumo_dvb_frontend_open(struct inode *inode, struct file *file)
 {
 	struct dvb_device *dvbdev = file->private_data;
-	struct neumo_dvb_fe_events* events = &((struct neumo_dvb_extra*)fepriv->extra)->events;
+	struct neumo_dvb_frontend* fe = dvbdev->priv;
+	struct neumo_dvb_frontend_private *fepriv = fe->frontend_priv;
+	struct dvb_adapter *adapter = fe->dvb;
+	struct neumo_dvb_fe_events* events = &fepriv->events;
 	int ret = neumo_dvb_frontend_open_mfe(fepriv, adapter, file);
 	if(ret < 0)
 		return ret;
 
-	int ret1= ts_bus_ctrl(fepriv, dvbdev, 1);
-	if (ret1<=0) {
-		if ((ret = ret1) < 0) {
-			if (adapter->mfe_shared)
-				mutex_unlock(&adapter->mfe_lock);
-			return ret;
-		}
+	if (dvbdev->users == -1 && fe->ops.ts_bus_ctrl) {
+		if ((ret = fe->ops.ts_bus_ctrl(fe, 1)) < 0)
+			goto err0;
 
 		/* If we took control of the bus, we need to force
 			 reinitialization.  This is because many ts_bus_ctrl()
@@ -3587,7 +3743,7 @@ static int neumo_dvb_frontend_open_fepriv(struct neumo_dvb_frontend_private *fep
 		}
 		mutex_unlock(&adapter->mdev_lock);
 #endif
-		ret = neumo_dvb_frontend_start_fepriv(fepriv, adapter, fe_id);
+		ret = neumo_dvb_frontend_start(fe);
 		if (ret)
 			goto err3;
 
@@ -3596,7 +3752,7 @@ static int neumo_dvb_frontend_open_fepriv(struct neumo_dvb_frontend_private *fep
 	}
 
 
-	kref_get(fe_refcount);
+	kref_get(&fe->refcount);
 
 	if (adapter->mfe_shared)
 		mutex_unlock(&adapter->mfe_lock);
@@ -3616,62 +3772,45 @@ err2:
 #endif
 	dvb_generic_release(inode, file);
 err1:
-	ts_bus_ctrl(fepriv, dvbdev, 0);
+	if (dvbdev->users == -1 && fe->ops.ts_bus_ctrl)
+		fe->ops.ts_bus_ctrl(fe, 0);
+err0:
 	if (adapter->mfe_shared)
 		mutex_unlock(&adapter->mfe_lock);
 	return ret;
 }
 
-static int neumo_dvb_frontend_open(struct inode *inode, struct file *file)
-{
-	struct dvb_device* dvbdev = file->private_data;
-	void* fe_ = dvbdev->priv; //do not know type yet
-	struct neumo_dvb_frontend_private* fepriv = xa_load(&neumo_fes, (intptr_t) fe_);
-
-	if(fepriv->dvb_api_fe) {
-		struct kref* fe_refcount = dvb_driver_get_refcount(fepriv);
-		int fe_id = dvb_driver_get_fe_id(fepriv);
-		struct dvb_adapter* adapter = dvb_driver_get_adapter(fepriv);
-		return neumo_dvb_frontend_open_fepriv(fepriv, adapter, inode, file, fe_id, fe_refcount);
-	} else {
-		BUG_ON(!fepriv->neumo_api_fe);
-		struct neumo_dvb_frontend* fe = fepriv->neumo_api_fe;
-		return neumo_dvb_frontend_open_fepriv(fepriv, fe->dvb, inode, file, fe->id, &fe->refcount);
-	}
-
-}
-
-
-static int neumo_dvb_frontend_release_fepriv(struct neumo_dvb_frontend_private* fepriv,
-																			struct dvb_adapter* adapter, struct inode* inode, struct file* file)
+static int neumo_dvb_frontend_release(struct inode *inode, struct file *file)
 {
 	struct dvb_device *dvbdev = file->private_data;
-	struct neumo_dvb_extra* extra = fepriv->extra;
+	struct neumo_dvb_frontend* fe = dvbdev->priv;
+	struct neumo_dvb_frontend_private *fepriv = fe->frontend_priv;
+	struct dvb_adapter*	adapter = fe->dvb;
 	int ret;
 
 	if ((file->f_flags & O_ACCMODE) != O_RDONLY) {
 		fepriv->release_jiffies = jiffies;
 		mb();
 	}
-	adapter_dprintk(adapter, "Calling dvb_generic_release\n");
+	fe_dprintk(fe, "Calling dvb_generic_release\n");
 	ret = dvb_generic_release(inode, file);
-	adapter_dprintk(adapter, "called dvb_generic_release dvbdev->users=%d\n", dvbdev->users);
+	fe_dprintk(fe, "called dvb_generic_release dvbdev->users=%d\n", dvbdev->users);
 
 	if (dvbdev->users == -1) {
 
-		adapter_dprintk(adapter, "Calling stop_task\n");
-		atomic_set(&extra->algo_state.task_should_stop, true);
+		fe_dprintk(fe, "Calling stop_task\n");
+		atomic_set(&fepriv->algo_state.task_should_stop, true);
 		if (down_interruptible(&fepriv->sem))
-				return -ERESTARTSYS;
-		stop_task(fepriv);
+			return -ERESTARTSYS;
+		if (fe->ops.stop_task) {
+			fe->ops.stop_task(fe);
+		}
 		fepriv->state = FESTATE_IDLE;
-		atomic_set(&extra->algo_state.task_should_stop, false);
-		neumo_dvb_frontend_clear_events_fepriv(fepriv);
-		neumo_dvb_frontend_add_event_fepriv(fepriv, FE_IDLE);
+		atomic_set(&fepriv->algo_state.task_should_stop, false);
+		neumo_dvb_frontend_clear_events(fe);
+		neumo_dvb_frontend_add_event(fe, FE_IDLE);
 		up(&fepriv->sem);
-		adapter_dprintk(adapter, "Waking up wait queue\n");
-
-
+		fe_dprintk(fe, "Waking up wait queue\n");
 		wake_up(&fepriv->wait_queue);
 #ifdef CONFIG_MEDIA_CONTROLLER_DVB
 		mutex_lock(&adapter->mdev_lock);
@@ -3683,44 +3822,23 @@ static int neumo_dvb_frontend_release_fepriv(struct neumo_dvb_frontend_private* 
 		}
 		mutex_unlock(&adapter->mdev_lock);
 #endif
-		adapter_dprintk(adapter, "fepriv->exit=%d DVB_FE_NO_EXIT=%d\n", fepriv->exit, DVB_FE_NO_EXIT);
+		fe_dprintk(fe, "fepriv->exit=%d DVB_FE_NO_EXIT=%d\n", fepriv->exit, DVB_FE_NO_EXIT);
 		if (fepriv->exit != DVB_FE_NO_EXIT) {
-			adapter_dprintk(adapter, "waking up dvbdev->wait_queue\n");
+			fe_dprintk(fe, "waking up dvbdev->wait_queue\n");
 			wake_up(&dvbdev->wait_queue);
 		}
-		ts_bus_ctrl(fepriv, dvbdev, 0);
+		if (fe->ops.ts_bus_ctrl)
+			fe->ops.ts_bus_ctrl(fe, 0);
 	}
-	adapter_dprintk(adapter, "Calling dvb_frontend_put\n");
+	fe_dprintk(fe, "Calling dvb_frontend_put\n");
+	dvb_frontend_put(fe);
+	fe_dprintk(fe, "Calling dvb_frontend_put done\n");
 	return ret;
 }
 
-//OK
-static int neumo_dvb_frontend_release(struct inode *inode, struct file *file)
-{
-	struct dvb_device *dvbdev = file->private_data;
-	void* fe_ = dvbdev->priv; //do not know type yet
-	struct neumo_dvb_frontend_private* fepriv = xa_load(&neumo_fes, (intptr_t) fe_);
-	int ret;
-	neumo_dvb_free_user_data(fepriv->extra, dvbdev);
-	if(fepriv->dvb_api_fe) {
-		struct dvb_adapter* adapter = dvb_driver_get_adapter(fepriv);
-		ret= neumo_dvb_frontend_release_fepriv(fepriv, adapter, inode, file);
-		dvb_driver_dvb_frontend_put(fepriv->dvb_api_fe);
-		adapter_dprintk(adapter, "Calling dvb_frontend_put done\n");
-	} else {
-		BUG_ON(!fepriv->neumo_api_fe);
-		struct dvb_adapter* adapter = fepriv->neumo_api_fe->dvb;
-		ret= neumo_dvb_frontend_release_fepriv(fepriv, adapter, inode, file);
-		neumo_driver_dvb_frontend_put(fepriv->neumo_api_fe);
-		adapter_dprintk(adapter, "Calling dvb_frontend_put done\n");
-	}
-	return ret;
-}
-
-//OK
-const struct file_operations neumo_dvb_frontend_fops = {
+static const struct file_operations neumo_dvb_frontend_fops = {
 	.owner		= THIS_MODULE,
-	.unlocked_ioctl	= neumo_dvb_frontend_ioctl,
+	.unlocked_ioctl	= dvb_frontend_ioctl,
 #ifdef CONFIG_COMPAT
 	.compat_ioctl	= neumo_dvb_frontend_compat_ioctl,
 #endif
@@ -3735,22 +3853,16 @@ const struct file_operations neumo_dvb_frontend_fops = {
 //dvb_frontend_resume does not exist in neumo api
 
 
-struct neumo_dvb_frontend_private* neumo_dvb_create_fepriv(struct dvb_frontend* dvb_api_fe,
-																													 struct neumo_dvb_frontend* neumo_api_fe)
+static struct neumo_dvb_frontend_private* neumo_dvb_create_fepriv(void)
 {
-	BUG_ON(!((!!dvb_api_fe) ^ (!!neumo_api_fe)));
 	struct neumo_dvb_frontend_private* fepriv = kzalloc(sizeof(struct neumo_dvb_frontend_private), GFP_KERNEL);
 
 	if (!fepriv) {
 		return NULL;
 	}
-	fepriv->dvb_api_fe = dvb_api_fe;
-	fepriv->neumo_api_fe = neumo_api_fe;
-	struct neumo_dvb_extra* extra = (struct neumo_dvb_extra*)&fepriv->extra;
-	init_waitqueue_head(&extra->algo_state.wait_queue);
+	init_waitqueue_head(&fepriv->algo_state.wait_queue);
 
-	neumo_dvb_frontend_private_init(fepriv, dvb_api_fe, neumo_api_fe);
-	xa_store(&neumo_fes, dvb_api_fe ? (intptr_t) dvb_api_fe : (intptr_t) neumo_api_fe, fepriv, GFP_KERNEL);
+	neumo_dvb_frontend_private_init(fepriv);
 	return fepriv;
 }
 
@@ -3766,10 +3878,10 @@ int neumo_dvb_register_frontend(struct dvb_adapter *adapter, struct neumo_dvb_fr
 #endif
 	};
 	fe->dvb = adapter;
-
+	fe_dprintk(fe, "NEUMO REGISTER\n");
 	if (mutex_lock_interruptible(&frontend_mutex))
 		return -ERESTARTSYS;
-	fe->frontend_priv = neumo_dvb_create_fepriv(NULL, fe);
+	fe->frontend_priv = neumo_dvb_create_fepriv();
 	struct neumo_dvb_frontend_private* fepriv = fe->frontend_priv;
 
 	if (!fepriv) {
@@ -3787,7 +3899,6 @@ int neumo_dvb_register_frontend(struct dvb_adapter *adapter, struct neumo_dvb_fr
 	 */
 	kref_get(&fe->refcount);
 
-
 	dvb_register_device(adapter, &fepriv->dvbdev, &dvbdev_template,
 					fe, DVB_DEVICE_FRONTEND, 0);
 
@@ -3797,7 +3908,7 @@ int neumo_dvb_register_frontend(struct dvb_adapter *adapter, struct neumo_dvb_fr
 	 */
 
 	fe->dtv_property_cache.delivery_system = fe->ops.delsys[0];
-	neumo_driver_dvb_frontend_clear_cache(fe);
+	dvb_frontend_clear_cache(fe);
 
 	mutex_unlock(&frontend_mutex);
 	return 0;
@@ -3805,28 +3916,25 @@ int neumo_dvb_register_frontend(struct dvb_adapter *adapter, struct neumo_dvb_fr
 
 EXPORT_SYMBOL(neumo_dvb_register_frontend);
 
-int neumo_dvb_unregister_frontend(struct neumo_dvb_frontend *fe)
+int neumo_dvb_unregister_frontend(struct neumo_dvb_frontend* fe)
 {
 	struct neumo_dvb_frontend_private *fepriv = fe->frontend_priv;
 	struct dvb_adapter* adapter = fe->dvb;
 	dev_dbg(fe->dvb->device, "%s:\n", __func__);
 
 	mutex_lock(&frontend_mutex);
-	neumo_dvb_frontend_stop_fepriv(fepriv, adapter);
-	if(fepriv) {
-		xa_erase(&neumo_fes, (intptr_t)fe);
-	}
+	neumo_dvb_frontend_stop(fe);
 	if(fepriv && fepriv->dvbdev)
 		dvb_remove_device(fepriv->dvbdev);
 	/* fe is invalid now */
 	mutex_unlock(&frontend_mutex);
-	neumo_driver_dvb_frontend_put(fe);
+	dvb_frontend_put(fe);
 	return 0;
 }
 EXPORT_SYMBOL(neumo_dvb_unregister_frontend);
 
-static void neumo_driver_dvb_frontend_invoke_release(struct neumo_dvb_frontend *fe,
-					void (*release)(struct neumo_dvb_frontend *fe))
+static void dvb_frontend_invoke_release(struct neumo_dvb_frontend* fe,
+					void (*release)(struct neumo_dvb_frontend* fe))
 {
 	if (release) {
 		release(fe);
@@ -3837,30 +3945,15 @@ static void neumo_driver_dvb_frontend_invoke_release(struct neumo_dvb_frontend *
 	}
 }
 
-void neumo_dvb_frontend_detach(struct neumo_dvb_frontend *fe)
+void neumo_dvb_frontend_detach(struct neumo_dvb_frontend* fe)
 {
-	neumo_driver_dvb_frontend_invoke_release(fe, fe->ops.release_sec);
-	neumo_driver_dvb_frontend_invoke_release(fe, fe->ops.tuner_ops.release);
-	neumo_driver_dvb_frontend_invoke_release(fe, fe->ops.analog_ops.release);
-	neumo_driver_dvb_frontend_put(fe);
+	dvb_frontend_invoke_release(fe, fe->ops.release_sec);
+	dvb_frontend_invoke_release(fe, fe->ops.tuner_ops.release);
+	dvb_frontend_invoke_release(fe, fe->ops.analog_ops.release);
+	dvb_frontend_put(fe);
 }
 EXPORT_SYMBOL(neumo_dvb_frontend_detach);
 
-
-extern int neumo_dvb_frontend_module_init(void);
-int neumo_dvb_frontend_module_init(void)
-{
-	xa_init(&neumo_fes);
-	return 0;
-}
-
-extern void neumo_dvb_frontend_module_exit(void);
-void neumo_dvb_frontend_module_exit(void)
-{
-	dprintk("module exit\n");
-	xa_destroy(&neumo_fes);
-	return;
-}
 
 MODULE_LICENSE("GPL");
 MODULE_VERSION("0.9");

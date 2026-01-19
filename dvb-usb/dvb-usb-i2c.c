@@ -8,7 +8,7 @@
  */
 #include "dvb-usb-common.h"
 
-int dvb_usb_i2c_init(struct dvb_usb_device *d)
+int dvb_usb_i2c_init(struct neumo_dvb_usb_device *d)
 {
 	int ret = 0;
 
@@ -40,7 +40,7 @@ err:
 	return ret;
 }
 
-int dvb_usb_i2c_exit(struct dvb_usb_device *d)
+int dvb_usb_i2c_exit(struct neumo_dvb_usb_device *d)
 {
 	if (d->state & DVB_USB_STATE_I2C)
 		i2c_del_adapter(&d->i2c_adap);

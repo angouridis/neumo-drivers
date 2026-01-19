@@ -58,7 +58,7 @@ struct ca_channel
 	struct dvb_net        	dvbnet;
 	struct dmx_frontend 	fe_hw;
 	struct dmx_frontend 	fe_mem;
-	struct neumo_driver_dtv_frontend_properties 	dvt_properties;
+	struct neumo_dtv_frontend_properties 	dvt_properties;
 	int feeds;
 
 	u32			w_bitrate;

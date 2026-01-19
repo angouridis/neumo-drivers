@@ -34,7 +34,7 @@ static int tbs_read_ber(struct neumo_dvb_frontend*fe,u32*ber)
 
 static int tbs_read_snr(struct neumo_dvb_frontend*fe,u16*snr)
 {
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 
 	p->cnr.len = 1;
 	p->cnr.stat[0].scale = FE_SCALE_DECIBEL;
@@ -46,7 +46,7 @@ static int tbs_read_snr(struct neumo_dvb_frontend*fe,u16*snr)
 
 static int tbs_read_signal_strength(struct neumo_dvb_frontend*fe, u16*strength)
 {
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 
 	p->strength.len = 1;
 	p->strength.stat[0].scale = FE_SCALE_DECIBEL;
@@ -156,7 +156,7 @@ static int tbs_set_frontend(struct neumo_dvb_frontend *fe)
 }
 
 static int tbs_get_frontend(struct neumo_dvb_frontend *fe,
-				struct neumo_driver_dtv_frontend_properties *c)
+				struct neumo_dtv_frontend_properties *c)
 {
 	c->fec_inner = 1;
 	c->modulation = 9;

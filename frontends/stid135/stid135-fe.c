@@ -1022,7 +1022,7 @@ static void stid135_release(struct neumo_dvb_frontend* fe)
 static bool pls_search_list(struct neumo_dvb_frontend* fe)
 {
 	fe_lla_error_t error = FE_LLA_NO_ERROR;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	struct stv *state = fe->demodulator_priv;
 	int i = 0;
 	int locked = 0;
@@ -1101,7 +1101,7 @@ static bool pls_search_range(struct neumo_dvb_frontend* fe)
 {
 	struct stv *state = fe->demodulator_priv;
 	fe_lla_error_t error = FE_LLA_NO_ERROR;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	u32 pls_code = 0;
 	int locked = 0;
 	u8 timeout = p->pls_search_range_start & 0xff;
@@ -1216,7 +1216,7 @@ static int stid135_set_parameters(struct neumo_dvb_frontend* fe)
 {
 	struct stv *state = fe->demodulator_priv;
 	int rf_in = active_rf_in_no(state);
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	fe_lla_error_t err = FE_LLA_NO_ERROR;
 	fe_lla_error_t error1 = FE_LLA_NO_ERROR;
 	struct fe_sat_search_params search_params;
@@ -1522,7 +1522,7 @@ static int stid135_set_parameters(struct neumo_dvb_frontend* fe)
 static int stid135_read_status_(struct neumo_dvb_frontend* fe, enum fe_status *status)
 {
 	struct stv *state = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	fe_lla_error_t err = FE_LLA_NO_ERROR;
 	u32 speed;
 	*status = 0;
@@ -1775,7 +1775,7 @@ static int stid135_set_sec_ready(struct neumo_dvb_frontend* fe)
 
 static int stid135_set_demux_default_stream_id(struct neumo_dvb_frontend* fe) {
 	struct stv *state = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	struct neumo_dvb_demux * demux = state->demux;
 	bool output_bbframes = false;
 	int ret=0;
@@ -1818,7 +1818,7 @@ static int stid135_tune_(struct neumo_dvb_frontend* fe, bool re_tune,
 	}
 	//state_dprintk("re_tune=%d\n", re_tune);
 	if (re_tune) {
-		struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+		struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 		state_dprintk("re_tune\n");
 		stid135_set_sec_ready_(fe);
 		state->signal_info.out_of_llr = false;
@@ -1880,7 +1880,7 @@ static int stid135_tune(struct neumo_dvb_frontend* fe, bool re_tune,
 		unsigned int *delay, enum fe_status *status)
 {
 	struct stv *state = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int err=0;
 	enum fe_ioctl_result result;
 	state_chip_lock(state);
@@ -2348,7 +2348,7 @@ static int stid135_sleep(struct neumo_dvb_frontend* fe)
 
 static int stid135_read_signal_strength(struct neumo_dvb_frontend* fe, u16 *strength)
 {
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int i;
 
 	*strength = 0;
@@ -2365,7 +2365,7 @@ static int stid135_read_signal_strength(struct neumo_dvb_frontend* fe, u16 *stre
 
 static int stid135_read_snr(struct neumo_dvb_frontend* fe, u16 *snr)
 {
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int i;
 
 	*snr = 0;
@@ -2379,7 +2379,7 @@ static int stid135_read_snr(struct neumo_dvb_frontend* fe, u16 *snr)
 
 static int stid135_read_ber(struct neumo_dvb_frontend* fe, u32 *ber)
 {
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int i;
 
 	*ber = 1;
@@ -2472,7 +2472,7 @@ static int stid135_get_spectrum_scan_sweep(struct neumo_dvb_frontend* fe,
 {
 	struct stv *state = fe->demodulator_priv;
 	struct spectrum_scan_state* ss = &state->spectrum_scan_state;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	//int rf_in = active_rf_in(state);
 	struct fe_stid135_internal_param * pParams = (struct fe_stid135_internal_param *) &state->chip->ip;
 	s32 lo_frequency;
@@ -2640,7 +2640,7 @@ static int stid135_spectrum_start(struct neumo_dvb_frontend* fe,
 {
 	struct stv *state = fe->demodulator_priv;
 	struct spectrum_scan_state* ss = &state->spectrum_scan_state;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	//int rf_in_no = active_rf_in_no(state);
 	struct stv_rf_in_t* rf_in = active_rf_in(state);
 	int old_rf_in_no = rf_in ? rf_in->rf_in_no : -1;
@@ -2725,7 +2725,7 @@ static int stid135_scan_sat(struct neumo_dvb_frontend* fe, bool init,
 {
  	fe_lla_error_t error = FE_LLA_NO_ERROR;
 	struct stv *state = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int rf_in = active_rf_in_no(state);
 	//struct fe_stid135_internal_param * pParams = &state->chip->ip;
 	//int asperity;

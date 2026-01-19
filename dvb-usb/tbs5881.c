@@ -68,7 +68,7 @@ static int tbs5881_op_rw(struct usb_device *dev, u8 request, u16 value,
 static int tbs5881_read_attribute_mem(struct dvb_ca_en50221 *ca,
                                                 	int slot, int address)
 {
-	struct dvb_usb_device *d = (struct dvb_usb_device *)ca->data;
+	struct neumo_dvb_usb_device *d = (struct neumo_dvb_usb_device *)ca->data;
 	struct tbs5881_state *state = (struct tbs5881_state *)d->priv;
 	u8 buf[4], rbuf[3];
 	int ret;
@@ -104,7 +104,7 @@ static int tbs5881_read_attribute_mem(struct dvb_ca_en50221 *ca,
 static int tbs5881_write_attribute_mem(struct dvb_ca_en50221 *ca,
 						int slot, int address, u8 value)
 {
-	struct dvb_usb_device *d = (struct dvb_usb_device *)ca->data;
+	struct neumo_dvb_usb_device *d = (struct neumo_dvb_usb_device *)ca->data;
 	struct tbs5881_state *state = (struct tbs5881_state *)d->priv;
 	u8 buf[5];//, rbuf[1];
 	int ret;
@@ -139,7 +139,7 @@ static int tbs5881_write_attribute_mem(struct dvb_ca_en50221 *ca,
 static int tbs5881_read_cam_control(struct dvb_ca_en50221 *ca, int slot,
 								u8 address)
 {
-	struct dvb_usb_device *d = (struct dvb_usb_device *)ca->data;
+	struct neumo_dvb_usb_device *d = (struct neumo_dvb_usb_device *)ca->data;
 	struct tbs5881_state *state = (struct tbs5881_state *)d->priv;
 	u8 buf[4], rbuf[1];
 	int ret;
@@ -173,7 +173,7 @@ static int tbs5881_read_cam_control(struct dvb_ca_en50221 *ca, int slot,
 static int tbs5881_write_cam_control(struct dvb_ca_en50221 *ca, int slot,
 							u8 address, u8 value)
 {
-	struct dvb_usb_device *d = (struct dvb_usb_device *)ca->data;
+	struct neumo_dvb_usb_device *d = (struct neumo_dvb_usb_device *)ca->data;
 	struct tbs5881_state *state = (struct tbs5881_state *)d->priv;
 	u8 buf[5];//, rbuf[1];
 	int ret;
@@ -208,7 +208,7 @@ static int tbs5881_write_cam_control(struct dvb_ca_en50221 *ca, int slot,
 static int tbs5881_set_video_port(struct dvb_ca_en50221 *ca,
 							int slot, int enable)
 {
-	struct dvb_usb_device *d = (struct dvb_usb_device *)ca->data;
+	struct neumo_dvb_usb_device *d = (struct neumo_dvb_usb_device *)ca->data;
 	struct tbs5881_state *state = (struct tbs5881_state *)d->priv;
 	u8 buf[2];
 	int ret;
@@ -250,7 +250,7 @@ static int tbs5881_slot_ts_enable(struct dvb_ca_en50221 *ca, int slot)
 
 static int tbs5881_slot_reset(struct dvb_ca_en50221 *ca, int slot)
 {
-	struct dvb_usb_device *d = (struct dvb_usb_device *)ca->data;
+	struct neumo_dvb_usb_device *d = (struct neumo_dvb_usb_device *)ca->data;
 	struct tbs5881_state *state = (struct tbs5881_state *)d->priv;
 	u8 buf[2];
 	int ret;
@@ -287,7 +287,7 @@ static int tbs5881_slot_reset(struct dvb_ca_en50221 *ca, int slot)
 static int tbs5881_poll_slot_status(struct dvb_ca_en50221 *ca,
 							int slot, int open)
 {
-	struct dvb_usb_device *d = (struct dvb_usb_device *)ca->data;
+	struct neumo_dvb_usb_device *d = (struct neumo_dvb_usb_device *)ca->data;
 	struct tbs5881_state *state = (struct tbs5881_state *)d->priv;
 	u8 buf[3];
 
@@ -309,7 +309,7 @@ static int tbs5881_poll_slot_status(struct dvb_ca_en50221 *ca,
 	}
 }
 
-static void tbs5881_uninit(struct dvb_usb_device *d)
+static void tbs5881_uninit(struct neumo_dvb_usb_device *d)
 {
 	struct tbs5881_state *state;
 
@@ -331,10 +331,10 @@ static void tbs5881_uninit(struct dvb_usb_device *d)
 	memset(&state->ca, 0, sizeof(state->ca));
 }
 
-static int tbs5881_init(struct dvb_usb_adapter *a)
+static int tbs5881_init(struct neumo_dvb_usb_adapter *a)
 {
 
-	struct dvb_usb_device *d = a->dev;
+	struct neumo_dvb_usb_device *d = a->dev;
 	struct tbs5881_state *state = (struct tbs5881_state *)d->priv;
 	int ret;
 
@@ -371,7 +371,7 @@ static int tbs5881_init(struct dvb_usb_adapter *a)
 static int tbs5881_i2c_transfer(struct i2c_adapter *adap,
 					struct i2c_msg msg[], int num)
 {
-	struct dvb_usb_device *d = i2c_get_adapdata(adap);
+	struct neumo_dvb_usb_device *d = i2c_get_adapdata(adap);
 	struct tbs5881_state *state = (struct tbs5881_state *)d->priv;
 	int i = 0;
 	u8 buf6[20];
@@ -452,7 +452,7 @@ static struct i2c_algorithm tbs5881_i2c_algo = {
 	.functionality = tbs5881_i2c_func,
 };
 
-static int tbs5881_read_mac_address(struct dvb_usb_device *d, u8 mac[6])
+static int tbs5881_read_mac_address(struct neumo_dvb_usb_device *d, u8 mac[6])
 {
 	int i,ret;
 	u8 ibuf[3] = {0, 0,0};
@@ -483,11 +483,11 @@ static int tbs5881_read_mac_address(struct dvb_usb_device *d, u8 mac[6])
 	return 0;
 };
 
-static struct dvb_usb_device_properties tbs5881_properties;
+static struct neumo_dvb_usb_device_properties tbs5881_properties;
 
-static int tbs5881_frontend_attach(struct dvb_usb_adapter *adap)
+static int tbs5881_frontend_attach(struct neumo_dvb_usb_adapter *adap)
 {
-	struct dvb_usb_device *d = adap->dev;
+	struct neumo_dvb_usb_device *d = adap->dev;
 	struct tbs5881_state *st = (struct tbs5881_state *)d->priv;
 	struct i2c_adapter *adapter;
 	struct i2c_client *client_demod;
@@ -572,7 +572,7 @@ static int tbs5881_frontend_attach(struct dvb_usb_adapter *adap)
 
 static void tbs5881_usb_disconnect (struct usb_interface * intf)
 {
-	struct dvb_usb_device *d = usb_get_intfdata (intf);
+	struct neumo_dvb_usb_device *d = usb_get_intfdata (intf);
 #if 0
 	struct tbs5881_state *st = d->priv;
 	struct i2c_client *client;
@@ -592,10 +592,10 @@ static void tbs5881_usb_disconnect (struct usb_interface * intf)
 	}
 #endif
 	tbs5881_uninit (d);
-	dvb_usb_device_exit (intf);
+	neumo_dvb_usb_device_exit (intf);
 }
 
-static int tbs5881_rc_query(struct dvb_usb_device *d)
+static int tbs5881_rc_query(struct neumo_dvb_usb_device *d)
 {
 	u8 key[2];
 	struct i2c_msg msg = {
@@ -681,7 +681,7 @@ static int tbs5881_load_firmware(struct usb_device *dev,
 	return ret;
 }
 
-static struct dvb_usb_device_properties tbs5881_properties = {
+static struct neumo_dvb_usb_device_properties tbs5881_properties = {
 	.caps = DVB_USB_IS_AN_I2C_ADAPTER,
 	.usb_ctrl = DEVICE_SPECIFIC,
 	.firmware = "dvb-usb-tbsqbox-id5881.fw",
@@ -731,7 +731,7 @@ static struct dvb_usb_device_properties tbs5881_properties = {
 static int tbs5881_probe(struct usb_interface *intf,
 		const struct usb_device_id *id)
 {
-	if (0 == dvb_usb_device_init(intf, &tbs5881_properties,
+	if (0 == neumo_dvb_usb_device_init(intf, &tbs5881_properties,
 			THIS_MODULE, NULL, adapter_nr)) {
 		return 0;
 	}

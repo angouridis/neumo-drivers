@@ -1557,7 +1557,7 @@ static int m88rs6060_get_matype(struct m88rs6060_state* state, u16* matype)
 	return 0;
 }
 
-static int m88rs6060_get_channel_info(struct m88rs6060_state* state, struct neumo_driver_dtv_frontend_properties* p)
+static int m88rs6060_get_channel_info(struct m88rs6060_state* state, struct neumo_dtv_frontend_properties* p)
 {
 	struct MT_FE_CHAN_INFO_DVBS2 info;
 	int count=0;
@@ -1675,7 +1675,7 @@ static void m88rs6060_get_symbol_rate(struct m88rs6060_state* state, u32* sym_ra
 static bool m88rs6060_get_signal_info(struct neumo_dvb_frontend *fe)
 {
 	bool need_retune = false;
-	struct neumo_driver_dtv_frontend_properties* p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties* p = &fe->dtv_property_cache;
 	struct m88rs6060_state* state = fe->demodulator_priv;
 	s32 carrier_offset_khz;
 	m88rs6060_get_channel_info(state, p);
@@ -2180,7 +2180,7 @@ static int m88rs6060_tune_once(struct neumo_dvb_frontend *fe, bool blind)
 {
 	struct m88rs6060_state* state = fe->demodulator_priv;
 	struct i2c_client *client = state->demod_client;
-	struct neumo_driver_dtv_frontend_properties* p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties* p = &fe->dtv_property_cache;
 	int ret;
 	u32 symbol_rate_kss;
 	unsigned tmp, tmp1;
@@ -2416,7 +2416,7 @@ static int m88rs6060_init(struct neumo_dvb_frontend *fe)
 {
 	struct m88rs6060_state* state = fe->demodulator_priv;
 	struct i2c_client *client = state->demod_client;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 
 	c->cnr.len = 1;
 	c->cnr.stat[0].scale = FE_SCALE_NOT_AVAILABLE;
@@ -2517,7 +2517,7 @@ static int m88rs6060_select_xm(struct m88rs6060_state* state, u32 *xm_khz)
 	return 0;
 }
 
-static int m88rs6060_set_clock_ratio(struct m88rs6060_state* state, struct neumo_driver_dtv_frontend_properties* p)
+static int m88rs6060_set_clock_ratio(struct m88rs6060_state* state, struct neumo_dtv_frontend_properties* p)
 {
 	unsigned mod_fac,tmp1,tmp2,val;
 	u32 input_datarate,locked_sym_rate_kss;
@@ -2727,7 +2727,7 @@ static int m88rs6060_set_clock_ratio(struct m88rs6060_state* state, struct neumo
 	return 0;
 }
 
-static void init_signal_quality(struct neumo_dvb_frontend* fe,	struct neumo_driver_dtv_frontend_properties *p)
+static void init_signal_quality(struct neumo_dvb_frontend* fe,	struct neumo_dtv_frontend_properties *p)
 {
 	s32 gain;
 	struct m88rs6060_state* state = fe->demodulator_priv;
@@ -2814,7 +2814,7 @@ static void m88rs6060_scale_per(struct m88rs6060_state* state)
 /*Get number of pre FEC bit erors error and total number of bits received for DVBS2
 	and a similar metric for dvbS1
  */
-static int m88rs6060_get_per(struct m88rs6060_state* state, struct neumo_driver_dtv_frontend_properties* p)
+static int m88rs6060_get_per(struct m88rs6060_state* state, struct neumo_dtv_frontend_properties* p)
 {
 	u32 tmp1;
 	u32	code_rate_fac = 0, ldpc_frame_count;
@@ -2885,7 +2885,7 @@ static int m88rs6060_read_status(struct neumo_dvb_frontend* fe, enum fe_status* 
 {
 	struct m88rs6060_state* state = fe->demodulator_priv;
 	struct i2c_client* client = state->demod_client;
-	struct neumo_driver_dtv_frontend_properties* p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties* p = &fe->dtv_property_cache;
 	int ret=0, i, itmp;
 	unsigned int reg0d, regd1, regff;
 	u8 buf[3];
@@ -3135,7 +3135,7 @@ static int m88rs6060_read_status(struct neumo_dvb_frontend* fe, enum fe_status* 
 
 static int m88rs6060_read_snr(struct neumo_dvb_frontend *fe, u16 * snr)
 {
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int i;
 	dprintk("read snr\n");
 	*snr = 0;
@@ -3148,7 +3148,7 @@ static int m88rs6060_read_snr(struct neumo_dvb_frontend *fe, u16 * snr)
 
 static int m88rs6060_read_ber(struct neumo_dvb_frontend *fe, u32 * ber)
 {
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 
 	if ( p->post_bit_error.stat[0].scale == FE_SCALE_COUNTER &&
 		p->post_bit_count.stat[0].scale == FE_SCALE_COUNTER )
@@ -3161,7 +3161,7 @@ static int m88rs6060_read_ber(struct neumo_dvb_frontend *fe, u32 * ber)
 static int m88rs6060_read_signal_strength(struct neumo_dvb_frontend *fe,
 					  u16 * strength)
 {
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int i;
 
 	*strength = 0;
@@ -3468,7 +3468,7 @@ static int m88rs6060_tune(struct neumo_dvb_frontend *fe, bool re_tune,
 	struct i2c_client *client = state->demod_client;
 	struct i2c_adapter* i2c = client->adapter;
 
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int r = -1;
 	bool blind = (p->algorithm == ALGORITHM_BLIND ||p->algorithm == ALGORITHM_BLIND_BEST_GUESS);
 	if(blind) {
@@ -3532,7 +3532,7 @@ static int m88rs6060_get_spectrum_scan_sweep(struct neumo_dvb_frontend* fe,
 {
 	struct m88rs6060_state* state = fe->demodulator_priv;
 	struct spectrum_scan_state* ss = &state->spectrum_scan_state;
-	struct neumo_driver_dtv_frontend_properties* p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties* p = &fe->dtv_property_cache;
 	s32 pch_rf;
 	int i = 0;
 	u32 start_frequency = p->scan_start_frequency;
@@ -3651,7 +3651,7 @@ static int m88rs6060_spectral_scan_start(struct neumo_dvb_frontend *fe, unsigned
 {
 	struct m88rs6060_state* state = fe->demodulator_priv;
 	struct spectrum_scan_state* ss = &state->spectrum_scan_state;
-	//	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	//	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int error = 0;
 	ss->scan_in_progress =true;
 	ss->current_idx = 0;
@@ -3695,7 +3695,7 @@ static int m88rs6060_scan_sat(struct neumo_dvb_frontend* fe, bool init,
  	int error = -1;
 	struct m88rs6060_state* state = fe->demodulator_priv;
 	struct spectrum_scan_state* ss = &state->spectrum_scan_state;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	enum fe_status old;
 	int ret=0;
 	bool found=false;

@@ -69,7 +69,7 @@ static int tbs5520se_op_rw(struct usb_device *dev, u8 request, u16 value,
 static int tbs5520se_i2c_transfer(struct i2c_adapter *adap, 
 					struct i2c_msg msg[], int num)
 {
-	struct dvb_usb_device *d = i2c_get_adapdata(adap);
+	struct neumo_dvb_usb_device *d = i2c_get_adapdata(adap);
 	int i = 0;
 	u8 buf6[20];
 	u8 inbuf[20];
@@ -163,8 +163,8 @@ static int tbs5520se_set_voltage(struct neumo_dvb_frontend *fe,
 			.buf = command_13v, .len = 1},
 	};
 	
-	struct dvb_usb_adapter *udev_adap =
-		(struct dvb_usb_adapter *)(fe->dvb->priv);
+	struct neumo_dvb_usb_adapter *udev_adap =
+		(struct neumo_dvb_usb_adapter *)(fe->dvb->priv);
 	if (voltage == SEC_VOLTAGE_18)
 		msg[0].buf = command_18v;
 
@@ -174,7 +174,7 @@ static int tbs5520se_set_voltage(struct neumo_dvb_frontend *fe,
 	return 0;
 }
 
-static int tbs5520se_read_mac_address(struct dvb_usb_device *d, u8 mac[6])
+static int tbs5520se_read_mac_address(struct neumo_dvb_usb_device *d, u8 mac[6])
 {
 	int i,ret;
 	u8 ibuf[3] = {0, 0,0};
@@ -205,11 +205,11 @@ static int tbs5520se_read_mac_address(struct dvb_usb_device *d, u8 mac[6])
 	return 0;
 };
 
-static struct dvb_usb_device_properties tbs5520se_properties;
+static struct neumo_dvb_usb_device_properties tbs5520se_properties;
 
-static int tbs5520se_frontend_attach(struct dvb_usb_adapter *adap)
+static int tbs5520se_frontend_attach(struct neumo_dvb_usb_adapter *adap)
 {
-	struct dvb_usb_device *d = adap->dev;
+	struct neumo_dvb_usb_device *d = adap->dev;
 	struct tbs5520se_state *st = d->priv;
 	struct i2c_adapter *adapter;
 	struct i2c_client *client_demod;
@@ -385,7 +385,7 @@ static int tbs5520se_load_firmware(struct usb_device *dev,
 	return ret;
 }
 
-static struct dvb_usb_device_properties tbs5520se_properties = {
+static struct neumo_dvb_usb_device_properties tbs5520se_properties = {
 	.caps = DVB_USB_IS_AN_I2C_ADAPTER,
 	.usb_ctrl = DEVICE_SPECIFIC,
 	.firmware = "dvb-usb-id5520se.fw",
@@ -448,7 +448,7 @@ static struct dvb_usb_device_properties tbs5520se_properties = {
 static int tbs5520se_probe(struct usb_interface *intf,
 		const struct usb_device_id *id)
 {
-	if (0 == dvb_usb_device_init(intf, &tbs5520se_properties,
+	if (0 == neumo_dvb_usb_device_init(intf, &tbs5520se_properties,
 			THIS_MODULE, NULL, adapter_nr)) {
 		return 0;
 	}
@@ -458,7 +458,7 @@ static int tbs5520se_probe(struct usb_interface *intf,
 static void tbs5520se_disconnect(struct usb_interface *intf)
 {
 #if 0
-	struct dvb_usb_device *d = usb_get_intfdata(intf);
+	struct neumo_dvb_usb_device *d = usb_get_intfdata(intf);
 	struct tbs5520se_state *st = d->priv;
 	struct i2c_client *client;
 
@@ -476,7 +476,7 @@ static void tbs5520se_disconnect(struct usb_interface *intf)
 		i2c_unregister_device(client);
 	}
 #endif	
-	dvb_usb_device_exit(intf);
+	neumo_dvb_usb_device_exit(intf);
 }
 
 static struct usb_driver tbs5520se_driver = {

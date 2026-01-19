@@ -4,7 +4,7 @@
 KVER ?= $(shell uname -r)
 KVER := 6.17.13-200.fc42.x86_64
 KVER := 6.14.4-100.fc40.x86_64
-KVER := 6.15.3-200.fc42.x86_64
+#KVER := 6.15.3-200.fc42.x86_64
 KDIR	?= /lib/modules/$(KVER)/build
 PWD	:= $(shell pwd)
 MDIR	?=
@@ -14,8 +14,9 @@ ROOT_DIR :=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
 
 # --- Module Configurations ---
-MODDEFS := CONFIG_DVB_CORE=m \
-	   CONFIG_DVB_TBSECP3=m \
+MODDEFS := CONFIG_DVB_MMAP=y \
+	CONFIG_DVB_CORE=m \
+	CONFIG_DVB_TBSECP3=m \
 	CONFIG_TBS_PCIE_CI=m \
 	CONFIG_TBS_PCIE_MOD=m \
 	CONFIG_DVB_SI2168=m \
@@ -68,7 +69,7 @@ MODDEFS := CONFIG_DVB_CORE=m \
 	CONFIG_DVB_USB_TBS5931=m \
 	CONFIG_DVB_USB_TBS5530=m CONFIG_DVB_NET=y
 
-EXTRA_CFLAGS += --include=$(PWD)/include/kernel_compat.h
+EXTRA_CFLAGS += --include=$(PWD)/include/kernel_compat.h -DCONFIG_DVB_MMAP
 EXTRA_CFLAGS += -I$(PWD)/include \
                 -I$(PWD)/include/linux \
                 -I$(PWD)/dvb-core \
@@ -98,6 +99,7 @@ dep:
 	$(MAKE) -C $(KDIR) M=$(PWD) dep
 
 install: all
+	sudo rm -fr  /lib/modules/$(KVER)/updates/*
 	$(MAKE) -C $(KDIR) M=$(PWD) INSTALL_MOD_PATH=$(MDIR) modules_install
 	@echo "Updating module dependencies..."
 	@if [ -n "$(MDIR)" ]; then \

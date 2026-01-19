@@ -232,7 +232,7 @@ static int si2183_read_status(struct dvb_frontend *fe, enum fe_status *status)
 {
 	struct i2c_client *client = fe->demodulator_priv;
 	struct si2183_dev *dev = i2c_get_clientdata(client);
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret;
 	struct si2183_cmd cmd;
 	u16 agc;
@@ -558,7 +558,7 @@ err:
 
 static int si2183_read_snr(struct dvb_frontend *fe, u16 *snr)
 {
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int i;
 
 	*snr = 0;
@@ -571,7 +571,7 @@ static int si2183_read_snr(struct dvb_frontend *fe, u16 *snr)
 
 static int si2183_read_signal_strength(struct dvb_frontend *fe, u16 *strength)
 {
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int i;
 
 	*strength = 0;
@@ -640,7 +640,7 @@ err:
 
 static int si2183_set_dvbc(struct dvb_frontend *fe)
 {
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct i2c_client *client = fe->demodulator_priv;
 	struct si2183_dev *dev = i2c_get_clientdata(client);
 	struct si2183_cmd cmd;
@@ -706,7 +706,7 @@ static int si2183_set_dvbc(struct dvb_frontend *fe)
 
 static int si2183_set_mcns(struct dvb_frontend *fe)
 {
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct i2c_client *client = fe->demodulator_priv;
 	struct si2183_dev *dev = i2c_get_clientdata(client);
 	struct si2183_cmd cmd;
@@ -777,7 +777,7 @@ static int gold_code_index (int gold_sequence_index)
 
 static int si2183_set_dvbs(struct dvb_frontend *fe)
 {
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct i2c_client *client = fe->demodulator_priv;
 	struct si2183_dev *dev = i2c_get_clientdata(client);
 	struct si2183_cmd cmd;
@@ -864,7 +864,7 @@ static int si2183_set_dvbs(struct dvb_frontend *fe)
 
 static int si2183_set_dvbt(struct dvb_frontend *fe)
 {
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct i2c_client *client = fe->demodulator_priv;
 	struct si2183_dev *dev = i2c_get_clientdata(client);
 	struct si2183_cmd cmd;
@@ -946,7 +946,7 @@ static int si2183_set_dvbt(struct dvb_frontend *fe)
 
 static int si2183_set_isdbt(struct dvb_frontend *fe)
 {
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct i2c_client *client = fe->demodulator_priv;
 	struct si2183_dev *dev = i2c_get_clientdata(client);
 	struct si2183_cmd cmd;
@@ -998,7 +998,7 @@ static int si2183_set_frontend(struct dvb_frontend *fe)
 {
 	struct i2c_client *client = fe->demodulator_priv;
 	struct si2183_dev *dev = i2c_get_clientdata(client);
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret;
 	struct si2183_cmd cmd;
 
@@ -1098,7 +1098,7 @@ static int si2183_init(struct dvb_frontend *fe)
 {
 	struct i2c_client *client = fe->demodulator_priv;
 	struct si2183_dev *dev = i2c_get_clientdata(client);
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret = 0, len, remaining;
 	const struct firmware *fw;
 	const char *fw_name;

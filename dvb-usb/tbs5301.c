@@ -74,7 +74,7 @@ static int tbs5301_op_rw(struct usb_device *dev, u8 request, u16 value,
 static int tbs5301_i2c_transfer(struct i2c_adapter *adap, struct i2c_msg msg[],
 		int num)
 {
-	struct dvb_usb_device *d = i2c_get_adapdata(adap);
+	struct neumo_dvb_usb_device *d = i2c_get_adapdata(adap);
 	int i = 0;
 	u8 buf[20];
 
@@ -144,7 +144,7 @@ static struct i2c_algorithm tbs5301_i2c_algo = {
 };
 
 
-static int tbs5301_read_mac_address(struct dvb_usb_device *d, u8 mac[6])
+static int tbs5301_read_mac_address(struct neumo_dvb_usb_device *d, u8 mac[6])
 {
 	int i,ret;
 	u8 buf[3];
@@ -175,11 +175,11 @@ static int tbs5301_read_mac_address(struct dvb_usb_device *d, u8 mac[6])
 	return 0;
 };
 
-static struct dvb_usb_device_properties tbs5301_properties;
+static struct neumo_dvb_usb_device_properties tbs5301_properties;
 
 static void reg_i2cread(struct i2c_adapter *i2c,u8 chip_addr,u8 reg, u8 num, u8 *buf)
 {	
-	struct dvb_usb_device *d = i2c_get_adapdata(i2c);
+	struct neumo_dvb_usb_device *d = i2c_get_adapdata(i2c);
 	u8 data[20];
 
 	if (!d)
@@ -205,7 +205,7 @@ static void reg_i2cread(struct i2c_adapter *i2c,u8 chip_addr,u8 reg, u8 num, u8 
 }
 static void reg_i2cwrite(struct i2c_adapter *i2c,u8 chip_addr,u8 reg, u8 num, u8 *buf)
 {
-	struct dvb_usb_device *d = i2c_get_adapdata(i2c);
+	struct neumo_dvb_usb_device *d = i2c_get_adapdata(i2c);
 	u8 data[20];
 	int i=0;
 
@@ -235,9 +235,9 @@ static void reg_i2cwrite(struct i2c_adapter *i2c,u8 chip_addr,u8 reg, u8 num, u8
 	.i2cRead_properties = reg_i2cread,
 };
 
-static int tbs5301_frontend_attach(struct dvb_usb_adapter *d)
+static int tbs5301_frontend_attach(struct neumo_dvb_usb_adapter *d)
 {
-	struct dvb_usb_device *u = d->dev;
+	struct neumo_dvb_usb_device *u = d->dev;
 	u8 buf[20];
 	u8 temp1,temp2;
 	int chip_id =0;
@@ -334,7 +334,7 @@ static struct rc_map_table tbs5301_rc_keys[] = {
 
 
 
-static int tbs5301_rc_query(struct dvb_usb_device *d, u32 *event, int *state)
+static int tbs5301_rc_query(struct neumo_dvb_usb_device *d, u32 *event, int *state)
 {
 	struct rc_map_table *keymap = d->props.rc.legacy.rc_map_table;
 	int keymap_size = d->props.rc.legacy.rc_map_size;
@@ -431,7 +431,7 @@ static int tbs5301_load_firmware(struct usb_device *dev,
 	return ret;
 }
 
-static struct dvb_usb_device_properties tbs5301_properties = {
+static struct neumo_dvb_usb_device_properties tbs5301_properties = {
 	.caps = DVB_USB_IS_AN_I2C_ADAPTER,
 	.usb_ctrl = DEVICE_SPECIFIC,
 	.firmware = "dvb-usb-id5301.fw",
@@ -480,7 +480,7 @@ static struct dvb_usb_device_properties tbs5301_properties = {
 static int tbs5301_probe(struct usb_interface *intf,
 		const struct usb_device_id *id)
 {
-	if (0 == dvb_usb_device_init(intf, &tbs5301_properties,
+	if (0 == neumo_dvb_usb_device_init(intf, &tbs5301_properties,
 			THIS_MODULE, NULL, adapter_nr)) {
 		return 0;
 	}
@@ -489,7 +489,7 @@ static int tbs5301_probe(struct usb_interface *intf,
 static void tbs5301_disconnect(struct usb_interface *intf)
 {
 
-	struct dvb_usb_device *u = usb_get_intfdata(intf);
+	struct neumo_dvb_usb_device *u = usb_get_intfdata(intf);
 	u8 buf[20];
 	int ret;
 
@@ -502,7 +502,7 @@ static void tbs5301_disconnect(struct usb_interface *intf)
 				buf, 4, TBS5301_WRITE_MSG);
 	printk("release tbs5301 usb ctl!\n");
 
-	dvb_usb_device_exit(intf);
+	neumo_dvb_usb_device_exit(intf);
 }
 
 static struct usb_driver tbs5301_driver = {

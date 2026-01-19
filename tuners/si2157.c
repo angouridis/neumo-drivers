@@ -218,7 +218,7 @@ static int si2157_find_and_load_firmware(struct neumo_dvb_frontend *fe)
 
 static int si2157_init(struct neumo_dvb_frontend *fe)
 {
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct i2c_client *client = fe->tuner_priv;
 	struct si2157_dev *dev = i2c_get_clientdata(client);
 	unsigned int xtal_trim;
@@ -449,7 +449,7 @@ static int si2157_set_params(struct neumo_dvb_frontend *fe)
 {
 	struct i2c_client *client = fe->tuner_priv;
 	struct si2157_dev *dev = i2c_get_clientdata(client);
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret;
 	struct si2157_cmd cmd;
 	u8 bw, delivery_system;
@@ -823,7 +823,7 @@ static int si2157_get_if_frequency(struct neumo_dvb_frontend *fe, u32 *frequency
 static int si2157_get_rf_strength(struct neumo_dvb_frontend *fe, u16 *rssi)
 {
 	struct i2c_client *client = fe->tuner_priv;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct si2157_cmd cmd;
 	int ret;
 	int strength;
@@ -886,7 +886,7 @@ static void si2157_stat_work(struct work_struct *work)
 	struct si2157_dev *dev = container_of(work, struct si2157_dev, stat_work.work);
 	struct neumo_dvb_frontend *fe = dev->fe;
 	struct i2c_client *client = fe->tuner_priv;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct si2157_cmd cmd;
 	int ret;
 

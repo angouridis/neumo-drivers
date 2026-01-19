@@ -15,7 +15,7 @@
 /* does the complete input transfer handling */
 static int dvb_usb_ctrl_feed(struct neumo_dvb_demux_feed *dvbdmxfeed, int onoff)
 {
-	struct dvb_usb_adapter *adap = dvbdmxfeed->demux->priv;
+	struct neumo_dvb_usb_adapter *adap = dvbdmxfeed->demux->priv;
 	int newfeedcount, ret;
 
 	if (adap == NULL)
@@ -98,11 +98,11 @@ static int dvb_usb_stop_feed(struct neumo_dvb_demux_feed *dvbdmxfeed)
 	return dvb_usb_ctrl_feed(dvbdmxfeed, 0);
 }
 
-static int dvb_usb_media_device_init(struct dvb_usb_adapter *adap)
+static int dvb_usb_media_device_init(struct neumo_dvb_usb_adapter *adap)
 {
 #ifdef CONFIG_MEDIA_CONTROLLER_DVB
 	struct media_device *mdev;
-	struct dvb_usb_device *d = adap->dev;
+	struct neumo_dvb_usb_device *d = adap->dev;
 	struct usb_device *udev = d->udev;
 
 	mdev = kzalloc(sizeof(*mdev), GFP_KERNEL);
@@ -118,7 +118,7 @@ static int dvb_usb_media_device_init(struct dvb_usb_adapter *adap)
 	return 0;
 }
 
-static int  dvb_usb_media_device_register(struct dvb_usb_adapter *adap)
+static int  dvb_usb_media_device_register(struct neumo_dvb_usb_adapter *adap)
 {
 #ifdef CONFIG_MEDIA_CONTROLLER_DVB
 	return media_device_register(adap->dvb_adap.mdev);
@@ -127,7 +127,7 @@ static int  dvb_usb_media_device_register(struct dvb_usb_adapter *adap)
 #endif
 }
 
-static void dvb_usb_media_device_unregister(struct dvb_usb_adapter *adap)
+static void dvb_usb_media_device_unregister(struct neumo_dvb_usb_adapter *adap)
 {
 #ifdef CONFIG_MEDIA_CONTROLLER_DVB
 	if (!adap->dvb_adap.mdev)
@@ -144,7 +144,7 @@ static void dvb_usb_media_device_unregister(struct dvb_usb_adapter *adap)
 #endif
 }
 
-int dvb_usb_adapter_dvb_init(struct dvb_usb_adapter *adap, short *adapter_nums)
+int dvb_usb_adapter_dvb_init(struct neumo_dvb_usb_adapter *adap, short *adapter_nums)
 {
 	int i;
 	int ret = dvb_register_adapter(&adap->dvb_adap, adap->dev->desc->name,
@@ -217,7 +217,7 @@ err:
 	return ret;
 }
 
-int dvb_usb_adapter_dvb_exit(struct dvb_usb_adapter *adap)
+int dvb_usb_adapter_dvb_exit(struct neumo_dvb_usb_adapter *adap)
 {
 	if (adap->state & DVB_USB_ADAP_STATE_DVB) {
 		deb_info("unregistering DVB part\n");
@@ -234,7 +234,7 @@ int dvb_usb_adapter_dvb_exit(struct dvb_usb_adapter *adap)
 
 static int dvb_usb_set_active_fe(struct neumo_dvb_frontend *fe, int onoff)
 {
-	struct dvb_usb_adapter *adap = fe->dvb->priv;
+	struct neumo_dvb_usb_adapter *adap = fe->dvb->priv;
 
 	int ret = (adap->props.frontend_ctrl) ?
 		adap->props.frontend_ctrl(fe, onoff) : 0;
@@ -251,7 +251,7 @@ static int dvb_usb_set_active_fe(struct neumo_dvb_frontend *fe, int onoff)
 
 static int dvb_usb_fe_wakeup(struct neumo_dvb_frontend *fe)
 {
-	struct dvb_usb_adapter *adap = fe->dvb->priv;
+	struct neumo_dvb_usb_adapter *adap = fe->dvb->priv;
 
 	dvb_usb_device_power_ctrl(adap->dev, 1);
 
@@ -265,7 +265,7 @@ static int dvb_usb_fe_wakeup(struct neumo_dvb_frontend *fe)
 
 static int dvb_usb_fe_sleep(struct neumo_dvb_frontend *fe)
 {
-	struct dvb_usb_adapter *adap = fe->dvb->priv;
+	struct neumo_dvb_usb_adapter *adap = fe->dvb->priv;
 
 	if (adap->fe_adap[fe->id].fe_sleep)
 		adap->fe_adap[fe->id].fe_sleep(fe);
@@ -275,7 +275,7 @@ static int dvb_usb_fe_sleep(struct neumo_dvb_frontend *fe)
 	return dvb_usb_device_power_ctrl(adap->dev, 0);
 }
 
-int dvb_usb_adapter_frontend_init(struct dvb_usb_adapter *adap)
+int dvb_usb_adapter_frontend_init(struct neumo_dvb_usb_adapter *adap)
 {
 	int ret, i;
 
@@ -351,7 +351,7 @@ int dvb_usb_adapter_frontend_init(struct dvb_usb_adapter *adap)
 	return ret;
 }
 
-int dvb_usb_adapter_frontend_exit(struct dvb_usb_adapter *adap)
+int dvb_usb_adapter_frontend_exit(struct neumo_dvb_usb_adapter *adap)
 {
 	int i = adap->num_frontends_initialized - 1;
 

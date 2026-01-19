@@ -3045,7 +3045,7 @@ R850_ErrCode R850_SetFrequency(struct r850_priv *priv, struct R850_Set_Info R850
 
 static int r850_init(struct neumo_dvb_frontend *fe)
 {
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct r850_priv *priv = fe->tuner_priv;
 
 	int ret = 0;
@@ -3127,7 +3127,7 @@ static int r850_init(struct neumo_dvb_frontend *fe)
 static int r850_set_params(struct neumo_dvb_frontend *fe)
 {
 	struct r850_priv *priv = fe->tuner_priv;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct R850_Set_Info tuner_parameters;
 
 	int ret = 0;
@@ -3154,7 +3154,7 @@ static int r850_set_params(struct neumo_dvb_frontend *fe)
 static int r850_get_rf_strength(struct neumo_dvb_frontend *fe, u16 *rssi)
 {
 	struct r850_priv *priv = fe->tuner_priv;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	s32 RSSI_Value = 0;
 	int strength;
 	

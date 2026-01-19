@@ -9,7 +9,7 @@ dvb-vb2-$(CONFIG_DVB_MMAP) := dvb_vb2.o
 
 compat-y := neumo-dvb-demux-dvbapi.o    \
          neumo-dvb-ca-en50221-dvbapi.o  \
-         neumo-frontend-dvbapi.o        \
+         neumo-dvb-frontend-dvbapi.o        \
          neumo-dmxdev-dvbapi.o
 
 dvb-core-objs := neumo-dvbdev.o     \

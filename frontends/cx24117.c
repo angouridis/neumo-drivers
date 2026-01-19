@@ -1315,7 +1315,7 @@ static int cx24117_sleep(struct neumo_dvb_frontend *fe)
 static int cx24117_set_frontend(struct neumo_dvb_frontend *fe)
 {
 	struct cx24117_state *state = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct cx24117_cmd cmd;
 	enum fe_status tunerstat;
 	int i, status, ret, retune = 1;
@@ -1570,7 +1570,7 @@ static enum neumo_dvbfe_algo cx24117_get_algo(struct neumo_dvb_frontend *fe)
 }
 
 static int cx24117_get_frontend(struct neumo_dvb_frontend *fe,
-				struct neumo_driver_dtv_frontend_properties *c)
+				struct neumo_dtv_frontend_properties *c)
 {
 	struct cx24117_state *state = fe->demodulator_priv;
 	struct cx24117_cmd cmd;

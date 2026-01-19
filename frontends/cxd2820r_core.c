@@ -47,7 +47,7 @@ int cxd2820r_gpio(struct neumo_dvb_frontend *fe, u8 *gpio)
 {
 	struct cxd2820r_priv *priv = fe->demodulator_priv;
 	struct i2c_client *client = priv->client[0];
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret, i;
 	u8 tmp0, tmp1;
 
@@ -105,7 +105,7 @@ static int cxd2820r_set_frontend(struct neumo_dvb_frontend *fe)
 {
 	struct cxd2820r_priv *priv = fe->demodulator_priv;
 	struct i2c_client *client = priv->client[0];
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret;
 
 	dev_dbg(&client->dev, "delivery_system=%d\n", c->delivery_system);
@@ -148,7 +148,7 @@ static int cxd2820r_read_status(struct neumo_dvb_frontend *fe, enum fe_status *s
 {
 	struct cxd2820r_priv *priv = fe->demodulator_priv;
 	struct i2c_client *client = priv->client[0];
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret;
 
 	dev_dbg(&client->dev, "delivery_system=%d\n", c->delivery_system);
@@ -175,11 +175,11 @@ static int cxd2820r_read_status(struct neumo_dvb_frontend *fe, enum fe_status *s
 }
 
 static int cxd2820r_get_frontend(struct neumo_dvb_frontend *fe,
-				 struct neumo_driver_dtv_frontend_properties *p)
+				 struct neumo_dtv_frontend_properties *p)
 {
 	struct cxd2820r_priv *priv = fe->demodulator_priv;
 	struct i2c_client *client = priv->client[0];
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret;
 
 	dev_dbg(&client->dev, "delivery_system=%d\n", c->delivery_system);
@@ -208,7 +208,7 @@ static int cxd2820r_read_ber(struct neumo_dvb_frontend *fe, u32 *ber)
 {
 	struct cxd2820r_priv *priv = fe->demodulator_priv;
 	struct i2c_client *client = priv->client[0];
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 
 	dev_dbg(&client->dev, "delivery_system=%d\n", c->delivery_system);
 
@@ -222,7 +222,7 @@ static int cxd2820r_read_signal_strength(struct neumo_dvb_frontend *fe, u16 *str
 {
 	struct cxd2820r_priv *priv = fe->demodulator_priv;
 	struct i2c_client *client = priv->client[0];
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 
 	dev_dbg(&client->dev, "delivery_system=%d\n", c->delivery_system);
 
@@ -238,7 +238,7 @@ static int cxd2820r_read_snr(struct neumo_dvb_frontend *fe, u16 *snr)
 {
 	struct cxd2820r_priv *priv = fe->demodulator_priv;
 	struct i2c_client *client = priv->client[0];
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 
 	dev_dbg(&client->dev, "delivery_system=%d\n", c->delivery_system);
 
@@ -254,7 +254,7 @@ static int cxd2820r_read_ucblocks(struct neumo_dvb_frontend *fe, u32 *ucblocks)
 {
 	struct cxd2820r_priv *priv = fe->demodulator_priv;
 	struct i2c_client *client = priv->client[0];
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 
 	dev_dbg(&client->dev, "delivery_system=%d\n", c->delivery_system);
 
@@ -272,7 +272,7 @@ static int cxd2820r_sleep(struct neumo_dvb_frontend *fe)
 {
 	struct cxd2820r_priv *priv = fe->demodulator_priv;
 	struct i2c_client *client = priv->client[0];
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret;
 
 	if (priv->set_lock_led)
@@ -302,7 +302,7 @@ static int cxd2820r_get_tune_settings(struct neumo_dvb_frontend *fe,
 {
 	struct cxd2820r_priv *priv = fe->demodulator_priv;
 	struct i2c_client *client = priv->client[0];
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret;
 
 	dev_dbg(&client->dev, "delivery_system=%d\n", c->delivery_system);
@@ -328,7 +328,7 @@ static enum neumo_dvbfe_search cxd2820r_search(struct neumo_dvb_frontend *fe)
 {
 	struct cxd2820r_priv *priv = fe->demodulator_priv;
 	struct i2c_client *client = priv->client[0];
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret, i;
 	enum fe_status status = 0;
 

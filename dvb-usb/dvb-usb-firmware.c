@@ -34,7 +34,7 @@ static int usb_cypress_writemem(struct usb_device *udev,u16 addr,u8 *data, u8 le
 			0xa0, USB_TYPE_VENDOR, addr, 0x00, data, len, 5000);
 }
 
-int usb_cypress_load_firmware(struct usb_device *udev, const struct firmware *fw, int type)
+int neumo_usb_cypress_load_firmware(struct usb_device *udev, const struct firmware *fw, int type)
 {
 	struct hexline *hx;
 	u8 *buf;
@@ -51,7 +51,7 @@ int usb_cypress_load_firmware(struct usb_device *udev, const struct firmware *fw
 	if (usb_cypress_writemem(udev, cpu_cs_register, buf, 1) != 1)
 		err("could not stop the USB controller CPU.");
 
-	while ((ret = dvb_usb_get_hexline(fw, hx, &pos)) > 0) {
+	while ((ret = neumo_dvb_usb_get_hexline(fw, hx, &pos)) > 0) {
 		deb_fw("writing to address 0x%04x (buffer: 0x%02x %02x)\n", hx->addr, hx->len, hx->chk);
 		ret = usb_cypress_writemem(udev, hx->addr, hx->data, hx->len);
 
@@ -82,10 +82,10 @@ int usb_cypress_load_firmware(struct usb_device *udev, const struct firmware *fw
 
 	return ret;
 }
-EXPORT_SYMBOL(usb_cypress_load_firmware);
+EXPORT_SYMBOL(neumo_usb_cypress_load_firmware);
 
 int dvb_usb_download_firmware(struct usb_device *udev,
-			      const struct dvb_usb_device_properties *props)
+			      const struct neumo_dvb_usb_device_properties *props)
 {
 	int ret;
 	const struct firmware *fw = NULL;
@@ -102,7 +102,7 @@ int dvb_usb_download_firmware(struct usb_device *udev,
 		case CYPRESS_AN2135:
 		case CYPRESS_AN2235:
 		case CYPRESS_FX2:
-			ret = usb_cypress_load_firmware(udev, fw, props->usb_ctrl);
+			ret = neumo_usb_cypress_load_firmware(udev, fw, props->usb_ctrl);
 			break;
 		case DEVICE_SPECIFIC:
 			if (props->download_firmware)
@@ -121,7 +121,7 @@ int dvb_usb_download_firmware(struct usb_device *udev,
 	return ret;
 }
 
-int dvb_usb_get_hexline(const struct firmware *fw, struct hexline *hx,
+int neumo_dvb_usb_get_hexline(const struct firmware *fw, struct hexline *hx,
 			       int *pos)
 {
 	u8 *b = (u8 *) &fw->data[*pos];
@@ -152,6 +152,6 @@ int dvb_usb_get_hexline(const struct firmware *fw, struct hexline *hx,
 
 	return *pos;
 }
-EXPORT_SYMBOL(dvb_usb_get_hexline);
+EXPORT_SYMBOL(neumo_dvb_usb_get_hexline);
 
 #include<media/neumo-check.h>

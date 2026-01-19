@@ -57,7 +57,7 @@ static int tbs5230_op_rw(struct usb_device *dev, u8 request, u16 value,
 static int tbs5230_i2c_transfer(struct i2c_adapter *adap, 
 					struct i2c_msg msg[], int num)
 {
-	struct dvb_usb_device *d = i2c_get_adapdata(adap);
+	struct neumo_dvb_usb_device *d = i2c_get_adapdata(adap);
 	int i = 0;
 	u8 buf6[35];
 	u8 inbuf[35];
@@ -107,7 +107,7 @@ static struct i2c_algorithm tbs5230_i2c_algo = {
 	.functionality = tbs5230_i2c_func,
 };
 
-static int tbs5230_read_mac_address(struct dvb_usb_device *d, u8 mac[6])
+static int tbs5230_read_mac_address(struct neumo_dvb_usb_device *d, u8 mac[6])
 {
 	int i,ret;
 	u8 ibuf[3] = {0, 0,0};
@@ -138,7 +138,7 @@ static int tbs5230_read_mac_address(struct dvb_usb_device *d, u8 mac[6])
 	return 0;
 };
 
-static struct dvb_usb_device_properties tbs5230_properties;
+static struct neumo_dvb_usb_device_properties tbs5230_properties;
 
 static struct cxd2878_config tbs5230_cfg = {
 	
@@ -157,10 +157,10 @@ static struct cxd2878_config tbs5230_cfg = {
 		.read_properties = NULL,	
 	};
 
-static int tbs5230_frontend_attach(struct dvb_usb_adapter*adap)
+static int tbs5230_frontend_attach(struct neumo_dvb_usb_adapter*adap)
 {
 
-	struct dvb_usb_device *d = adap->dev;
+	struct neumo_dvb_usb_device *d = adap->dev;
 
 	adap->fe_adap[0].fe = dvb_attach(cxd2878_attach, &tbs5230_cfg, &d->i2c_adap);
 
@@ -236,7 +236,7 @@ static int tbs5230_load_firmware(struct usb_device *dev,
 	return ret;
 }
 
-static struct dvb_usb_device_properties tbs5230_properties = {
+static struct neumo_dvb_usb_device_properties tbs5230_properties = {
 		.caps = DVB_USB_IS_AN_I2C_ADAPTER,
 		.usb_ctrl = DEVICE_SPECIFIC,
 		.firmware = "dvb-usb-id5230.fw",
@@ -283,7 +283,7 @@ static struct dvb_usb_device_properties tbs5230_properties = {
 static int tbs5230_probe(struct usb_interface *intf,
 					const struct usb_device_id*id)
 {
-	if(0 == dvb_usb_device_init(intf,&tbs5230_properties,
+	if(0 == neumo_dvb_usb_device_init(intf,&tbs5230_properties,
 		THIS_MODULE,NULL,adapter_nr)){
 		return 0;
 	}
@@ -293,7 +293,7 @@ static int tbs5230_probe(struct usb_interface *intf,
 static struct usb_driver tbs5230_driver ={
 		.name = "tbs5230",
 		.probe = tbs5230_probe,
-		.disconnect = dvb_usb_device_exit,
+		.disconnect = neumo_dvb_usb_device_exit,
 		.id_table	= tbs5230_table,
 
 };

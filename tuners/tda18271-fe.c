@@ -919,7 +919,7 @@ fail:
 
 static int tda18271_set_params(struct neumo_dvb_frontend *fe)
 {
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	u32 delsys = c->delivery_system;
 	u32 bw = c->bandwidth_hz;
 	u32 freq = c->frequency;

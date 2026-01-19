@@ -19,13 +19,13 @@ int dvb_usb_disable_rc_polling;
 module_param_named(disable_rc_polling, dvb_usb_disable_rc_polling, int, 0644);
 MODULE_PARM_DESC(disable_rc_polling, "disable remote control polling (default: 0).");
 
-static int dvb_usb_force_pid_filter_usage;
+int dvb_usb_force_pid_filter_usage;
 module_param_named(force_pid_filter_usage, dvb_usb_force_pid_filter_usage, int, 0444);
 MODULE_PARM_DESC(force_pid_filter_usage, "force all dvb-usb-devices to use a PID filter, if any (default: 0).");
 
-static int dvb_usb_adapter_init(struct dvb_usb_device *d, short *adapter_nrs)
+static int dvb_usb_adapter_init(struct neumo_dvb_usb_device *d, short *adapter_nrs)
 {
-	struct dvb_usb_adapter *adap;
+	struct neumo_dvb_usb_adapter *adap;
 	int ret, n, o;
 
 	for (n = 0; n < d->props.num_adapters; n++) {
@@ -33,10 +33,10 @@ static int dvb_usb_adapter_init(struct dvb_usb_device *d, short *adapter_nrs)
 		adap->dev = d;
 		adap->id  = n;
 
-		memcpy(&adap->props, &d->props.adapter[n], sizeof(struct dvb_usb_adapter_properties));
+		memcpy(&adap->props, &d->props.adapter[n], sizeof(struct neumo_dvb_usb_adapter_properties));
 
 		for (o = 0; o < adap->props.num_frontends; o++) {
-			struct dvb_usb_adapter_fe_properties *props = &adap->props.fe[o];
+			struct neumo_dvb_usb_adapter_fe_properties *props = &adap->props.fe[o];
 			/* speed - when running at FULL speed we need a HW PID filter */
 			if (d->udev->speed == USB_SPEED_FULL && !(props->caps & DVB_USB_ADAP_HAS_PID_FILTER)) {
 				err("This USB2.0 device cannot be run on a USB1.1 port. (it lacks a hardware PID filter)");
@@ -119,7 +119,7 @@ stream_init_err:
 	return ret;
 }
 
-static int dvb_usb_adapter_exit(struct dvb_usb_device *d)
+static int dvb_usb_adapter_exit(struct neumo_dvb_usb_device *d)
 {
 	int n;
 
@@ -136,7 +136,7 @@ static int dvb_usb_adapter_exit(struct dvb_usb_device *d)
 
 
 /* general initialization functions */
-static int dvb_usb_exit(struct dvb_usb_device *d)
+static int dvb_usb_exit(struct neumo_dvb_usb_device *d)
 {
 	deb_info("state before exiting everything: %x\n", d->state);
 	dvb_usb_remote_exit(d);
@@ -153,7 +153,7 @@ static int dvb_usb_exit(struct dvb_usb_device *d)
 	return 0;
 }
 
-static int dvb_usb_init(struct dvb_usb_device *d, short *adapter_nums)
+static int dvb_usb_init(struct neumo_dvb_usb_device *d, short *adapter_nums)
 {
 	int ret = 0;
 
@@ -166,7 +166,7 @@ static int dvb_usb_init(struct dvb_usb_device *d, short *adapter_nums)
 	if (d->props.size_of_priv > 0) {
 		d->priv = kzalloc(d->props.size_of_priv, GFP_KERNEL);
 		if (d->priv == NULL) {
-			err("no memory for priv in 'struct dvb_usb_device'");
+			err("no memory for priv in 'struct neumo_dvb_usb_device'");
 			return -ENOMEM;
 		}
 
@@ -207,10 +207,10 @@ err_priv_init:
 }
 
 /* determine the name and the state of the just found USB device */
-static const struct dvb_usb_device_description *dvb_usb_find_device(struct usb_device *udev, const struct dvb_usb_device_properties *props, int *cold)
+static const struct neumo_dvb_usb_device_description *dvb_usb_find_device(struct usb_device *udev, const struct neumo_dvb_usb_device_properties *props, int *cold)
 {
 	int i, j;
-	const struct dvb_usb_device_description *desc = NULL;
+	const struct neumo_dvb_usb_device_description *desc = NULL;
 
 	*cold = -1;
 
@@ -246,7 +246,7 @@ static const struct dvb_usb_device_description *dvb_usb_find_device(struct usb_d
 	return desc;
 }
 
-int dvb_usb_device_power_ctrl(struct dvb_usb_device *d, int onoff)
+int dvb_usb_device_power_ctrl(struct neumo_dvb_usb_device *d, int onoff)
 {
 	if (onoff)
 		d->powered++;
@@ -264,14 +264,14 @@ int dvb_usb_device_power_ctrl(struct dvb_usb_device *d, int onoff)
 /*
  * USB
  */
-int dvb_usb_device_init(struct usb_interface *intf,
-			const struct dvb_usb_device_properties *props,
-			struct module *owner, struct dvb_usb_device **du,
+int neumo_dvb_usb_device_init(struct usb_interface *intf,
+			const struct neumo_dvb_usb_device_properties *props,
+			struct module *owner, struct neumo_dvb_usb_device **du,
 			short *adapter_nums)
 {
 	struct usb_device *udev = interface_to_usbdev(intf);
-	struct dvb_usb_device *d = NULL;
-	const struct dvb_usb_device_description *desc = NULL;
+	struct neumo_dvb_usb_device *d = NULL;
+	const struct neumo_dvb_usb_device_description *desc = NULL;
 
 	int ret = -ENOMEM, cold = 0;
 
@@ -280,11 +280,11 @@ int dvb_usb_device_init(struct usb_interface *intf,
 
 	d = kzalloc(sizeof(*d), GFP_KERNEL);
 	if (!d) {
-		err("no memory for 'struct dvb_usb_device'");
+		err("no memory for 'struct neumo_dvb_usb_device'");
 		return -ENOMEM;
 	}
 
-	memcpy(&d->props, props, sizeof(struct dvb_usb_device_properties));
+	memcpy(&d->props, props, sizeof(struct neumo_dvb_usb_device_properties));
 
 	desc = dvb_usb_find_device(udev, &d->props, &cold);
 	if (!desc) {
@@ -324,11 +324,11 @@ int dvb_usb_device_init(struct usb_interface *intf,
 	kfree(d);
 	return ret;
 }
-EXPORT_SYMBOL(dvb_usb_device_init);
+EXPORT_SYMBOL(neumo_dvb_usb_device_init);
 
-void dvb_usb_device_exit(struct usb_interface *intf)
+void neumo_dvb_usb_device_exit(struct usb_interface *intf)
 {
-	struct dvb_usb_device *d = usb_get_intfdata(intf);
+	struct neumo_dvb_usb_device *d = usb_get_intfdata(intf);
 	const char *default_name = "generic DVB-USB module";
 	char name[40];
 
@@ -342,7 +342,7 @@ void dvb_usb_device_exit(struct usb_interface *intf)
 	info("%s successfully deinitialized and disconnected.", name);
 
 }
-EXPORT_SYMBOL(dvb_usb_device_exit);
+EXPORT_SYMBOL(neumo_dvb_usb_device_exit);
 
 MODULE_VERSION("1.0");
 MODULE_AUTHOR("Patrick Boettcher <patrick.boettcher@posteo.de>");

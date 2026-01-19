@@ -334,7 +334,7 @@ static int firmware_is_alive(struct mxl *state)
 
 static int init(struct neumo_dvb_frontend *fe)
 {
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 
 	/* init fe stats */
 	p->strength.len = 1;
@@ -428,7 +428,7 @@ static int send_master_cmd(struct neumo_dvb_frontend *fe,
 static int set_parameters(struct neumo_dvb_frontend *fe)
 {
 	struct mxl *state = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	struct MXL_HYDRA_DEMOD_PARAM_T demod_chan_cfg;
 	u8 cmd_size = sizeof(demod_chan_cfg);
 	u8 cmd_buff[MXL_HYDRA_OEM_MAX_CMD_BUFF_LEN];
@@ -516,7 +516,7 @@ static int read_snr(struct neumo_dvb_frontend *fe)
 	struct mxl *state = fe->demodulator_priv;
 	int stat;
 	u32 reg_data = 0;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 
 	mutex_lock(&state->base->status_lock);
 	HYDRA_DEMOD_STATUS_LOCK(state, state->demod);
@@ -535,7 +535,7 @@ static int read_snr(struct neumo_dvb_frontend *fe)
 static int read_ber(struct neumo_dvb_frontend *fe)
 {
 	struct mxl *state = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	u32 reg[8];
 
 	mutex_lock(&state->base->status_lock);
@@ -591,7 +591,7 @@ static int read_ber(struct neumo_dvb_frontend *fe)
 static int read_signal_strength(struct neumo_dvb_frontend *fe)
 {
 	struct mxl *state = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int stat;
 	u32 reg_data = 0;
 
@@ -612,7 +612,7 @@ static int read_signal_strength(struct neumo_dvb_frontend *fe)
 static int read_status(struct neumo_dvb_frontend *fe, enum fe_status *status)
 {
 	struct mxl *state = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	u32 reg_data = 0;
 
 	mutex_lock(&state->base->status_lock);
@@ -679,7 +679,7 @@ static enum fe_code_rate conv_fec(enum MXL_HYDRA_FEC_E fec)
 }
 
 static int get_frontend(struct neumo_dvb_frontend *fe,
-			struct neumo_driver_dtv_frontend_properties *p)
+			struct neumo_dtv_frontend_properties *p)
 {
 	struct mxl *state = fe->demodulator_priv;
 	u32 reg_data[MXL_DEMOD_CHAN_PARAMS_BUFF_SIZE];

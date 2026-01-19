@@ -145,10 +145,10 @@ struct analog_parameters {
  */
 enum neumo_dvbfe_algo {
 	DVBFE_ALGO_HW			= BIT(0),
-	DVBFE_ALGO_SW			= BIT(1),
+	//DVBFE_ALGO_SW			= BIT(1),
 	DVBFE_ALGO_CUSTOM		= BIT(2),
-	DVBFE_ALGO_NOTUNE		= BIT(3),
-	DVBFE_ALGO_RECOVERY		= BIT(31),
+	//DVBFE_ALGO_NOTUNE		= BIT(3),
+//	DVBFE_ALGO_RECOVERY		= BIT(31),
 };
 
 /**
@@ -329,7 +329,7 @@ struct analog_demod_ops {
 	int (*set_config)(struct neumo_dvb_frontend *fe, void *priv_cfg);
 };
 
-struct neumo_driver_dtv_frontend_properties;
+struct neumo_dtv_frontend_properties;
 
 /**
  * struct neumo_dvb_frontend_internal_info - Frontend properties and capabilities
@@ -515,7 +515,7 @@ struct neumo_dvb_frontend_ops {
 	int (*set_frontend)(struct neumo_dvb_frontend *fe);
 	int (*get_tune_settings)(struct neumo_dvb_frontend* fe, struct neumo_dvb_frontend_tune_settings* settings);
 
-	int (*get_frontend)(struct neumo_dvb_frontend *fe, struct neumo_driver_dtv_frontend_properties *props);
+	int (*get_frontend)(struct neumo_dvb_frontend *fe, struct neumo_dtv_frontend_properties *props);
 
 	int (*read_status)(struct neumo_dvb_frontend *fe, enum fe_status *status);
 	int (*read_ber)(struct neumo_dvb_frontend* fe, u32* ber);
@@ -580,7 +580,7 @@ struct neumo_dvb_fe_events {
 #endif
 
 /**
- * struct neumo_driver_dtv_frontend_properties - contains a list of properties that are
+ * struct neumo_dtv_frontend_properties - contains a list of properties that are
  *				    specific to a digital TV standard.
  *
  * @frequency:		frequency in Hz for terrestrial/cable or in kHz for Satellite
@@ -656,87 +656,12 @@ struct neumo_dvb_fe_events {
  * Userspace API.
  */
 /*TODO: we count on the fact that the first fields in this structure coincide with those in
-	struct dtv_frontend_properties.
+	struct neumo_dtv_frontend_properties.
 
 	This is asking for trouble. Either we should include dvbapi's dvb_frontend.h (risking all kinds of
 	name clashes  or check for problems  during compilation
 */
-#if 0
-struct dvb_driver_dtv_frontend_properties {
-	u32			frequency;
-	enum fe_modulation	modulation;
-
-	enum fe_sec_voltage	voltage;
-	enum fe_sec_tone_mode	sectone;
-	enum fe_spectral_inversion inversion;
-	enum fe_code_rate	fec_inner;
-	enum fe_transmit_mode	transmission_mode;
-	u32			bandwidth_hz;	/* 0 = AUTO */
-	enum fe_guard_interval	guard_interval;
-	enum fe_hierarchy	hierarchy;
-	u32			symbol_rate;
-	enum fe_code_rate	code_rate_HP;
-	enum fe_code_rate	code_rate_LP;
-
-	enum fe_pilot		pilot;
-	enum fe_rolloff		rolloff;
-
-	enum fe_delivery_system	delivery_system;
-
-	enum fe_interleaving	interleaving;
-
-	/* ISDB-T specifics */
-	u8			isdbt_partial_reception;
-	u8			isdbt_sb_mode;
-	u8			isdbt_sb_subchannel;
-	u32			isdbt_sb_segment_idx;
-	u32			isdbt_sb_segment_count;
-	u8			isdbt_layer_enabled;
-	struct {
-	    u8			segment_count;
-	    enum fe_code_rate	fec;
-	    enum fe_modulation	modulation;
-	    u8			interleaving;
-	} layer[3];
-
-	/* Multistream specifics */
-	u32			stream_id;
-
-	/* Physical Layer Scrambling specifics */
-	u32			scrambling_sequence_index;
-
-	/* ATSC-MH specifics */
-	u8			atscmh_fic_ver;
-	u8			atscmh_parade_id;
-	u8			atscmh_nog;
-	u8			atscmh_tnog;
-	u8			atscmh_sgn;
-	u8			atscmh_prc;
-
-	u8			atscmh_rs_frame_mode;
-	u8			atscmh_rs_frame_ensemble;
-	u8			atscmh_rs_code_mode_pri;
-	u8			atscmh_rs_code_mode_sec;
-	u8			atscmh_sccc_block_mode;
-	u8			atscmh_sccc_code_mode_a;
-	u8			atscmh_sccc_code_mode_b;
-	u8			atscmh_sccc_code_mode_c;
-	u8			atscmh_sccc_code_mode_d;
-
-	u32			lna;
-
-	/* statistics data */
-	struct dtv_fe_stats	strength;
-	struct dtv_fe_stats	cnr;
-	struct dtv_fe_stats	pre_bit_error;
-	struct dtv_fe_stats	pre_bit_count;
-	struct dtv_fe_stats	post_bit_error;
-	struct dtv_fe_stats	post_bit_count;
-	struct dtv_fe_stats	block_error;
-	struct dtv_fe_stats	block_count;
-};
-#endif
-	struct neumo_driver_dtv_frontend_properties {
+	struct neumo_dtv_frontend_properties {
 	u32			frequency;
 	enum fe_modulation	modulation;
 
@@ -856,6 +781,7 @@ struct dvb_driver_dtv_frontend_properties {
 #define DVB_FE_DEVICE_REMOVED   2
 #define DVB_FE_DEVICE_RESUME    3
 
+
 /**
  * struct neumo_dvb_frontend - Frontend structure to be used on drivers.
  *
@@ -868,14 +794,13 @@ struct dvb_driver_dtv_frontend_properties {
  * @frontend_priv:	frontend private data
  * @sec_priv:		SEC private data
  * @analog_demod_priv:	Analog demod private data
- * @dtv_property_cache:	embedded &struct neumo_driver_dtv_frontend_properties
+ * @dtv_property_cache:	embedded &struct neumo_dtv_frontend_properties
  * @callback:		callback function used on some drivers to call
  *			either the tuner or the demodulator.
  * @id:			Frontend ID
  * @exit:		Used to inform the DVB core that the frontend
  *			thread should exit (usually, means that the hardware
  *			got disconnected.
- * @algo_state:		Used for communication with long running task
  */
 
 struct neumo_dvb_frontend {
@@ -887,11 +812,8 @@ struct neumo_dvb_frontend {
 	void *frontend_priv;
 	void *sec_priv;
 	void *analog_demod_priv;
-	struct neumo_driver_dtv_frontend_properties dtv_property_cache;
+	struct neumo_dtv_frontend_properties dtv_property_cache;
 
-#if 0 //neumo, destroys binary compatibility with standard kernel
-	struct neumo_dtv_fe_algo_state algo_state;
-#endif
 #define DVB_FRONTEND_COMPONENT_TUNER 0
 #define DVB_FRONTEND_COMPONENT_DEMOD 1
 	int (*callback)(void *adapter_priv, int component, int cmd, int arg);
@@ -1000,7 +922,7 @@ int dvb_frontend_resume(struct dvb_frontend *fe);
  * frontend.
  */
 void neumo_dvb_frontend_reinitialise(struct neumo_dvb_frontend *fe);
-void dvb_frontend_reinitialise(struct dvb_frontend *fe);
+
 
 /**
  * dvb_frontend_sleep_until() - Sleep for the amount of time given by

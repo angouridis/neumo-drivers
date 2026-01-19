@@ -67,7 +67,7 @@ static int tbs5520_op_rw(struct usb_device *dev, u8 request, u16 value,
 static int tbs5520_i2c_transfer(struct i2c_adapter *adap,
 				struct i2c_msg msg[], int num)
 {
-	struct dvb_usb_device *d = i2c_get_adapdata(adap);
+	struct neumo_dvb_usb_device *d = i2c_get_adapdata(adap);
 	int i;
 	u8 txbuf[64];
 
@@ -218,7 +218,7 @@ static struct i2c_algorithm tbs5520_i2c_algo = {
 	.functionality = tbs5520_i2c_func,
 };
 
-static int tbs5520_read_mac_address(struct dvb_usb_device *d, u8 mac[6])
+static int tbs5520_read_mac_address(struct neumo_dvb_usb_device *d, u8 mac[6])
 {
 
 	int i,ret;
@@ -254,9 +254,9 @@ return 0;
 	return 0;
 };
 
-static struct dvb_usb_device_properties tbs5520_properties;
+static struct neumo_dvb_usb_device_properties tbs5520_properties;
 
-static int tbs5520_frontend_attach(struct dvb_usb_adapter *d)
+static int tbs5520_frontend_attach(struct neumo_dvb_usb_adapter *d)
 {
 	u8 buf[2];
 
@@ -291,7 +291,7 @@ err:
 	return -ENODEV;
 }
 
-static int tbs5520_rc_query(struct dvb_usb_device *d)
+static int tbs5520_rc_query(struct neumo_dvb_usb_device *d)
 {
 	u8 key[2];
 	struct i2c_msg msg = {
@@ -379,7 +379,7 @@ static int tbs5520_load_firmware(struct usb_device *dev,
 	return ret;
 }
 
-static struct dvb_usb_device_properties tbs5520_properties = {
+static struct neumo_dvb_usb_device_properties tbs5520_properties = {
 	.caps = DVB_USB_IS_AN_I2C_ADAPTER,
 	.usb_ctrl = DEVICE_SPECIFIC,
 	.firmware = "dvb-usb-tbs5520-01.fw",
@@ -429,7 +429,7 @@ static struct dvb_usb_device_properties tbs5520_properties = {
 static int tbs5520_probe(struct usb_interface *intf,
 		const struct usb_device_id *id)
 {
-	if (0 == dvb_usb_device_init(intf, &tbs5520_properties,
+	if (0 == neumo_dvb_usb_device_init(intf, &tbs5520_properties,
 			THIS_MODULE, NULL, adapter_nr)) {
 		return 0;
 	}
@@ -439,7 +439,7 @@ static int tbs5520_probe(struct usb_interface *intf,
 static struct usb_driver tbs5520_driver = {
 	.name = "tbs5520",
 	.probe = tbs5520_probe,
-	.disconnect = dvb_usb_device_exit,
+	.disconnect = neumo_dvb_usb_device_exit,
 	.id_table = tbs5520_table,
 };
 

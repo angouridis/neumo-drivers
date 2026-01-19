@@ -1925,7 +1925,7 @@ static int m88rs6060_set_frontend(struct dvb_frontend *fe)
 	struct i2c_client *client = fe->demodulator_priv;
 	struct m88rs6060_dev *dev = i2c_get_clientdata(client);
 	struct i2c_adapter *i2c = dev->base->i2c;
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret;
 	u32 symbol_rate_KSs;
 	unsigned tmp, tmp1;
@@ -2213,7 +2213,7 @@ static int m88rs6060_init(struct dvb_frontend *fe)
 	struct i2c_client *client = fe->demodulator_priv;
 	struct m88rs6060_dev *dev = i2c_get_clientdata(client);
 	struct i2c_adapter *i2c = dev->base->i2c;
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 
 	/*warm state */
 	dev->warm = true;
@@ -2623,7 +2623,7 @@ static int m88rs6060_read_status(struct dvb_frontend *fe,
 		struct i2c_client *client = fe->demodulator_priv;
 	struct m88rs6060_dev *dev = i2c_get_clientdata(client);
 	struct i2c_adapter *i2c = dev->base->i2c;
-	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret, i, itmp;
 	unsigned int utmp;
 	u8 buf[3];
@@ -2881,7 +2881,7 @@ static int m88rs6060_read_status(struct dvb_frontend *fe,
 
 static int m88rs6060_read_snr(struct dvb_frontend *fe, u16 * snr)
 {
-	struct dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int i;
 
 	*snr = 0;
@@ -2894,7 +2894,7 @@ static int m88rs6060_read_snr(struct dvb_frontend *fe, u16 * snr)
 
 static int m88rs6060_read_ber(struct dvb_frontend *fe, u32 * ber)
 {
-	struct dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 
 	if ( p->post_bit_error.stat[0].scale == FE_SCALE_COUNTER &&
 		p->post_bit_count.stat[0].scale == FE_SCALE_COUNTER )
@@ -2907,7 +2907,7 @@ static int m88rs6060_read_ber(struct dvb_frontend *fe, u32 * ber)
 static int m88rs6060_read_signal_strength(struct dvb_frontend *fe,
 					  u16 * strength)
 {
-	struct dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int i;
 
 	*strength = 0;
@@ -3186,7 +3186,7 @@ static int m88rs6060_tune(struct dvb_frontend *fe, bool re_tune,
 
 	return 0;
 }
-static int m88rs6060_get_frontend(struct dvb_frontend *fe, struct dtv_frontend_properties *p)
+static int m88rs6060_get_frontend(struct dvb_frontend *fe, struct neumo_dtv_frontend_properties *p)
 {
 	struct i2c_client *client = fe->demodulator_priv;
 	struct m88rs6060_dev *dev = i2c_get_clientdata(client);

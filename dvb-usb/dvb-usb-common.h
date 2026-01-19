@@ -10,7 +10,7 @@
 #define _DVB_USB_COMMON_H_
 
 #define DVB_USB_LOG_PREFIX "dvb-usb"
-#include "dvb-usb.h"
+#include "neumo-dvb-usb.h"
 
 extern int dvb_usb_debug;
 extern int dvb_usb_disable_rc_polling;
@@ -27,28 +27,28 @@ extern int dvb_usb_disable_rc_polling;
 
 /* commonly used  methods */
 int dvb_usb_download_firmware(struct usb_device *udev,
-			      const struct dvb_usb_device_properties *props);
+			      const struct neumo_dvb_usb_device_properties *props);
 
-extern int dvb_usb_device_power_ctrl(struct dvb_usb_device *d, int onoff);
+extern int dvb_usb_device_power_ctrl(struct neumo_dvb_usb_device *d, int onoff);
 
 extern int usb_urb_init(struct usb_data_stream *stream, struct usb_data_stream_properties *props);
 extern int usb_urb_exit(struct usb_data_stream *stream);
 extern int usb_urb_submit(struct usb_data_stream *stream);
 extern int usb_urb_kill(struct usb_data_stream *stream);
 
-extern int dvb_usb_adapter_stream_init(struct dvb_usb_adapter *adap);
-extern int dvb_usb_adapter_stream_exit(struct dvb_usb_adapter *adap);
+extern int dvb_usb_adapter_stream_init(struct neumo_dvb_usb_adapter *adap);
+extern int dvb_usb_adapter_stream_exit(struct neumo_dvb_usb_adapter *adap);
 
-extern int dvb_usb_i2c_init(struct dvb_usb_device *);
-extern int dvb_usb_i2c_exit(struct dvb_usb_device *);
+extern int dvb_usb_i2c_init(struct neumo_dvb_usb_device *);
+extern int dvb_usb_i2c_exit(struct neumo_dvb_usb_device *);
 
-extern int dvb_usb_adapter_dvb_init(struct dvb_usb_adapter *adap,
+extern int dvb_usb_adapter_dvb_init(struct neumo_dvb_usb_adapter *adap,
 				    short *adapter_nums);
-extern int dvb_usb_adapter_dvb_exit(struct dvb_usb_adapter *adap);
-extern int dvb_usb_adapter_frontend_init(struct dvb_usb_adapter *adap);
-extern int dvb_usb_adapter_frontend_exit(struct dvb_usb_adapter *adap);
+extern int dvb_usb_adapter_dvb_exit(struct neumo_dvb_usb_adapter *adap);
+extern int dvb_usb_adapter_frontend_init(struct neumo_dvb_usb_adapter *adap);
+extern int dvb_usb_adapter_frontend_exit(struct neumo_dvb_usb_adapter *adap);
 
-extern int dvb_usb_remote_init(struct dvb_usb_device *);
-extern int dvb_usb_remote_exit(struct dvb_usb_device *);
+extern int dvb_usb_remote_init(struct neumo_dvb_usb_device *);
+extern int dvb_usb_remote_exit(struct neumo_dvb_usb_device *);
 
 #endif

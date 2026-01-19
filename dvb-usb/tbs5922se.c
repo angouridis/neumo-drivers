@@ -74,7 +74,7 @@ static int tbs5922se_op_rw(struct usb_device *dev, u8 request, u16 value,
 static int tbs5922se_i2c_transfer(struct i2c_adapter *adap, struct i2c_msg msg[],
 		int num)
 {
-	struct dvb_usb_device *d = i2c_get_adapdata(adap);
+	struct neumo_dvb_usb_device *d = i2c_get_adapdata(adap);
 	int i = 0;
 	u8 buf[20];
 
@@ -145,7 +145,7 @@ static struct i2c_algorithm tbs5922se_i2c_algo = {
 };
 
 
-static int tbs5922se_read_mac_address(struct dvb_usb_device *d, u8 mac[6])
+static int tbs5922se_read_mac_address(struct neumo_dvb_usb_device *d, u8 mac[6])
 {
 	int i,ret;
 	u8 buf[3];
@@ -176,7 +176,7 @@ static int tbs5922se_read_mac_address(struct dvb_usb_device *d, u8 mac[6])
 	return 0;
 };
 
-static struct dvb_usb_device_properties tbs5922se_properties;
+static struct neumo_dvb_usb_device_properties tbs5922se_properties;
 
 
 static struct tas2101_config tbs5922_cfg = {
@@ -194,9 +194,9 @@ static struct av201x_config tbs5922_av201x_cfg = {
 	.xtal_freq   = 27000,		/* kHz */
 };
 
-static int tbs5922se_frontend_attach(struct dvb_usb_adapter *d)
+static int tbs5922se_frontend_attach(struct neumo_dvb_usb_adapter *d)
 {
-	struct dvb_usb_device *u = d->dev;
+	struct neumo_dvb_usb_device *u = d->dev;
 	u8 buf[20];
 
 	d->fe_adap->fe = dvb_attach(tas2101_attach, &tbs5922_cfg,
@@ -230,7 +230,7 @@ err:
 	return -ENODEV;
 }
 
-static int tbs5922se_rc_query(struct dvb_usb_device *d)
+static int tbs5922se_rc_query(struct neumo_dvb_usb_device *d)
 {
 	u8 key[2];
 	struct i2c_msg msg = {
@@ -319,7 +319,7 @@ static int tbs5922se_load_firmware(struct usb_device *dev,
 	return ret;
 }
 
-static struct dvb_usb_device_properties tbs5922se_properties = {
+static struct neumo_dvb_usb_device_properties tbs5922se_properties = {
 	.caps = DVB_USB_IS_AN_I2C_ADAPTER,
 	.usb_ctrl = DEVICE_SPECIFIC,
 	.firmware = "dvb-usb-tbsqbox-id5923.fw",
@@ -369,7 +369,7 @@ static struct dvb_usb_device_properties tbs5922se_properties = {
 static int tbs5922se_probe(struct usb_interface *intf,
 		const struct usb_device_id *id)
 {
-	if (0 == dvb_usb_device_init(intf, &tbs5922se_properties,
+	if (0 == neumo_dvb_usb_device_init(intf, &tbs5922se_properties,
 			THIS_MODULE, NULL, adapter_nr)) {
 		return 0;
 	}
@@ -379,7 +379,7 @@ static int tbs5922se_probe(struct usb_interface *intf,
 static struct usb_driver tbs5922se_driver = {
 	.name = "tbs5922se",
 	.probe = tbs5922se_probe,
-	.disconnect = dvb_usb_device_exit,
+	.disconnect = neumo_dvb_usb_device_exit,
 	.id_table = tbs5922se_table,
 };
 

@@ -198,7 +198,7 @@ static int gx1503_set_frontend(struct neumo_dvb_frontend *fe)
 {
 	struct i2c_client *client = fe->demodulator_priv;
 	struct gx1503_dev *dev = i2c_get_clientdata(client);
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret,temp;
 	int bandwidth,fs;
 
@@ -361,7 +361,7 @@ err:
 
 static int gx1503_read_snr(struct neumo_dvb_frontend * fe,u16 * snr)
 {
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct i2c_client *client = fe->demodulator_priv;
 	struct gx1503_dev *dev = i2c_get_clientdata(client);
 	unsigned int Hl,Hh;
@@ -408,7 +408,7 @@ static int gx1503_read_snr(struct neumo_dvb_frontend * fe,u16 * snr)
 }
 static int gx1503_read_strength(struct neumo_dvb_frontend*fe, u16 *strength)
 {
-    struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+    struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
     int i = 0;
 
     *strength = 0;

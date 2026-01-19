@@ -2154,7 +2154,7 @@ err:
 static int cxd2878_set_dvbt(struct neumo_dvb_frontend *fe)
 {
 	struct cxd2878_dev *dev = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret= 0;
 
 	if(dev->base->config->LED_switch)
@@ -2483,7 +2483,7 @@ err:
 static int cxd2878_set_dvbt2(struct neumo_dvb_frontend *fe)
 {
 	struct cxd2878_dev *dev = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret= 0;
 
 	if(dev->base->config->LED_switch)
@@ -2881,7 +2881,7 @@ err:
 static int cxd2878_set_isdbt(struct neumo_dvb_frontend *fe)
 {
 	struct cxd2878_dev *dev = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret= 0;
 
 	if(dev->base->config->LED_switch)
@@ -3025,7 +3025,7 @@ err:
 static int cxd2878_set_mcns(struct neumo_dvb_frontend *fe)
 {
 	struct cxd2878_dev *dev = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret= 0;
 
 	if(dev->base->config->LED_switch)
@@ -3196,7 +3196,7 @@ static void cxd2878_lock_flag(struct cxd2878_dev *dev,bool enable)
 static int cxd2878_init(struct neumo_dvb_frontend *fe)
 {
 	struct cxd2878_dev*dev = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 
 	int ret;
 
@@ -3308,7 +3308,7 @@ static int cxd2878_read_status(struct neumo_dvb_frontend *fe,
 											enum fe_status *status)
 {
 	struct cxd2878_dev *dev = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret = 0;
 	u8 data = 0;
 	u8 syncstat ,tslockstat,unlockdetected,vqlockstat=0;
@@ -3724,7 +3724,7 @@ err:
 static int cxd2878_set_frontend(struct neumo_dvb_frontend *fe)
 {
 	struct cxd2878_dev *dev = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret = 0;
 
 	dev_dbg(&dev->base->i2c->dev,
@@ -3866,7 +3866,7 @@ static enum neumo_dvbfe_algo cxd2878_get_algo(struct neumo_dvb_frontend *fe)
 static int cxd2878_read_ber(struct neumo_dvb_frontend *fe ,
 							u32 *ber)
 {
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 
 	if ( p->post_bit_error.stat[0].scale == FE_SCALE_COUNTER &&
 		p->post_bit_count.stat[0].scale == FE_SCALE_COUNTER )
@@ -3879,7 +3879,7 @@ static int cxd2878_read_ber(struct neumo_dvb_frontend *fe ,
 static int cxd2878_read_signal_strength(struct neumo_dvb_frontend*fe,
 							u16*strength)
 {
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int i;
 
 	*strength = 0;
@@ -3892,7 +3892,7 @@ static int cxd2878_read_signal_strength(struct neumo_dvb_frontend*fe,
 static int cxd2878_read_snr(struct neumo_dvb_frontend *fe,
 							u16*snr)
 {
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int i;
 
 	*snr = 0;

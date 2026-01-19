@@ -199,7 +199,7 @@ int m88rs6060_get_spectrum_scan_fft(struct neumo_dvb_frontend *fe,
 																	unsigned int *delay, enum fe_status *status)
 {
 
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	struct m88rs6060_state* state = fe->demodulator_priv;
 	struct spectrum_scan_state* ss = &state->spectrum_scan_state;
 	int error=0;

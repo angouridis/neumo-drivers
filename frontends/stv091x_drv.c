@@ -767,7 +767,7 @@ static int set_mclock(struct stv *state, u32 MasterClock)
 static int wait_for_dmdlock(struct neumo_dvb_frontend *fe, bool require_data)
 {
 	struct stv *state = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	u16 timeout = 0;
 	u16 timer = 0;
 	u8 lock = 0;
@@ -1062,7 +1062,7 @@ static u32 stv091x_bandwidth(u32 rolloff, uint32_t symbol_rate)
 
 static int stv091x_set_frequency_symbol_rate_bandwidth(struct stv* state)
 {
-	struct neumo_driver_dtv_frontend_properties *p = &state->fe.dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &state->fe.dtv_property_cache;
 	state-> tuner_frequency = p->frequency;
 	if(state->satellite_scan) {
 		state->tuner_bw = 2*36000000; 	/* Use maximal bandwidth */
@@ -1095,7 +1095,7 @@ static int stv091x_set_frequency_symbol_rate_bandwidth(struct stv* state)
 }
 
 
-static int stv091x_set_search_range(struct stv *state, struct neumo_driver_dtv_frontend_properties *p)
+static int stv091x_set_search_range(struct stv *state, struct neumo_dtv_frontend_properties *p)
 {
 	s32 range;
 	dprintk("ALGO=%d\n", p->algorithm);
@@ -1151,7 +1151,7 @@ static int stv091x_set_search_range(struct stv *state, struct neumo_driver_dtv_f
 }
 
 #if 0 //unused
-static void stv091x_set_viterbi(struct stv* state, struct neumo_driver_dtv_frontend_properties *p)
+static void stv091x_set_viterbi(struct stv* state, struct neumo_dtv_frontend_properties *p)
 {
 
 	s32 fecmReg,
@@ -1225,7 +1225,7 @@ static void stv091x_set_viterbi(struct stv* state, struct neumo_driver_dtv_front
 }
 #endif
 
-static int stv091x_set_search_standard(struct stv *state, struct neumo_driver_dtv_frontend_properties *p)
+static int stv091x_set_search_standard(struct stv *state, struct neumo_dtv_frontend_properties *p)
 {
 	u8 regDMDCFGMD;
 
@@ -1262,7 +1262,7 @@ static int stv091x_set_search_standard(struct stv *state, struct neumo_driver_dt
 	return 0;
 }
 
-static int stv091x_start_scan(struct stv *state, struct neumo_driver_dtv_frontend_properties *p)
+static int stv091x_start_scan(struct stv *state, struct neumo_dtv_frontend_properties *p)
 {
 	dprintk("freq=%d symbol_rate=%d\n", p->frequency, state->symbol_rate);
 	//set register to detault: citroen2 phase detection, open carrier1 loop (no derotator()
@@ -1469,7 +1469,7 @@ static void release(struct neumo_dvb_frontend *fe)
 
 static int stv091x_isi_scan(struct neumo_dvb_frontend *fe)
 {
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	struct stv *state = fe->demodulator_priv;
 	u8 CurrentISI;
 	u8 matype;
@@ -1524,9 +1524,10 @@ static int stv091x_isi_scan(struct neumo_dvb_frontend *fe)
 #ifdef TODO
 		}
 #endif
-		dprintk("XXXX i=%d matype=%d currentISI=%d state->signal_info.isi=%d\n",
+#if 0
+		dprintk("i=%d matype=%d currentISI=%d state->signal_info.isi=%d\n",
 						i, matype, CurrentISI, state->signal_info.isi);
-
+#endif
 		msleep(10);
 	}
 	//restore proper mis
@@ -1566,7 +1567,7 @@ static int stv091x_get_standard(struct neumo_dvb_frontend *fe)
 static bool stv091x_get_signal_info(struct neumo_dvb_frontend *fe)
 {
 	bool need_retune = false;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	struct stv *state = fe->demodulator_priv;
 	u8 regs[2];
 	u32 bandwidth_hz;
@@ -1632,7 +1633,7 @@ static bool stv091x_get_signal_info(struct neumo_dvb_frontend *fe)
 static int pls_search_list(struct neumo_dvb_frontend *fe)
 {
 	struct stv *state = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int i = 0;
 	int locked = 0;
 	for(i=0; i<p->pls_search_codes_len;++i) {
@@ -1669,7 +1670,7 @@ static int pls_search_list(struct neumo_dvb_frontend *fe)
 static int pls_search_range(struct neumo_dvb_frontend *fe)
 {
 	struct stv *state = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	u32 pls_code = 0;
 	int locked = 0;
 	u8 timeout = p->pls_search_range_start & 0xff;
@@ -1721,7 +1722,7 @@ static int pls_search_range(struct neumo_dvb_frontend *fe)
 
 
 
-static int get_frontend(struct neumo_dvb_frontend *fe, struct neumo_driver_dtv_frontend_properties *p)
+static int get_frontend(struct neumo_dvb_frontend *fe, struct neumo_dtv_frontend_properties *p)
 {
 	struct stv *state = fe->demodulator_priv;
 	u8 tmp;
@@ -1866,7 +1867,7 @@ static s32 stv091x_narrow_band_signal_power_dbm(struct neumo_dvb_frontend *fe)
 	return (x-y) + (-520 - stv091x_agc1_power_gain_dbm(state)) +7991; //unit is 0.001dB
 }
 
-static void init_signal_quality(struct neumo_dvb_frontend* fe, struct neumo_driver_dtv_frontend_properties *p)
+static void init_signal_quality(struct neumo_dvb_frontend* fe, struct neumo_dtv_frontend_properties *p)
 {
 	s32 signal_strength; //unit=0.001dB
 	signal_strength = stv091x_signal_power_dbm(fe); //unit=0.001dB
@@ -1889,7 +1890,7 @@ static void init_signal_quality(struct neumo_dvb_frontend* fe, struct neumo_driv
 static int stv091x_read_status_(struct neumo_dvb_frontend* fe, enum fe_status *status)
 {
 	struct stv *state = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	u8 DmdState = 0;
 	u8 tmg_locked = 0;
 	u8 DStatus = 0;
@@ -2302,7 +2303,7 @@ static int scan_within_tuner_bw(struct neumo_dvb_frontend *fe, bool* locked_ret)
 	int asperity = 0;
 	s32 frequency_jump=0;
 	struct stv *state = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	BUG_ON(!state->satellite_scan);
 	state->signal_info.has_timedout=false;
 	//u32 IF;
@@ -2367,7 +2368,7 @@ static int scan_within_tuner_bw(struct neumo_dvb_frontend *fe, bool* locked_ret)
 static int stv091x_tune_once(struct neumo_dvb_frontend *fe, bool* need_retune)
 {
 	struct stv* state = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	struct stv_signal_info* signal_info = &state->signal_info;
 	bool locked;
 	memset(signal_info, 0, sizeof(*signal_info));
@@ -2460,7 +2461,7 @@ static int stv091x_tune(struct neumo_dvb_frontend *fe, bool re_tune,
 								unsigned int mode_flags, unsigned int *delay, enum fe_status *status)
 {
 	struct stv *state = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int r;
 	bool need_retune = false;// could be set during blind search
 
@@ -2535,7 +2536,7 @@ static int stv091x_sat_scan(struct neumo_dvb_frontend *fe, bool init,
 														unsigned int *delay,  enum fe_status *status)
 {
 	struct stv *state = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int asperity;
 	bool locked = false;
 	if(init) {
@@ -2729,7 +2730,7 @@ static int sleep(struct neumo_dvb_frontend *fe)
 
 static int read_signal_strength(struct neumo_dvb_frontend *fe, u16 *strength)
 {
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int i;
 	struct stv* state = fe->demodulator_priv;
 	mutex_lock(&state->base->status_lock);
@@ -2748,7 +2749,7 @@ static int read_signal_strength(struct neumo_dvb_frontend *fe, u16 *strength)
 
 static int read_snr(struct neumo_dvb_frontend *fe, u16 *snr)
 {
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int i;
 	struct stv* state = fe->demodulator_priv;
 	mutex_lock(&state->base->status_lock);
@@ -2764,7 +2765,7 @@ static int read_snr(struct neumo_dvb_frontend *fe, u16 *snr)
 
 static int read_ber(struct neumo_dvb_frontend *fe, u32 *ber)
 {
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	struct stv* state = fe->demodulator_priv;
 	mutex_lock(&state->base->status_lock);
 	if ( p->pre_bit_error.stat[0].scale == FE_SCALE_COUNTER &&
@@ -2810,7 +2811,7 @@ static int stv091x_spectrum_start(struct neumo_dvb_frontend *fe,
 																	unsigned int *delay, enum fe_status *status)
 {
 	struct stv *state = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	struct stv_spectrum_scan_state* ss = &state->scan_state;
 	int i;
 	u32 start_frequency = p->scan_start_frequency;

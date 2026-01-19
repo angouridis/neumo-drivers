@@ -68,7 +68,7 @@ static int tbs5880_op_rw(struct usb_device *dev, u8 request, u16 value,
 static int tbs5880_read_attribute_mem(struct dvb_ca_en50221 *ca,
                                                 	int slot, int address)
 {
-	struct dvb_usb_device *d = (struct dvb_usb_device *)ca->data;
+	struct neumo_dvb_usb_device *d = (struct neumo_dvb_usb_device *)ca->data;
 	struct tbs5880_state *state = (struct tbs5880_state *)d->priv;
 	u8 buf[4], rbuf[3];
 	int ret;
@@ -104,7 +104,7 @@ static int tbs5880_read_attribute_mem(struct dvb_ca_en50221 *ca,
 static int tbs5880_write_attribute_mem(struct dvb_ca_en50221 *ca,
 						int slot, int address, u8 value)
 {
-	struct dvb_usb_device *d = (struct dvb_usb_device *)ca->data;
+	struct neumo_dvb_usb_device *d = (struct neumo_dvb_usb_device *)ca->data;
 	struct tbs5880_state *state = (struct tbs5880_state *)d->priv;
 	u8 buf[5];//, rbuf[1];
 	int ret;
@@ -139,7 +139,7 @@ static int tbs5880_write_attribute_mem(struct dvb_ca_en50221 *ca,
 static int tbs5880_read_cam_control(struct dvb_ca_en50221 *ca, int slot,
 								u8 address)
 {
-	struct dvb_usb_device *d = (struct dvb_usb_device *)ca->data;
+	struct neumo_dvb_usb_device *d = (struct neumo_dvb_usb_device *)ca->data;
 	struct tbs5880_state *state = (struct tbs5880_state *)d->priv;
 	u8 buf[4], rbuf[1];
 	int ret;
@@ -173,7 +173,7 @@ static int tbs5880_read_cam_control(struct dvb_ca_en50221 *ca, int slot,
 static int tbs5880_write_cam_control(struct dvb_ca_en50221 *ca, int slot,
 							u8 address, u8 value)
 {
-	struct dvb_usb_device *d = (struct dvb_usb_device *)ca->data;
+	struct neumo_dvb_usb_device *d = (struct neumo_dvb_usb_device *)ca->data;
 	struct tbs5880_state *state = (struct tbs5880_state *)d->priv;
 	u8 buf[5];//, rbuf[1];
 	int ret;
@@ -208,7 +208,7 @@ static int tbs5880_write_cam_control(struct dvb_ca_en50221 *ca, int slot,
 static int tbs5880_set_video_port(struct dvb_ca_en50221 *ca,
 							int slot, int enable)
 {
-	struct dvb_usb_device *d = (struct dvb_usb_device *)ca->data;
+	struct neumo_dvb_usb_device *d = (struct neumo_dvb_usb_device *)ca->data;
 	struct tbs5880_state *state = (struct tbs5880_state *)d->priv;
 	u8 buf[2];
 	int ret;
@@ -250,7 +250,7 @@ static int tbs5880_slot_ts_enable(struct dvb_ca_en50221 *ca, int slot)
 
 static int tbs5880_slot_reset(struct dvb_ca_en50221 *ca, int slot)
 {
-	struct dvb_usb_device *d = (struct dvb_usb_device *)ca->data;
+	struct neumo_dvb_usb_device *d = (struct neumo_dvb_usb_device *)ca->data;
 	struct tbs5880_state *state = (struct tbs5880_state *)d->priv;
 	u8 buf[2];
 	int ret;
@@ -287,7 +287,7 @@ static int tbs5880_slot_reset(struct dvb_ca_en50221 *ca, int slot)
 static int tbs5880_poll_slot_status(struct dvb_ca_en50221 *ca,
 							int slot, int open)
 {
-	struct dvb_usb_device *d = (struct dvb_usb_device *)ca->data;
+	struct neumo_dvb_usb_device *d = (struct neumo_dvb_usb_device *)ca->data;
 	struct tbs5880_state *state = (struct tbs5880_state *)d->priv;
 	u8 buf[3];
 
@@ -309,7 +309,7 @@ static int tbs5880_poll_slot_status(struct dvb_ca_en50221 *ca,
 	}
 }
 
-static void tbs5880_uninit(struct dvb_usb_device *d)
+static void tbs5880_uninit(struct neumo_dvb_usb_device *d)
 {
 	struct tbs5880_state *state;
 	struct i2c_client *client;
@@ -339,10 +339,10 @@ static void tbs5880_uninit(struct dvb_usb_device *d)
 	memset(&state->ca, 0, sizeof(state->ca));
 }
 
-static int tbs5880_init(struct dvb_usb_adapter *a)
+static int tbs5880_init(struct neumo_dvb_usb_adapter *a)
 {
 
-	struct dvb_usb_device *d = a->dev;
+	struct neumo_dvb_usb_device *d = a->dev;
 	struct tbs5880_state *state = (struct tbs5880_state *)d->priv;
 	int ret;
 
@@ -379,7 +379,7 @@ static int tbs5880_init(struct dvb_usb_adapter *a)
 static int tbs5880_i2c_transfer(struct i2c_adapter *adap,
 					struct i2c_msg msg[], int num)
 {
-	struct dvb_usb_device *d = i2c_get_adapdata(adap);
+	struct neumo_dvb_usb_device *d = i2c_get_adapdata(adap);
 	struct tbs5880_state *state = (struct tbs5880_state *)d->priv;
 	int i = 0;
 	u8 buf6[20];
@@ -469,7 +469,7 @@ static struct i2c_algorithm tbs5880_i2c_algo = {
 	.functionality = tbs5880_i2c_func,
 };
 
-static int tbs5880_read_mac_address(struct dvb_usb_device *d, u8 mac[6])
+static int tbs5880_read_mac_address(struct neumo_dvb_usb_device *d, u8 mac[6])
 {
 	int i,ret;
 	u8 ibuf[3] = {0, 0,0};
@@ -510,15 +510,15 @@ static void tbs5880_led_ctrl(struct neumo_dvb_frontend *fe, int offon)
 		.buf = led_off,
 		.len = 1
 	};
-	struct dvb_usb_adapter *udev_adap =
-		(struct dvb_usb_adapter *)(fe->dvb->priv);
+	struct neumo_dvb_usb_adapter *udev_adap =
+		(struct neumo_dvb_usb_adapter *)(fe->dvb->priv);
 
 	if (offon)
 		msg.buf = led_on;
 	i2c_transfer(&udev_adap->dev->i2c_adap, &msg, 1);
 }
 
-static struct dvb_usb_device_properties tbs5880_properties;
+static struct neumo_dvb_usb_device_properties tbs5880_properties;
 
 static struct cxd2820r_config cxd2820r_config = {
 	.i2c_address = 0x6c, /* (0xd8 >> 1) */
@@ -537,9 +537,9 @@ static struct tda18212_config tda18212_config = {
 	.if_dvbc = 5000,
 };
 
-static int tbs5880_tuner_attach(struct dvb_usb_adapter *adap)
+static int tbs5880_tuner_attach(struct neumo_dvb_usb_adapter *adap)
 {
-	struct dvb_usb_device *d = adap->dev;
+	struct neumo_dvb_usb_device *d = adap->dev;
 	struct tbs5880_state *state = (struct tbs5880_state *)d->priv;
 
 	struct i2c_adapter *adapter = &d->i2c_adap;
@@ -571,9 +571,9 @@ err:
 	return -ENODEV;
 }
 
-static int tbs5880_frontend_attach(struct dvb_usb_adapter *d)
+static int tbs5880_frontend_attach(struct neumo_dvb_usb_adapter *d)
 {
-	struct dvb_usb_device *u = d->dev;
+	struct neumo_dvb_usb_device *u = d->dev;
 	struct tbs5880_state *state = (struct tbs5880_state *)u->priv;
 	u8 buf[20];
 
@@ -600,13 +600,13 @@ static int tbs5880_frontend_attach(struct dvb_usb_adapter *d)
 
 static void tbs58802_usb_disconnect (struct usb_interface * intf)
 {
-	struct dvb_usb_device *d = usb_get_intfdata (intf);
+	struct neumo_dvb_usb_device *d = usb_get_intfdata (intf);
 
 	tbs5880_uninit (d);
-	dvb_usb_device_exit (intf);
+	neumo_dvb_usb_device_exit (intf);
 }
 
-static int tbs5880_rc_query(struct dvb_usb_device *d)
+static int tbs5880_rc_query(struct neumo_dvb_usb_device *d)
 {
 	u8 key[2];
 	struct i2c_msg msg = {
@@ -692,7 +692,7 @@ static int tbs5880_load_firmware(struct usb_device *dev,
 	return ret;
 }
 
-static struct dvb_usb_device_properties tbs5880_properties = {
+static struct neumo_dvb_usb_device_properties tbs5880_properties = {
 	.caps = DVB_USB_IS_AN_I2C_ADAPTER,
 	.usb_ctrl = DEVICE_SPECIFIC,
 	.firmware = "dvb-usb-tbsqbox-id5880.fw",
@@ -744,7 +744,7 @@ static struct dvb_usb_device_properties tbs5880_properties = {
 static int tbs5880_probe(struct usb_interface *intf,
 		const struct usb_device_id *id)
 {
-	if (0 == dvb_usb_device_init(intf, &tbs5880_properties,
+	if (0 == neumo_dvb_usb_device_init(intf, &tbs5880_properties,
 			THIS_MODULE, NULL, adapter_nr)) {
 		return 0;
 	}

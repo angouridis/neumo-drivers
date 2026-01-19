@@ -1602,7 +1602,7 @@ err:
 
 static enum neumo_dvbfe_search mb86a16_search(struct neumo_dvb_frontend *fe)
 {
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	struct mb86a16_state *state = fe->demodulator_priv;
 
 	state->frequency = p->frequency / 1000;

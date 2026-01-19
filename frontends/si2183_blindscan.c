@@ -158,7 +158,7 @@ static int si2183_set_property(struct i2c_client *client, u16 property, u16 data
 static int si2183_get_iq_sample_unlocked(struct neumo_dvb_frontend* fe, s16* ival, s16* qval)
 {
 	struct i2c_client* client = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties* p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties* p = &fe->dtv_property_cache;
 
 	int ret=-1;
   unsigned int  value;
@@ -229,7 +229,7 @@ int si2183_isi_scan(struct neumo_dvb_frontend* fe, int num_isi)
 {
 	struct i2c_client* client = fe->demodulator_priv;
 	struct si2183_dev* state = i2c_get_clientdata(client);
-	struct neumo_driver_dtv_frontend_properties* p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties* p = &fe->dtv_property_cache;
 	int i, j;
 	u32 mask;
 	u8 isi_id;
@@ -459,7 +459,7 @@ static inline int fff(int freq) {
 	init = 1: start the scan at the search range specified by the user
 	init = 0: start the scan just beyond the last found frequency
 */
-static int si2183_set_scan_limits(struct i2c_client *client,	struct neumo_driver_dtv_frontend_properties *p)
+static int si2183_set_scan_limits(struct i2c_client *client,	struct neumo_dtv_frontend_properties *p)
 {
 	int ret=0;
 	u16 scan_fmin= (((uint32_t)p->scan_start_frequency)*1000)>>16; //unsigned in official code
@@ -568,7 +568,7 @@ static int si2183_scan_action(struct i2c_client *client, s32 action, s32 seek_fr
 static int si2183_scan_sat_start(struct neumo_dvb_frontend *fe, struct blindscan_state * bs)
 {
 	struct i2c_client *client = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	struct si2183_scan_status_t* scan_status = &bs->scan_status;
 
 	memset(bs, 0, sizeof(struct blindscan_state));
@@ -603,7 +603,7 @@ static int si2183_scan_sat_start(struct neumo_dvb_frontend *fe, struct blindscan
 static int si2183_spectrum_init(struct neumo_dvb_frontend *fe, struct blindscan_state * bs)
 {
 	struct i2c_client *client = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	struct si2183_scan_status_t* scan_status = &bs->scan_status;
 	struct si2183_dev *state = i2c_get_clientdata(client);
 	struct spectrum_scan_state* ss = &state->scan_state;
@@ -662,7 +662,7 @@ static int si2183_spectrum_init(struct neumo_dvb_frontend *fe, struct blindscan_
 static int si2183_spectrum_next(struct neumo_dvb_frontend *fe, struct blindscan_state * bs)
 {
 	struct i2c_client *client = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	struct si2183_scan_status_t* scan_status = &bs->scan_status;
 
 	bs->bandwidth = 40000;
@@ -692,7 +692,7 @@ int si2183_scan_sat_(struct neumo_dvb_frontend *fe, bool init,
 										unsigned int *delay, enum fe_status *status, bool dont_retune)
 {
 	struct i2c_client *client = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	struct si2183_dev *state = i2c_get_clientdata(client);
 	struct blindscan_state * bs = &state->blindscan_state;
 	struct si2183_scan_status_t* scan_status = &bs->scan_status;
@@ -885,7 +885,7 @@ static int si2183_get_spectrum_scan_fft_one_band(struct neumo_dvb_frontend *fe, 
 	struct i2c_client *client = fe->demodulator_priv;
 	struct si2183_dev *state = i2c_get_clientdata(client);
 
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	bool is_sat =1;
 	int idx = 0;
 	s32 nb_word;
@@ -1124,7 +1124,7 @@ int si2183_spectrum_start(struct neumo_dvb_frontend *fe,
 													unsigned int *delay, enum fe_status *status)
 {
 	struct i2c_client *client = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	struct si2183_dev *state = i2c_get_clientdata(client);
 	struct blindscan_state * bs = &state->blindscan_state;
 	struct spectrum_scan_state* ss = &state->scan_state;
@@ -1522,7 +1522,7 @@ int blind_tune(struct neumo_dvb_frontend *fe)
 {
 	struct i2c_client *client = fe->demodulator_priv;
 	struct si2183_dev* state = i2c_get_clientdata(client);
-	struct neumo_driver_dtv_frontend_properties* p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties* p = &fe->dtv_property_cache;
 	unsigned int delay;
 	enum fe_status status;
 	bool init = true;

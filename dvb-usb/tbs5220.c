@@ -60,7 +60,7 @@ static int tbs5220_op_rw(struct usb_device *dev, u8 request, u16 value,
 static int tbs5220_i2c_transfer(struct i2c_adapter *adap,
 					struct i2c_msg msg[], int num)
 {
-	struct dvb_usb_device *d = i2c_get_adapdata(adap);
+	struct neumo_dvb_usb_device *d = i2c_get_adapdata(adap);
 	int i = 0;
 	u8 buf6[20];
 	u8 inbuf[20];
@@ -136,7 +136,7 @@ static struct i2c_algorithm tbs5220_i2c_algo = {
 	.functionality = tbs5220_i2c_func,
 };
 
-static int tbs5220_read_mac_address(struct dvb_usb_device *d, u8 mac[6])
+static int tbs5220_read_mac_address(struct neumo_dvb_usb_device *d, u8 mac[6])
 {
 	int i,ret;
 	u8 ibuf[3] = {0, 0,0};
@@ -167,11 +167,11 @@ static int tbs5220_read_mac_address(struct dvb_usb_device *d, u8 mac[6])
 	return 0;
 };
 
-static struct dvb_usb_device_properties tbs5220_properties;
+static struct neumo_dvb_usb_device_properties tbs5220_properties;
 
-static int tbs5220_frontend_attach(struct dvb_usb_adapter *adap)
+static int tbs5220_frontend_attach(struct neumo_dvb_usb_adapter *adap)
 {
-	struct dvb_usb_device *d = adap->dev;
+	struct neumo_dvb_usb_device *d = adap->dev;
 	struct tbs5220_state *st = d->priv;
 	struct i2c_adapter *adapter;
 	struct i2c_client *client_demod;
@@ -250,7 +250,7 @@ static int tbs5220_frontend_attach(struct dvb_usb_adapter *adap)
 	return 0;
 }
 
-static int tbs5220_rc_query(struct dvb_usb_device *d)
+static int tbs5220_rc_query(struct neumo_dvb_usb_device *d)
 {
 	u8 key[2];
 	struct i2c_msg msg = {
@@ -336,7 +336,7 @@ static int tbs5220_load_firmware(struct usb_device *dev,
 	return ret;
 }
 
-static struct dvb_usb_device_properties tbs5220_properties = {
+static struct neumo_dvb_usb_device_properties tbs5220_properties = {
 	.caps = DVB_USB_IS_AN_I2C_ADAPTER,
 	.usb_ctrl = DEVICE_SPECIFIC,
 	.firmware = "dvb-usb-tbsqbox-id5220.fw",
@@ -387,7 +387,7 @@ static struct dvb_usb_device_properties tbs5220_properties = {
 static int tbs5220_probe(struct usb_interface *intf,
 		const struct usb_device_id *id)
 {
-	if (0 == dvb_usb_device_init(intf, &tbs5220_properties,
+	if (0 == neumo_dvb_usb_device_init(intf, &tbs5220_properties,
 			THIS_MODULE, NULL, adapter_nr)) {
 		return 0;
 	}
@@ -397,7 +397,7 @@ static int tbs5220_probe(struct usb_interface *intf,
 static void tbs5220_disconnect(struct usb_interface *intf)
 {
 #if 0
-	struct dvb_usb_device *d = usb_get_intfdata(intf);
+	struct neumo_dvb_usb_device *d = usb_get_intfdata(intf);
 	struct tbs5220_state *st = d->priv;
 	struct i2c_client *client;
 
@@ -415,7 +415,7 @@ static void tbs5220_disconnect(struct usb_interface *intf)
 		i2c_unregister_device(client);
 	}
 #endif
-	dvb_usb_device_exit(intf);
+	neumo_dvb_usb_device_exit(intf);
 }
 
 static struct usb_driver tbs5220_driver = {

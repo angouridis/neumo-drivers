@@ -477,7 +477,7 @@ static int set_lof(struct stv *state, u32 LocalFrequency, u32 CutOffFrequency)
 static int set_params(struct neumo_dvb_frontend *fe)
 {
 	struct stv *state = fe->tuner_priv;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	u32 freq, symbol_rate, cutoff;
 	u32 rolloff;
 
@@ -561,7 +561,7 @@ static s32 TableLookup(struct SLookup *Table, int TableSize, u16 RegValue)
 
 static int agc_to_gain_dbm(struct neumo_dvb_frontend *fe, s32 agc)
 {
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	s32 bbgain = 2*tuner_init[1]&0xf; //CTRL2; value is 6
 	s32 gain = 1, ref_bbgain = 12, tilt = 6;
 	s32 freq;

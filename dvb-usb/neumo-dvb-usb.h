@@ -59,7 +59,7 @@
 #define warn(format, arg...) printk(KERN_WARNING DVB_USB_LOG_PREFIX ": " format "\n" , ## arg)
 
 /**
- * struct dvb_usb_device_description - name and its according USB IDs
+ * struct neumo_dvb_usb_device_description - name and its according USB IDs
  * @name: real name of the box, regardless which DVB USB device class is in use
  * @cold_ids: array of struct usb_device_id which describe the device in
  *  pre-firmware state
@@ -69,12 +69,12 @@
  * Each DVB USB device class can have one or more actual devices, this struct
  * assigns a name to it.
  */
-struct dvb_usb_device_description {
+struct neumo_dvb_usb_device_description {
 	const char *name;
-
 #define DVB_USB_ID_MAX_NUM 15
 	struct usb_device_id *cold_ids[DVB_USB_ID_MAX_NUM];
 	struct usb_device_id *warm_ids[DVB_USB_ID_MAX_NUM];
+	const char* short_name;
 };
 
 static inline u8 rc5_custom(struct rc_map_table *key)
@@ -92,8 +92,8 @@ static inline u16 rc5_scan(struct rc_map_table *key)
 	return key->scancode & 0xffff;
 }
 
-struct dvb_usb_device;
-struct dvb_usb_adapter;
+struct neumo_dvb_usb_device;
+struct neumo_dvb_usb_adapter;
 struct usb_data_stream;
 
 /*
@@ -121,7 +121,7 @@ struct usb_data_stream_properties {
 };
 
 /**
- * struct dvb_usb_adapter_fe_properties - properties of a dvb-usb-adapter.
+ * struct neumo_dvb_usb_adapter_fe_properties - properties of a dvb-usb-adapter.
  *    A DVB-USB-Adapter is basically a dvb_adapter which is present on a USB-device.
  * @caps: capabilities of the DVB USB device.
  * @pid_filter_count: number of PID filter position in the optional hardware
@@ -136,13 +136,13 @@ struct usb_data_stream_properties {
  * @pid_filter_ctrl: called to en/disable the PID filter, if any.
  * @pid_filter: called to set/unset a PID for filtering.
  * @frontend_attach: called to attach the possible frontends (fill fe-field
- *  of struct dvb_usb_device).
+ *  of struct neumo_dvb_usb_device).
  * @tuner_attach: called to attach the correct tuner and to fill pll_addr,
- *  pll_desc and pll_init_buf of struct dvb_usb_device).
+ *  pll_desc and pll_init_buf of struct neumo_dvb_usb_device).
  * @stream: configuration of the USB streaming
- * @size_of_priv: size of the priv memory in struct dvb_usb_adapter
+ * @size_of_priv: size of the priv memory in struct neumo_dvb_usb_adapter
  */
-struct dvb_usb_adapter_fe_properties {
+struct neumo_dvb_usb_adapter_fe_properties {
 #define DVB_USB_ADAP_HAS_PID_FILTER               0x01
 #define DVB_USB_ADAP_PID_FILTER_CAN_BE_TURNED_OFF 0x02
 #define DVB_USB_ADAP_NEED_PID_FILTERING           0x04
@@ -151,12 +151,12 @@ struct dvb_usb_adapter_fe_properties {
 	int caps;
 	int pid_filter_count;
 
-	int (*streaming_ctrl)  (struct dvb_usb_adapter *, int);
-	int (*pid_filter_ctrl) (struct dvb_usb_adapter *, int);
-	int (*pid_filter)      (struct dvb_usb_adapter *, int, u16, int);
+	int (*streaming_ctrl)  (struct neumo_dvb_usb_adapter *, int);
+	int (*pid_filter_ctrl) (struct neumo_dvb_usb_adapter *, int);
+	int (*pid_filter)      (struct neumo_dvb_usb_adapter *, int, u16, int);
 
-	int (*frontend_attach) (struct dvb_usb_adapter *);
-	int (*tuner_attach)    (struct dvb_usb_adapter *);
+	int (*frontend_attach) (struct neumo_dvb_usb_adapter *);
+	int (*tuner_attach)    (struct neumo_dvb_usb_adapter *);
 
 	struct usb_data_stream_properties stream;
 
@@ -164,13 +164,13 @@ struct dvb_usb_adapter_fe_properties {
 };
 
 #define MAX_NO_OF_FE_PER_ADAP 3
-struct dvb_usb_adapter_properties {
+struct neumo_dvb_usb_adapter_properties {
 	int size_of_priv;
 
 	int (*frontend_ctrl)   (struct neumo_dvb_frontend *, int);
 
 	int num_frontends;
-	struct dvb_usb_adapter_fe_properties fe[MAX_NO_OF_FE_PER_ADAP];
+	struct neumo_dvb_usb_adapter_fe_properties fe[MAX_NO_OF_FE_PER_ADAP];
 };
 
 /**
@@ -188,7 +188,7 @@ struct dvb_rc_legacy {
 #define REMOTE_KEY_REPEAT          0x02
 	struct rc_map_table  *rc_map_table;
 	int rc_map_size;
-	int (*rc_query) (struct dvb_usb_device *, u32 *, int *);
+	int (*rc_query) (struct neumo_dvb_usb_device *, u32 *, int *);
 	int rc_interval;
 };
 
@@ -212,7 +212,7 @@ struct dvb_rc {
 	enum rc_driver_type driver_type;
 	int (*change_protocol)(struct rc_dev *dev, u64 *rc_proto);
 	char *module_name;
-	int (*rc_query) (struct dvb_usb_device *d);
+	int (*rc_query) (struct neumo_dvb_usb_device *d);
 	int rc_interval;
 	bool bulk_mode;				/* uses bulk mode */
 	u32 scancode_mask;
@@ -233,7 +233,7 @@ enum dvb_usb_mode {
 };
 
 /**
- * struct dvb_usb_device_properties - properties of a dvb-usb-device
+ * struct neumo_dvb_usb_device_properties - properties of a dvb-usb-device
  * @caps: capabilities
  * @usb_ctrl: which USB device-side controller is in use. Needed for firmware
  *  download.
@@ -244,12 +244,12 @@ enum dvb_usb_mode {
  *  so do the warm initialization right after it
  *
  * @size_of_priv: how many bytes shall be allocated for the private field
- *  of struct dvb_usb_device.
+ *  of struct neumo_dvb_usb_device.
  * @priv_init: optional callback to initialize the variable that private field
- * of struct dvb_usb_device has pointer to just after it had been allocated and
+ * of struct neumo_dvb_usb_device has pointer to just after it had been allocated and
  * zeroed.
  * @priv_destroy: just like priv_init, only called before deallocating
- * the memory pointed by private field of struct dvb_usb_device.
+ * the memory pointed by private field of struct neumo_dvb_usb_device.
  *
  * @num_adapters: the number of adapters in @adapters
  * @adapter: the adapters
@@ -264,20 +264,20 @@ enum dvb_usb_mode {
  *
  * @generic_bulk_ctrl_endpoint: most of the DVB USB devices have a generic
  *  endpoint which received control messages with bulk transfers. When this
- *  is non-zero, one can use dvb_usb_generic_rw and dvb_usb_generic_write-
+ *  is non-zero, one can use neumo_dvb_usb_generic_rw and neumo_dvb_usb_generic_write-
  *  helper functions.
  *
  * @generic_bulk_ctrl_endpoint_response: some DVB USB devices use a separate
  *  endpoint for responses to control messages sent with bulk transfers via
  *  the generic_bulk_ctrl_endpoint. When this is non-zero, this will be used
  *  instead of the generic_bulk_ctrl_endpoint when reading usb responses in
- *  the dvb_usb_generic_rw helper function.
+ *  the neumo_dvb_usb_generic_rw helper function.
  *
- * @num_device_descs: number of struct dvb_usb_device_description in @devices
- * @devices: array of struct dvb_usb_device_description compatibles with these
+ * @num_device_descs: number of struct neumo_dvb_usb_device_description in @devices
+ * @devices: array of struct neumo_dvb_usb_device_description compatibles with these
  *  properties.
  */
-struct dvb_usb_device_properties {
+struct neumo_dvb_usb_device_properties {
 #define MAX_NO_OF_ADAPTER_PER_DEVICE 2
 #define DVB_USB_IS_AN_I2C_ADAPTER            0x01
 	int caps;
@@ -292,17 +292,17 @@ struct dvb_usb_device_properties {
 	int        no_reconnect;
 
 	int size_of_priv;
-	int (*priv_init)(struct dvb_usb_device *);
-	void (*priv_destroy)(struct dvb_usb_device *);
+	int (*priv_init)(struct neumo_dvb_usb_device *);
+	void (*priv_destroy)(struct neumo_dvb_usb_device *);
 
 	int num_adapters;
-	struct dvb_usb_adapter_properties adapter[MAX_NO_OF_ADAPTER_PER_DEVICE];
+	struct neumo_dvb_usb_adapter_properties adapter[MAX_NO_OF_ADAPTER_PER_DEVICE];
 
-	int (*power_ctrl)       (struct dvb_usb_device *, int);
-	int (*read_mac_address) (struct dvb_usb_device *, u8 []);
+	int (*power_ctrl)       (struct neumo_dvb_usb_device *, int);
+	int (*read_mac_address) (struct neumo_dvb_usb_device *, u8 []);
 	int (*identify_state)(struct usb_device *udev,
-			      const struct dvb_usb_device_properties *props,
-			      const struct dvb_usb_device_description **desc,
+			      const struct neumo_dvb_usb_device_properties *props,
+			      const struct neumo_dvb_usb_device_description **desc,
 			      int *cold);
 
 	struct {
@@ -317,7 +317,7 @@ struct dvb_usb_device_properties {
 	int generic_bulk_ctrl_endpoint_response;
 
 	int num_device_descs;
-	struct dvb_usb_device_description devices[12];
+	struct neumo_dvb_usb_device_description devices[12];
 };
 
 /**
@@ -360,7 +360,7 @@ struct usb_data_stream {
 };
 
 /**
- * struct dvb_usb_fe_adapter - a DVB adapter on a USB device
+ * struct neumo_dvb_usb_fe_adapter - a DVB adapter on a USB device
  * @fe: frontend
  * @fe_init:  rerouted frontend-init (wakeup) function.
  * @fe_sleep: rerouted frontend-sleep function.
@@ -370,7 +370,7 @@ struct usb_data_stream {
  *  device
  * @priv: private pointer
  */
-struct dvb_usb_fe_adapter {
+struct neumo_dvb_usb_fe_adapter {
 	struct neumo_dvb_frontend *fe;
 	struct neumo_dvb_frontend *fe2;
 	struct neumo_dvb_frontend _fe2;
@@ -386,7 +386,7 @@ struct dvb_usb_fe_adapter {
 };
 
 /**
- * struct dvb_usb_adapter - a DVB adapter on a USB device
+ * struct neumo_dvb_usb_adapter - a DVB adapter on a USB device
  * @dev: DVB USB device pointer
  * @props: properties
  * @state: status
@@ -404,9 +404,9 @@ struct dvb_usb_fe_adapter {
  * @num_frontends_initialized: number of initialized frontends
  * @priv: private pointer
  */
-struct dvb_usb_adapter {
-	struct dvb_usb_device *dev;
-	struct dvb_usb_adapter_properties props;
+struct neumo_dvb_usb_adapter {
+	struct neumo_dvb_usb_device *dev;
+	struct neumo_dvb_usb_adapter_properties props;
 
 #define DVB_USB_ADAP_STATE_INIT 0x000
 #define DVB_USB_ADAP_STATE_DVB  0x001
@@ -422,7 +422,7 @@ struct dvb_usb_adapter {
 	struct neumo_dvb_demux     demux;
 	struct dvb_net       dvb_net;
 
-	struct dvb_usb_fe_adapter fe_adap[MAX_NO_OF_FE_PER_ADAP];
+	struct neumo_dvb_usb_fe_adapter fe_adap[MAX_NO_OF_FE_PER_ADAP];
 	int active_fe;
 	int num_frontends_initialized;
 
@@ -430,9 +430,9 @@ struct dvb_usb_adapter {
 };
 
 /**
- * struct dvb_usb_device - object of a DVB USB device
+ * struct neumo_dvb_usb_device - object of a DVB USB device
  * @props: copy of the struct dvb_usb_properties this device belongs to.
- * @desc: pointer to the device's struct dvb_usb_device_description.
+ * @desc: pointer to the device's struct neumo_dvb_usb_device_description.
  * @state: initialization and runtime state of the device.
  *
  * @powered: indicated whether the device is power or not.
@@ -442,7 +442,7 @@ struct dvb_usb_adapter {
  * @data_mutex: mutex to protect the data structure used to store URB data
  * @usb_mutex: mutex of USB control messages (reading needs two messages).
  *	Please notice that this mutex is used internally at the generic
- *	URB control functions. So, drivers using dvb_usb_generic_rw() and
+ *	URB control functions. So, drivers using neumo_dvb_usb_generic_rw() and
  *	derivated functions should not lock it internally.
  * @i2c_mutex: mutex for i2c-transfers
  *
@@ -461,9 +461,9 @@ struct dvb_usb_adapter {
  * @priv: private data of the actual driver (allocate by dvb-usb, size defined
  *  in size_of_priv of dvb_usb_properties).
  */
-struct dvb_usb_device {
-	struct dvb_usb_device_properties props;
-	const struct dvb_usb_device_description *desc;
+struct neumo_dvb_usb_device {
+	struct neumo_dvb_usb_device_properties props;
+	const struct neumo_dvb_usb_device_description *desc;
 
 	struct usb_device *udev;
 
@@ -484,7 +484,7 @@ struct dvb_usb_device {
 	struct i2c_adapter i2c_adap;
 
 	int                    num_adapters_initialized;
-	struct dvb_usb_adapter adapter[MAX_NO_OF_ADAPTER_PER_DEVICE];
+	struct neumo_dvb_usb_adapter adapter[MAX_NO_OF_ADAPTER_PER_DEVICE];
 
 	/* remote control */
 	struct rc_dev *rc_dev;
@@ -499,20 +499,20 @@ struct dvb_usb_device {
 	void *priv;
 };
 
-extern int dvb_usb_device_init(struct usb_interface *,
-			       const struct dvb_usb_device_properties *,
-			       struct module *, struct dvb_usb_device **,
+extern int neumo_dvb_usb_device_init(struct usb_interface *,
+			       const struct neumo_dvb_usb_device_properties *,
+			       struct module *, struct neumo_dvb_usb_device **,
 			       short *adapter_nums);
-extern void dvb_usb_device_exit(struct usb_interface *);
+extern void neumo_dvb_usb_device_exit(struct usb_interface *);
 
 /* the generic read/write method for device control */
 extern int __must_check
-dvb_usb_generic_rw(struct dvb_usb_device *, u8 *, u16, u8 *, u16, int);
+neumo_dvb_usb_generic_rw(struct neumo_dvb_usb_device *, u8 *, u16, u8 *, u16, int);
 extern int __must_check
-dvb_usb_generic_write(struct dvb_usb_device *, u8 *, u16);
+neumo_dvb_usb_generic_write(struct neumo_dvb_usb_device *, u8 *, u16);
 
 /* commonly used remote control parsing */
-int dvb_usb_nec_rc_key_to_event(struct dvb_usb_device *d, u8 keybuf[5],
+int neumo_dvb_usb_nec_rc_key_to_event(struct neumo_dvb_usb_device *d, u8 keybuf[5],
 				u32 *event, int *state);
 
 /* commonly used firmware download types and function */
@@ -523,8 +523,8 @@ struct hexline {
 	u8 data[255];
 	u8 chk;
 };
-extern int usb_cypress_load_firmware(struct usb_device *udev, const struct firmware *fw, int type);
-extern int dvb_usb_get_hexline(const struct firmware *fw, struct hexline *hx, int *pos);
+extern int neumo_usb_cypress_load_firmware(struct usb_device *udev, const struct firmware *fw, int type);
+extern int neumo_dvb_usb_get_hexline(const struct firmware *fw, struct hexline *hx, int *pos);
 
 
 #endif

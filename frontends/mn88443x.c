@@ -247,7 +247,7 @@ static void mn88443x_s_wake(struct mn88443x_priv *chip)
 }
 
 static void mn88443x_s_tune(struct mn88443x_priv *chip,
-			    struct neumo_driver_dtv_frontend_properties *c)
+			    struct neumo_dtv_frontend_properties *c)
 {
 	struct regmap *r_s = chip->regmap_s;
 
@@ -257,7 +257,7 @@ static void mn88443x_s_tune(struct mn88443x_priv *chip,
 }
 
 static int mn88443x_s_read_status(struct mn88443x_priv *chip,
-				  struct neumo_driver_dtv_frontend_properties *c,
+				  struct neumo_dtv_frontend_properties *c,
 				  enum fe_status *status)
 {
 	struct regmap *r_s = chip->regmap_s;
@@ -446,7 +446,7 @@ static int mn88443x_t_set_freq(struct mn88443x_priv *chip)
 }
 
 static void mn88443x_t_tune(struct mn88443x_priv *chip,
-			    struct neumo_driver_dtv_frontend_properties *c)
+			    struct neumo_dtv_frontend_properties *c)
 {
 	struct regmap *r_t = chip->regmap_t;
 	u32 m, v;
@@ -459,7 +459,7 @@ static void mn88443x_t_tune(struct mn88443x_priv *chip,
 }
 
 static int mn88443x_t_read_status(struct mn88443x_priv *chip,
-				  struct neumo_driver_dtv_frontend_properties *c,
+				  struct neumo_dtv_frontend_properties *c,
 				  enum fe_status *status)
 {
 	struct regmap *r_t = chip->regmap_t;
@@ -559,7 +559,7 @@ static int mn88443x_sleep(struct neumo_dvb_frontend *fe)
 static int mn88443x_set_frontend(struct neumo_dvb_frontend *fe)
 {
 	struct mn88443x_priv *chip = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct regmap *r_s = chip->regmap_s;
 	struct regmap *r_t = chip->regmap_t;
 	u8 tssel = 0, intsel = 0;
@@ -610,7 +610,7 @@ static int mn88443x_set_frontend(struct neumo_dvb_frontend *fe)
 static int mn88443x_get_tune_settings(struct neumo_dvb_frontend *fe,
 				      struct neumo_dvb_frontend_tune_settings *s)
 {
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 
 	s->min_delay_ms = 850;
 
@@ -628,7 +628,7 @@ static int mn88443x_get_tune_settings(struct neumo_dvb_frontend *fe,
 static int mn88443x_read_status(struct neumo_dvb_frontend *fe, enum fe_status *status)
 {
 	struct mn88443x_priv *chip = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 
 	if (c->delivery_system == SYS_ISDBS)
 		return mn88443x_s_read_status(chip, c, status);

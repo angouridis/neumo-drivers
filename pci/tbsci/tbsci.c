@@ -755,7 +755,7 @@ static int tas2101_sleep(struct neumo_dvb_frontend *fe)
 	return 0;
 }
 
-static int tas2101_get_frontend(struct neumo_dvb_frontend *fe,struct neumo_driver_dtv_frontend_properties *c)
+static int tas2101_get_frontend(struct neumo_dvb_frontend *fe,struct neumo_dtv_frontend_properties *c)
 {
 	//printk("%s \n", __func__);
 	c->fec_inner = 1;

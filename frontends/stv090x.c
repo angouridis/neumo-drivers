@@ -3513,7 +3513,7 @@ err:
 static enum neumo_dvbfe_search stv090x_search(struct neumo_dvb_frontend *fe)
 {
 	struct stv090x_state *state = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *props = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *props = &fe->dtv_property_cache;
 
 	if (props->frequency == 0)
 		return DVBFE_ALGO_SEARCH_INVALID;
@@ -3603,7 +3603,7 @@ static int stv090x_table_lookup(const struct stv090x_tab *tab, int max, int val)
 static int stv090x_read_rflevel(struct neumo_dvb_frontend *fe)
 {
 	struct stv090x_state *state = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	u32 reg;
 	s32 agc_0, agc_1, agc;
 	s32 rflevel;
@@ -3634,7 +3634,7 @@ static int stv090x_read_rflevel(struct neumo_dvb_frontend *fe)
 static int stv090x_read_cnr(struct neumo_dvb_frontend *fe)
 {
 	struct stv090x_state *state = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	u32 reg_0, reg_1, reg, i;
 	s32 val_0, val_1, val = 0, snr = 0;
 	u8 lock_f;
@@ -3697,7 +3697,7 @@ static int stv090x_read_cnr(struct neumo_dvb_frontend *fe)
 static int stv090x_read_per(struct neumo_dvb_frontend *fe, enum fe_status status)
 {
 	struct stv090x_state *state = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 
 	s32 count_4, count_3, count_2, count_1, count_0, count;
 	u32 reg, h, m, l, per;
@@ -3755,7 +3755,7 @@ err:
 static int stv090x_read_status(struct neumo_dvb_frontend *fe, enum fe_status *status)
 {
 	struct stv090x_state *state = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	u32 reg, dstatus;
 	u8 search_state;
 
@@ -3821,7 +3821,7 @@ static int stv090x_read_status(struct neumo_dvb_frontend *fe, enum fe_status *st
 
 static int stv090x_read_snr(struct neumo_dvb_frontend *fe, u16 *snr)
 {
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int i;
 
 	*snr = 0;
@@ -3834,7 +3834,7 @@ static int stv090x_read_snr(struct neumo_dvb_frontend *fe, u16 *snr)
 
 static int stv090x_read_ber(struct neumo_dvb_frontend *fe, u32 *ber)
 {
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 
 	if ( p->post_bit_error.stat[0].scale == FE_SCALE_COUNTER &&
 		p->post_bit_count.stat[0].scale == FE_SCALE_COUNTER )
@@ -3845,7 +3845,7 @@ static int stv090x_read_ber(struct neumo_dvb_frontend *fe, u32 *ber)
 
 static int stv090x_read_signal_strength(struct neumo_dvb_frontend *fe, u16 *strength)
 {
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int i;
 
 	*strength = 0;

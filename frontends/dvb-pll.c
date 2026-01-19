@@ -338,7 +338,7 @@ static const struct dvb_pll_desc dvb_pll_philips_sd1878_tda8261 = {
 
 static void opera1_bw(struct neumo_dvb_frontend *fe, u8 *buf)
 {
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct dvb_pll_priv *priv = fe->tuner_priv;
 	u32 b_w  = (c->symbol_rate * 27) / 32000;
 	struct i2c_msg msg = {
@@ -666,7 +666,7 @@ static int dvb_pll_sleep(struct neumo_dvb_frontend *fe)
 
 static int dvb_pll_set_params(struct neumo_dvb_frontend *fe)
 {
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct dvb_pll_priv *priv = fe->tuner_priv;
 	u8 buf[4];
 	struct i2c_msg msg =
@@ -699,7 +699,7 @@ static int dvb_pll_set_params(struct neumo_dvb_frontend *fe)
 static int dvb_pll_calc_regs(struct neumo_dvb_frontend *fe,
 			     u8 *buf, int buf_len)
 {
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct dvb_pll_priv *priv = fe->tuner_priv;
 	int result;
 	u32 frequency = 0;

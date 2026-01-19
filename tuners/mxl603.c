@@ -212,7 +212,7 @@ static int mxl603_set_params(struct neumo_dvb_frontend *fe)
 {
 	struct i2c_client *client =fe->tuner_priv;
 	struct mxl603_dev *dev = i2c_get_clientdata(client);
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 
 	int ret;
 	u8 signalMode,regData,agcData,dfeTuneData,dfeCdcData;

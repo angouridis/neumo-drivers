@@ -824,7 +824,7 @@ static int stid135_get_spectrum_scan_fft_one_band(struct stv *state,
 
 static int get_spectrum_scan_fft(struct neumo_dvb_frontend *fe)
 {
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	struct stv *state = fe->demodulator_priv;
 	struct spectrum_scan_state* ss = &state->spectrum_scan_state;
 	int rf_in = active_rf_in_no(state);
@@ -1078,7 +1078,7 @@ int stid135_spectral_scan_start(struct neumo_dvb_frontend *fe)
 {
 	struct stv *state = fe->demodulator_priv;
 	struct spectrum_scan_state* ss = &state->spectrum_scan_state;
-	//	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	//	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	fe_lla_error_t error = FE_LLA_NO_ERROR;
 	ss->scan_in_progress =true;
 	ss->current_idx = 0;

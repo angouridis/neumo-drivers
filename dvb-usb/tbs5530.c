@@ -60,7 +60,7 @@ static int tbs5530_op_rw(struct usb_device *dev, u8 request, u16 value,
 static int tbs5530_i2c_transfer(struct i2c_adapter *adap, 
 					struct i2c_msg msg[], int num)
 {
-	struct dvb_usb_device *d = i2c_get_adapdata(adap);
+	struct neumo_dvb_usb_device *d = i2c_get_adapdata(adap);
 	int i = 0;
 	u8 buf6[50];
 	u8 inbuf[50];
@@ -113,7 +113,7 @@ static struct i2c_algorithm tbs5530_i2c_algo = {
 
 
 
-static int tbs5530_read_mac_address(struct dvb_usb_device *d, u8 mac[6])
+static int tbs5530_read_mac_address(struct neumo_dvb_usb_device *d, u8 mac[6])
 {
 	int i,ret;
 	u8 ibuf[3] = {0, 0,0};
@@ -144,7 +144,7 @@ static int tbs5530_read_mac_address(struct dvb_usb_device *d, u8 mac[6])
 	return 0;
 };
 
-static struct dvb_usb_device_properties tbs5530_properties;
+static struct neumo_dvb_usb_device_properties tbs5530_properties;
 static struct cxd2878_config tbs5530_cfg = {
 	
 		.addr_slvt = 0x64,
@@ -164,9 +164,9 @@ static struct cxd2878_config tbs5530_cfg = {
 
 
 
-static int tbs5530_sat_streaming_ctrl(struct dvb_usb_adapter*adap,int onoff) //for open dvbs ts switch
+static int tbs5530_sat_streaming_ctrl(struct neumo_dvb_usb_adapter*adap,int onoff) //for open dvbs ts switch
 {
-	struct dvb_usb_device *d = adap->dev;
+	struct neumo_dvb_usb_device *d = adap->dev;
 	u8 buf[20];
 	buf[0] = 10;
 	buf[1] = 1;
@@ -175,9 +175,9 @@ static int tbs5530_sat_streaming_ctrl(struct dvb_usb_adapter*adap,int onoff) //f
 			
 	return 0;
 }
-static int tbs5530_ter_cable_streaming_ctrl(struct dvb_usb_adapter*adap,int onoff)//for open dvbt/c ts 
+static int tbs5530_ter_cable_streaming_ctrl(struct neumo_dvb_usb_adapter*adap,int onoff)//for open dvbt/c ts 
 {
-	struct dvb_usb_device *d = adap->dev;
+	struct neumo_dvb_usb_device *d = adap->dev;
 	u8 buf[20];
 	buf[0] = 10;
 	buf[1] = 0;
@@ -186,9 +186,9 @@ static int tbs5530_ter_cable_streaming_ctrl(struct dvb_usb_adapter*adap,int onof
 			
 	return 0;
 }
-static int tbs5530_frontend_cxd2878_attach(struct dvb_usb_adapter *adap)
+static int tbs5530_frontend_cxd2878_attach(struct neumo_dvb_usb_adapter *adap)
 {
-	struct dvb_usb_device *d = adap->dev;
+	struct neumo_dvb_usb_device *d = adap->dev;
 
 	/* attach frontend */
 	adap->fe_adap[0].fe = dvb_attach(cxd2878_attach, &tbs5530_cfg, &d->i2c_adap);
@@ -200,9 +200,9 @@ static int tbs5530_frontend_cxd2878_attach(struct dvb_usb_adapter *adap)
 	strcat(adap->fe_adap[0].fe->ops.info.name," DVB-T/T2/C/C2,ISDB-T/C,ATSC,J83B");
 	return 0;		
 }
-static int tbs5530_frontend_m88rs6060_attach(struct dvb_usb_adapter *adap)
+static int tbs5530_frontend_m88rs6060_attach(struct neumo_dvb_usb_adapter *adap)
 {
-	struct dvb_usb_device *d = adap->dev;
+	struct neumo_dvb_usb_device *d = adap->dev;
 	struct tbs5530_state *st = d->priv;
 	struct i2c_client *client;
 	struct i2c_board_info info;
@@ -316,7 +316,7 @@ static int tbs5530_load_firmware(struct usb_device *dev,
 	return ret;
 }
 
-static struct dvb_usb_device_properties tbs5530_properties = {
+static struct neumo_dvb_usb_device_properties tbs5530_properties = {
 	.caps = DVB_USB_IS_AN_I2C_ADAPTER,
 	.usb_ctrl = DEVICE_SPECIFIC,
 	.firmware = "dvb-usb-id5530.fw",
@@ -379,7 +379,7 @@ static struct dvb_usb_device_properties tbs5530_properties = {
 static int tbs5530_probe(struct usb_interface *intf,
 		const struct usb_device_id *id)
 {
-	if (0 == dvb_usb_device_init(intf, &tbs5530_properties,
+	if (0 == neumo_dvb_usb_device_init(intf, &tbs5530_properties,
 			THIS_MODULE, NULL, adapter_nr)) {
 		return 0;
 	}
@@ -389,7 +389,7 @@ static int tbs5530_probe(struct usb_interface *intf,
 static void tbs5530_disconnect(struct usb_interface *intf)
 {
 #if 1
-	struct dvb_usb_device *d = usb_get_intfdata(intf);
+	struct neumo_dvb_usb_device *d = usb_get_intfdata(intf);
 	struct tbs5530_state *st = d->priv;
 	struct i2c_client *client;
 
@@ -400,7 +400,7 @@ static void tbs5530_disconnect(struct usb_interface *intf)
 		i2c_unregister_device(client);
 	}
 #endif
-	dvb_usb_device_exit(intf);
+	neumo_dvb_usb_device_exit(intf);
 }
 
 static struct usb_driver tbs5530_driver = {

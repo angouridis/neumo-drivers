@@ -9,7 +9,7 @@
  */
 #include "dvb-usb-common.h"
 
-int dvb_usb_generic_rw(struct dvb_usb_device *d, u8 *wbuf, u16 wlen, u8 *rbuf,
+int neumo_dvb_usb_generic_rw(struct neumo_dvb_usb_device *d, u8 *wbuf, u16 wlen, u8 *rbuf,
 	u16 rlen, int delay_ms)
 {
 	int actlen = 0, ret = -ENOMEM;
@@ -59,24 +59,24 @@ int dvb_usb_generic_rw(struct dvb_usb_device *d, u8 *wbuf, u16 wlen, u8 *rbuf,
 	mutex_unlock(&d->usb_mutex);
 	return ret;
 }
-EXPORT_SYMBOL(dvb_usb_generic_rw);
+EXPORT_SYMBOL(neumo_dvb_usb_generic_rw);
 
-int dvb_usb_generic_write(struct dvb_usb_device *d, u8 *buf, u16 len)
+int neumo_dvb_usb_generic_write(struct neumo_dvb_usb_device *d, u8 *buf, u16 len)
 {
-	return dvb_usb_generic_rw(d,buf,len,NULL,0,0);
+	return neumo_dvb_usb_generic_rw(d,buf,len,NULL,0,0);
 }
-EXPORT_SYMBOL(dvb_usb_generic_write);
+EXPORT_SYMBOL(neumo_dvb_usb_generic_write);
 
 static void dvb_usb_data_complete(struct usb_data_stream *stream, u8 *buffer, size_t length)
 {
-	struct dvb_usb_adapter *adap = stream->user_priv;
+	struct neumo_dvb_usb_adapter *adap = stream->user_priv;
 	if (adap->feedcount > 0 && adap->state & DVB_USB_ADAP_STATE_DVB)
 		neumo_dvb_dmx_swfilter(&adap->demux, buffer, length);
 }
 
 static void dvb_usb_data_complete_204(struct usb_data_stream *stream, u8 *buffer, size_t length)
 {
-	struct dvb_usb_adapter *adap = stream->user_priv;
+	struct neumo_dvb_usb_adapter *adap = stream->user_priv;
 	if (adap->feedcount > 0 && adap->state & DVB_USB_ADAP_STATE_DVB)
 		neumo_dvb_dmx_swfilter_204(&adap->demux, buffer, length);
 }
@@ -84,12 +84,12 @@ static void dvb_usb_data_complete_204(struct usb_data_stream *stream, u8 *buffer
 static void dvb_usb_data_complete_raw(struct usb_data_stream *stream,
 				      u8 *buffer, size_t length)
 {
-	struct dvb_usb_adapter *adap = stream->user_priv;
+	struct neumo_dvb_usb_adapter *adap = stream->user_priv;
 	if (adap->feedcount > 0 && adap->state & DVB_USB_ADAP_STATE_DVB)
 		neumo_dvb_dmx_swfilter_raw(&adap->demux, buffer, length);
 }
 
-int dvb_usb_adapter_stream_init(struct dvb_usb_adapter *adap)
+int dvb_usb_adapter_stream_init(struct neumo_dvb_usb_adapter *adap)
 {
 	int i, ret = 0;
 	for (i = 0; i < adap->props.num_frontends; i++) {
@@ -113,7 +113,7 @@ int dvb_usb_adapter_stream_init(struct dvb_usb_adapter *adap)
 	return ret;
 }
 
-int dvb_usb_adapter_stream_exit(struct dvb_usb_adapter *adap)
+int dvb_usb_adapter_stream_exit(struct neumo_dvb_usb_adapter *adap)
 {
 	int i;
 	for (i = 0; i < adap->props.num_frontends; i++)

@@ -389,7 +389,7 @@ static int tas2971_set_frontend(struct neumo_dvb_frontend *fe)
 }
 
 static int tas2971_get_frontend(struct neumo_dvb_frontend *fe,
-				struct neumo_driver_dtv_frontend_properties *c)
+				struct neumo_dtv_frontend_properties *c)
 {
 	c->fec_inner = 1;
 	c->modulation = 0;

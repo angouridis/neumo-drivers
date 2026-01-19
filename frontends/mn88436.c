@@ -2939,7 +2939,7 @@ static DMD_ERROR_t DMD_init( struct neumo_dvb_frontend* fe, DMD_PARAMETER_t* par
 
 static int MNDMD_init(struct neumo_dvb_frontend* fe)
 {
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 
 	DMD_open(&param);
 	DMD_init( fe,&param);
@@ -2958,7 +2958,7 @@ static int MNDMD_init(struct neumo_dvb_frontend* fe)
 
 static int DMD_set_parameters(struct neumo_dvb_frontend* fe)
 {
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 
 	switch (c->modulation) {
 	case VSB_8:
@@ -2986,14 +2986,14 @@ static int DMD_set_parameters(struct neumo_dvb_frontend* fe)
 }
 
 static int DMD_get_parameters(struct neumo_dvb_frontend* fe,
-				 struct neumo_driver_dtv_frontend_properties *c)
+				 struct neumo_dtv_frontend_properties *c)
 {
 	return 0;
 }
 
 static int DMD_read_status(struct neumo_dvb_frontend *fe, enum fe_status *status)
 {
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	DMD_u32_t	lockstatus = 0;
 	DMD_u8_t	rd = 0;
 	DMD_u32_t  x,y,val;
@@ -3117,7 +3117,7 @@ static int DMD_read_signal_strength(struct neumo_dvb_frontend* fe, u16* strength
 	/* Even though the SNR can go higher than 35dB, there is some comfort */
 	/* factor in having a range of strong signals that can show at 100%   */
 
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int i=0;
 	*strength = 0;
 	for (i=0; i < p->strength.len; i++)
@@ -3132,7 +3132,7 @@ static int DMD_read_signal_strength(struct neumo_dvb_frontend* fe, u16* strength
 
 static int DMD_read_snr(struct neumo_dvb_frontend* fe, u16* snr)
 {
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int i;
 
 	*snr = 0;
@@ -3146,7 +3146,7 @@ static int DMD_read_snr(struct neumo_dvb_frontend* fe, u16* snr)
 
 static int DMD_read_ber(struct neumo_dvb_frontend* fe, u32* ber)
 {
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 
 	if ( p->post_bit_error.stat[0].scale == FE_SCALE_COUNTER &&
 		p->post_bit_count.stat[0].scale == FE_SCALE_COUNTER )

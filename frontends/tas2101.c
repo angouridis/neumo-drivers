@@ -296,7 +296,7 @@ static int tas2101_snr(struct neumo_dvb_frontend *fe, s32* snr)
 static int tas2101_read_status(struct neumo_dvb_frontend *fe, enum fe_status* status)
 {
 	struct tas2101_priv *state = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int ret;
 	s32 snr;
 	u32 ber;
@@ -388,7 +388,7 @@ static int tas2101_read_status(struct neumo_dvb_frontend *fe, enum fe_status* st
 static int tas2101_read_signal_strength(struct neumo_dvb_frontend *fe,
 	u16 *strength)
 {
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int i;
 
 	*strength = 0;
@@ -406,7 +406,7 @@ static int tas2101_read_signal_strength(struct neumo_dvb_frontend *fe,
 
 static int tas2101_read_snr(struct neumo_dvb_frontend *fe, u16 *snr)
 {
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int i;
 
 	*snr = 0;
@@ -983,7 +983,7 @@ static int wait_for_dmdlock(struct neumo_dvb_frontend *fe, bool require_data)
 
 static bool tas2101_get_frequency_and_symbol_rate(struct neumo_dvb_frontend *fe)
 {
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	struct tas2101_priv *state = fe->demodulator_priv;
 	bool need_retune;
 	u8 regs[2];
@@ -1073,7 +1073,7 @@ static bool tas2101_get_frequency_and_symbol_rate(struct neumo_dvb_frontend *fe)
 
 static bool tas2101_get_signal_info(struct neumo_dvb_frontend *fe)
 {
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	//struct tas2101_priv *state = fe->demodulator_priv;
 	bool need_retune = false; //true if frequency offset too large
 
@@ -1110,7 +1110,7 @@ static void tas2101_set_low_symbol_rate(struct tas2101_priv* state, bool low_sr_
 static int tune_once(struct neumo_dvb_frontend *fe, bool* need_retune)
 {
 	struct tas2101_priv *state = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 
 	int ret;
 	bool enable_blindscan = false;
@@ -1250,7 +1250,7 @@ static int set_frontend(struct neumo_dvb_frontend *fe)
 
 
 static int tas2101_get_frontend(struct neumo_dvb_frontend *fe,
-				struct neumo_driver_dtv_frontend_properties *c)
+				struct neumo_dtv_frontend_properties *c)
 {
 	struct tas2101_priv *priv = fe->demodulator_priv;
 	int ret;
@@ -1282,7 +1282,7 @@ static int tas2101_tune(struct neumo_dvb_frontend *fe, bool re_tune,
 	unsigned int mode_flags, unsigned int *delay, enum fe_status *status)
 {
 	struct tas2101_priv *state = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 
 	int r;
 	bool need_retune = false;// could be set during blind search
@@ -1391,7 +1391,7 @@ static int tas2101_spectrum_start(struct neumo_dvb_frontend *fe,
 																	 unsigned int *delay, enum fe_status *status)
 {
 	struct tas2101_priv* state = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties* p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties* p = &fe->dtv_property_cache;
 	struct tas2101_spectrum_scan_state* ss = &state->scan_state;
 	int i, ret;
 	u8 agc_speed;

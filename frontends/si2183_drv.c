@@ -70,7 +70,7 @@ void si2183_cmd_str(struct si2183_cmd* cmd, const char* str, int wlen, int rlen)
 	cmd->rlen = rlen;
 }
 
-static inline bool is_blind(struct neumo_driver_dtv_frontend_properties* p)
+static inline bool is_blind(struct neumo_dtv_frontend_properties* p)
 {
 	switch(p->algorithm) {
 	case ALGORITHM_WARM:
@@ -272,7 +272,7 @@ int si2183_read_status(struct neumo_dvb_frontend *fe, enum fe_status *status)
 {
 	struct i2c_client *client = fe->demodulator_priv;
 	struct si2183_dev* state = i2c_get_clientdata(client);
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret;
 	struct si2183_cmd cmd;
 	s16 afc_freq;
@@ -510,7 +510,7 @@ static int si2183_read_snr(struct neumo_dvb_frontend *fe, u16 *snr)
 
 static int si2183_read_signal_strength(struct neumo_dvb_frontend *fe, u16 *strength)
 {
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 
 	*strength = c->strength.stat[0].scale == FE_SCALE_DECIBEL ? ((100000 + (s32)c->strength.stat[0].svalue) / 1000) * 656 : 0;
 
@@ -573,7 +573,7 @@ static int si2183_read_ucblocks(struct neumo_dvb_frontend *fe, u32 *ucblocks)
 
 static int si2183_set_dvbc(struct neumo_dvb_frontend *fe)
 {
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct i2c_client *client = fe->demodulator_priv;
 	struct si2183_dev* state = i2c_get_clientdata(client);
 	struct si2183_cmd cmd;
@@ -639,7 +639,7 @@ static int si2183_set_dvbc(struct neumo_dvb_frontend *fe)
 
 static int si2183_set_mcns(struct neumo_dvb_frontend *fe)
 {
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct i2c_client *client = fe->demodulator_priv;
 	struct si2183_dev* state = i2c_get_clientdata(client);
 	struct si2183_cmd cmd;
@@ -713,7 +713,7 @@ static int gold_code_index (int gold_sequence_index)
 
 static int si2183_set_dvbs(struct neumo_dvb_frontend *fe)
 {
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct i2c_client *client = fe->demodulator_priv;
 	struct si2183_dev* state = i2c_get_clientdata(client);
 	struct si2183_cmd cmd;
@@ -800,7 +800,7 @@ static int si2183_set_dvbs(struct neumo_dvb_frontend *fe)
 
 static int si2183_set_dvbt(struct neumo_dvb_frontend *fe)
 {
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct i2c_client *client = fe->demodulator_priv;
 	struct si2183_dev* state = i2c_get_clientdata(client);
 	struct si2183_cmd cmd;
@@ -882,7 +882,7 @@ static int si2183_set_dvbt(struct neumo_dvb_frontend *fe)
 
 static int si2183_set_isdbt(struct neumo_dvb_frontend *fe)
 {
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	struct i2c_client *client = fe->demodulator_priv;
 	struct si2183_dev* state = i2c_get_clientdata(client);
 	struct si2183_cmd cmd;
@@ -935,7 +935,7 @@ int si2183_set_frontend(struct neumo_dvb_frontend *fe)
 {
 	struct i2c_client *client = fe->demodulator_priv;
 	struct si2183_dev* state = i2c_get_clientdata(client);
-	struct neumo_driver_dtv_frontend_properties* p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties* p = &fe->dtv_property_cache;
 	int ret;
 	struct si2183_cmd cmd;
 	bool blind = is_blind(p);
@@ -1057,7 +1057,7 @@ static int si2183_init(struct neumo_dvb_frontend *fe)
 {
 	struct i2c_client *client = fe->demodulator_priv;
 	struct si2183_dev* state = i2c_get_clientdata(client);
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret = 0, len, remaining;
 	const struct firmware *fw;
 	const char *fw_name;
@@ -1388,7 +1388,7 @@ static int i2c_gate_ctrl(struct neumo_dvb_frontend* fe, int enable)
 static int si2183_tune(struct neumo_dvb_frontend *fe, bool re_tune,
 											 unsigned int mode_flags, unsigned int *delay, enum fe_status *status)
 {
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int ret;
 	*delay = HZ / 5;
 	if (re_tune) {

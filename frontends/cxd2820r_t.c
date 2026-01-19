@@ -12,7 +12,7 @@ int cxd2820r_set_frontend_t(struct neumo_dvb_frontend *fe)
 {
 	struct cxd2820r_priv *priv = fe->demodulator_priv;
 	struct i2c_client *client = priv->client[0];
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret, bw_i;
 	unsigned int utmp;
 	u32 if_frequency;
@@ -124,7 +124,7 @@ error:
 }
 
 int cxd2820r_get_frontend_t(struct neumo_dvb_frontend *fe,
-			    struct neumo_driver_dtv_frontend_properties *c)
+			    struct neumo_dtv_frontend_properties *c)
 {
 	struct cxd2820r_priv *priv = fe->demodulator_priv;
 	struct i2c_client *client = priv->client[0];
@@ -248,7 +248,7 @@ int cxd2820r_read_status_t(struct neumo_dvb_frontend *fe, enum fe_status *status
 {
 	struct cxd2820r_priv *priv = fe->demodulator_priv;
 	struct i2c_client *client = priv->client[0];
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret;
 	unsigned int utmp, utmp1, utmp2;
 	u8 buf[3];

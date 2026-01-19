@@ -115,7 +115,7 @@ static int si2168_read_status(struct neumo_dvb_frontend *fe, enum fe_status *sta
 {
 	struct i2c_client *client = fe->demodulator_priv;
 	struct si2168_dev *dev = i2c_get_clientdata(client);
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret, i;
 	unsigned int utmp, utmp1, utmp2;
 	struct si2168_cmd cmd;
@@ -238,7 +238,7 @@ err:
 
 static int si2168_read_snr(struct neumo_dvb_frontend *fe, u16 *snr)
 {
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int i;
 
 	*snr = 0;
@@ -250,7 +250,7 @@ static int si2168_read_snr(struct neumo_dvb_frontend *fe, u16 *snr)
 
 static int si2168_read_signal_strength(struct neumo_dvb_frontend *fe, u16 *strength)
 {
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int i;
 
 	*strength = 0;
@@ -319,7 +319,7 @@ static int si2168_set_frontend(struct neumo_dvb_frontend *fe)
 {
 	struct i2c_client *client = fe->demodulator_priv;
 	struct si2168_dev *dev = i2c_get_clientdata(client);
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret;
 	struct si2168_cmd cmd;
 	u8 bandwidth, delivery_system;
@@ -521,7 +521,7 @@ static int si2168_init(struct neumo_dvb_frontend *fe)
 {
 	struct i2c_client *client = fe->demodulator_priv;
 	struct si2168_dev *dev = i2c_get_clientdata(client);
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret, len, remaining;
 	const struct firmware *fw;
 	struct si2168_cmd cmd;

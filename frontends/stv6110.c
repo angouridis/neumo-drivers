@@ -335,7 +335,7 @@ static int stv6110_set_frequency(struct neumo_dvb_frontend *fe, u32 frequency)
 
 static int stv6110_set_params(struct neumo_dvb_frontend *fe)
 {
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	u32 bandwidth = carrier_width(c->symbol_rate, c->rolloff);
 
 	stv6110_set_frequency(fe, c->frequency);

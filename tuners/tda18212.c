@@ -20,7 +20,7 @@ struct tda18212_dev {
 static int tda18212_set_params(struct neumo_dvb_frontend *fe)
 {
 	struct tda18212_dev *dev = fe->tuner_priv;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret, i;
 	u32 if_khz;
 	u8 buf[9];

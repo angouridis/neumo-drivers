@@ -1137,9 +1137,6 @@ static int dvb_module_make_info(void)
 	return error;
 }
 
-extern void	neumo_dvb_frontend_module_init(void);
-extern void	neumo_dvb_frontend_module_exit(void);
-
 extern int init_dvbdev_dvbapi(void);
 static int __init init_dvbdev(void)
 {
@@ -1168,7 +1165,6 @@ static int __init init_dvbdev(void)
 	}
 	dvb_class->dev_uevent = dvb_uevent;
 	dvb_class->devnode = dvb_devnode;
-	neumo_dvb_frontend_module_init();
 	return 0;
 
 error:
@@ -1191,7 +1187,6 @@ static void __exit exit_dvbdev(void)
 		kfree(node->fops);
 		kfree(node);
 	}
-	neumo_dvb_frontend_module_exit();
 }
 
 subsys_initcall(init_dvbdev);

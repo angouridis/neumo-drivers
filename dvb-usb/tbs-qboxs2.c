@@ -71,7 +71,7 @@ static int tbsqboxs2_op_rw(struct usb_device *dev, u8 request, u16 value,
 static int tbsqboxs2_i2c_transfer(struct i2c_adapter *adap, struct i2c_msg msg[],
 		int num)
 {
-struct dvb_usb_device *d = i2c_get_adapdata(adap);
+struct neumo_dvb_usb_device *d = i2c_get_adapdata(adap);
 	int i = 0, len;
 	u8 ibuf[1], obuf[3];
 	u8 buf6[20];
@@ -193,8 +193,8 @@ static void tbsqboxs2_led_ctrl(struct neumo_dvb_frontend *fe, int offon)
 		.buf = led_off,
 		.len = 1
 	};
-	struct dvb_usb_adapter *udev_adap =
-		(struct dvb_usb_adapter *)(fe->dvb->priv);
+	struct neumo_dvb_usb_adapter *udev_adap =
+		(struct neumo_dvb_usb_adapter *)(fe->dvb->priv);
 
 	if (offon)
 		msg.buf = led_on;
@@ -207,7 +207,7 @@ static const struct cx24116_config qbox2_cx24116_config = {
 	.set_lock_led = tbsqboxs2_led_ctrl,
 };
 
-static int tbsqboxs2_read_mac_address(struct dvb_usb_device *d, u8 mac[6])
+static int tbsqboxs2_read_mac_address(struct neumo_dvb_usb_device *d, u8 mac[6])
 {
 	int i,ret;
 	u8 ibuf[3] = {0, 0,0};
@@ -247,8 +247,8 @@ static int tbsqboxs2_set_voltage(struct neumo_dvb_frontend *fe, enum fe_sec_volt
 			.buf = command_13v, .len = 1},
 	};
 	
-	struct dvb_usb_adapter *udev_adap =
-		(struct dvb_usb_adapter *)(fe->dvb->priv);
+	struct neumo_dvb_usb_adapter *udev_adap =
+		(struct neumo_dvb_usb_adapter *)(fe->dvb->priv);
 	if (voltage == SEC_VOLTAGE_18)
 		msg[0].buf = command_18v;
 	info("tbsqboxs2_set_voltage %d",voltage);
@@ -256,11 +256,11 @@ static int tbsqboxs2_set_voltage(struct neumo_dvb_frontend *fe, enum fe_sec_volt
 	return 0;
 }
 
-static struct dvb_usb_device_properties tbsqboxs2_properties;
+static struct neumo_dvb_usb_device_properties tbsqboxs2_properties;
 
-static int tbsqboxs2_frontend_attach(struct dvb_usb_adapter *d)
+static int tbsqboxs2_frontend_attach(struct neumo_dvb_usb_adapter *d)
 {
-	struct dvb_usb_device *u = d->dev;
+	struct neumo_dvb_usb_device *u = d->dev;
 	u8 buf[20];
 	
 	if ((d->fe_adap->fe = dvb_attach(cx24116_attach, &qbox2_cx24116_config,
@@ -279,7 +279,7 @@ static int tbsqboxs2_frontend_attach(struct dvb_usb_adapter *d)
 	return -EIO;
 }
 
-static int tbsqboxs2_rc_query(struct dvb_usb_device *d)
+static int tbsqboxs2_rc_query(struct neumo_dvb_usb_device *d)
 {
 	u8 key[2];
 	struct i2c_msg msg = {
@@ -365,7 +365,7 @@ static int tbsqboxs2_load_firmware(struct usb_device *dev,
 	return ret;
 }
 
-static struct dvb_usb_device_properties tbsqboxs2_properties = {
+static struct neumo_dvb_usb_device_properties tbsqboxs2_properties = {
 	.caps = DVB_USB_IS_AN_I2C_ADAPTER,
 	.usb_ctrl = DEVICE_SPECIFIC,
 	.firmware = "dvb-usb-tbsqbox-id5928.fw",
@@ -416,7 +416,7 @@ static struct dvb_usb_device_properties tbsqboxs2_properties = {
 static int tbsqboxs2_probe(struct usb_interface *intf,
 		const struct usb_device_id *id)
 {
-	if (0 == dvb_usb_device_init(intf, &tbsqboxs2_properties,
+	if (0 == neumo_dvb_usb_device_init(intf, &tbsqboxs2_properties,
 			THIS_MODULE, NULL, adapter_nr)) {
 		return 0;
 	}
@@ -426,7 +426,7 @@ static int tbsqboxs2_probe(struct usb_interface *intf,
 static struct usb_driver tbsqboxs2_driver = {
 	.name = "tbsqboxs2",
 	.probe = tbsqboxs2_probe,
-	.disconnect = dvb_usb_device_exit,
+	.disconnect = neumo_dvb_usb_device_exit,
 	.id_table = tbsqboxs2_table,
 };
 

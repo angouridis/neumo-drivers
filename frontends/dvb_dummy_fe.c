@@ -62,7 +62,7 @@ static int dvb_dummy_fe_read_ucblocks(struct neumo_dvb_frontend *fe, u32 *ucbloc
  * to userspace.
  */
 static int dvb_dummy_fe_get_frontend(struct neumo_dvb_frontend *fe,
-				     struct neumo_driver_dtv_frontend_properties *p)
+				     struct neumo_dtv_frontend_properties *p)
 {
 	return 0;
 }

@@ -326,7 +326,7 @@ static int stb6100_set_frequency(struct neumo_dvb_frontend *fe, u32 frequency)
 	int rc;
 	const struct stb6100_lkup *ptr;
 	struct stb6100_state *state = fe->tuner_priv;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 
 	u32 srate = 0, fvco, nint, nfrac;
 	u8 regs[STB6100_NUMREGS];
@@ -501,7 +501,7 @@ static int stb6100_init(struct neumo_dvb_frontend *fe)
 
 static int stb6100_set_params(struct neumo_dvb_frontend *fe)
 {
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 
 	if (c->frequency > 0)
 		stb6100_set_frequency(fe, c->frequency);

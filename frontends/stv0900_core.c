@@ -1564,7 +1564,7 @@ static enum neumo_dvbfe_search stv0900_search(struct neumo_dvb_frontend *fe)
 	struct stv0900_state *state = fe->demodulator_priv;
 	struct stv0900_internal *intp = state->internal;
 	enum fe_stv0900_demod_num demod = state->demod;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 
 	struct stv0900_search_params p_search;
 	struct stv0900_signal_info p_result = intp->result[demod];
@@ -1849,7 +1849,7 @@ static int stv0900_sleep(struct neumo_dvb_frontend *fe)
 }
 
 static int stv0900_get_frontend(struct neumo_dvb_frontend *fe,
-				struct neumo_driver_dtv_frontend_properties *p)
+				struct neumo_dtv_frontend_properties *p)
 {
 	struct stv0900_state *state = fe->demodulator_priv;
 	struct stv0900_internal *intp = state->internal;

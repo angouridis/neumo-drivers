@@ -3405,7 +3405,7 @@ static int r848_sleep(struct neumo_dvb_frontend *fe)
 static int r848_set_params(struct neumo_dvb_frontend *fe)
 {
 	struct r848_priv *priv = fe->tuner_priv;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int ret, i;
 	u8 tuner_lock;
 	u8 standard;

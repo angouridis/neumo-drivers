@@ -510,7 +510,7 @@ static int set_lof(struct stv *state, u32 local_frequency, u32 cutoff_frequency)
 static int set_params(struct neumo_dvb_frontend *fe)
 {
 	struct stv *state = fe->tuner_priv;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	u32 freq, cutoff;
 	int stat = 0;
 

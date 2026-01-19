@@ -556,7 +556,7 @@ static int stv0299_read_ucblocks(struct neumo_dvb_frontend* fe, u32* ucblocks)
 
 static int stv0299_set_frontend(struct neumo_dvb_frontend *fe)
 {
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	struct stv0299_state* state = fe->demodulator_priv;
 	int invval = 0;
 
@@ -592,7 +592,7 @@ static int stv0299_set_frontend(struct neumo_dvb_frontend *fe)
 }
 
 static int stv0299_get_frontend(struct neumo_dvb_frontend *fe,
-				struct neumo_driver_dtv_frontend_properties *p)
+				struct neumo_dtv_frontend_properties *p)
 {
 	struct stv0299_state* state = fe->demodulator_priv;
 	s32 derot_freq;
@@ -643,7 +643,7 @@ static int stv0299_i2c_gate_ctrl(struct neumo_dvb_frontend* fe, int enable)
 static int stv0299_get_tune_settings(struct neumo_dvb_frontend* fe, struct neumo_dvb_frontend_tune_settings* fesettings)
 {
 	struct stv0299_state* state = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 
 	fesettings->min_delay_ms = state->config->min_delay_ms;
 	if (p->symbol_rate < 10000000) {

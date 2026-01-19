@@ -293,7 +293,7 @@ static int rda5816_init(struct neumo_dvb_frontend *fe)
 static int rda5816_set_params(struct neumo_dvb_frontend *fe)
 {
 	struct rda5816_priv *priv = fe->tuner_priv;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	u8 buffer;
 	u8 Filter_bw_control_bit;
 	int i;
@@ -416,7 +416,7 @@ static  int   RDA5816_level_dBm_10[] = {    90, -50,  -263, -361, -463, -563, -6
 
 static int rda5816_get_rf_strength(struct neumo_dvb_frontend *fe, u16 *st)
 {
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 	int   if_agc, index, table_length, slope, *x, *y;
 
 	if_agc = *st;

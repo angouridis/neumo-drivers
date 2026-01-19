@@ -67,7 +67,7 @@ static int tbs5927_op_rw(struct usb_device *dev, u8 request, u16 value,
 static int tbs5927_i2c_transfer(struct i2c_adapter *adap, struct i2c_msg msg[],
 		int num)
 {
-struct dvb_usb_device *d = i2c_get_adapdata(adap);
+struct neumo_dvb_usb_device *d = i2c_get_adapdata(adap);
 	int i = 0;
 	u8 buf6[32];
 	u8 inbuf[32];
@@ -168,12 +168,12 @@ static void tbs5927_led_ctrl(struct neumo_dvb_frontend *fe, int offon)
 		.buf = led_off,
 		.len = 1
 	};
-	struct dvb_usb_adapter *udev_adap =
-		(struct dvb_usb_adapter *)(fe->dvb->priv);
+	struct neumo_dvb_usb_adapter *udev_adap =
+		(struct neumo_dvb_usb_adapter *)(fe->dvb->priv);
 
 	if (offon)
 		msg.buf = led_on;
-	
+
 	/* info("tbs5927_led_ctrl %d", msg.buf[0]); */
 	i2c_transfer(&udev_adap->dev->i2c_adap, &msg, 1);
 }
@@ -198,7 +198,7 @@ static struct i2c_algorithm tbs5927_i2c_algo = {
 	.functionality = tbs5927_i2c_func,
 };
 
-static int tbs5927_read_mac_address(struct dvb_usb_device *d, u8 mac[6])
+static int tbs5927_read_mac_address(struct neumo_dvb_usb_device *d, u8 mac[6])
 {
 	int i,ret;
 	u8 ibuf[3] = {0, 0,0};
@@ -219,7 +219,7 @@ static int tbs5927_read_mac_address(struct dvb_usb_device *d, u8 mac[6])
 				eepromline[i%16] = ibuf[0];
 				eeprom[i] = ibuf[0];
 			}
-			
+
 			if ((i % 16) == 15) {
 				deb_xfer("%02x: ", i - 15);
 				debug_dump(eepromline, 16, deb_xfer);
@@ -229,18 +229,18 @@ static int tbs5927_read_mac_address(struct dvb_usb_device *d, u8 mac[6])
 	return 0;
 };
 
-static int tbs5927_set_voltage(struct neumo_dvb_frontend *fe, 
+static int tbs5927_set_voltage(struct neumo_dvb_frontend *fe,
 						enum fe_sec_voltage voltage)
 {
 	static u8 cmd[1] = {0x00};
- 
+
 	struct i2c_msg msg[] = {
 		{.addr = TBS5927_VOLTAGE_CTRL, .flags = 0,
 			.buf = cmd, .len = 1},
 	};
-	
-	struct dvb_usb_adapter *udev_adap =
-		(struct dvb_usb_adapter *)(fe->dvb->priv);
+
+	struct neumo_dvb_usb_adapter *udev_adap =
+		(struct neumo_dvb_usb_adapter *)(fe->dvb->priv);
 	switch (voltage) {
 	  case SEC_VOLTAGE_13:
 		cmd[0] = 0;
@@ -258,7 +258,7 @@ static int tbs5927_set_voltage(struct neumo_dvb_frontend *fe,
 	return 0;
 }
 
-static int tbs5927_tuner_attach(struct dvb_usb_adapter *adap)
+static int tbs5927_tuner_attach(struct neumo_dvb_usb_adapter *adap)
 {
 	if (!dvb_attach(stv6120_attach, adap->fe_adap->fe,
 		      &adap->dev->i2c_adap, &tbs5927_stv6120_cfg, 0))
@@ -267,23 +267,33 @@ static int tbs5927_tuner_attach(struct dvb_usb_adapter *adap)
 	return 0;
 }
 
-static struct dvb_usb_device_properties tbs5927_properties;
+static struct neumo_dvb_usb_device_properties tbs5927_properties;
 
-static int tbs5927_frontend_attach(struct dvb_usb_adapter *d)
+static int tbs5927_frontend_attach(struct neumo_dvb_usb_adapter *d)
 {
-	struct dvb_usb_device *u = d->dev;
+	struct neumo_dvb_usb_device *u = d->dev;
 	u8 buf[20];
+	u8 mac[6];
 
 	buf[0] = 6; /* I2C speed */
 	buf[1] = 0; /* 100KHz */
 	tbs5927_op_rw(d->dev->udev, 0x8a, 0, 0,
 			buf, 2, TBS5927_WRITE_MSG);
 
+	tbs5927_read_mac_address(u,mac);
+
 	if (tbs5927_properties.adapter->fe->tuner_attach == &tbs5927_tuner_attach) {
-		d->fe_adap->fe = dvb_attach(stv091x_attach, &d->dev->i2c_adap, 
+		d->fe_adap->fe = dvb_attach(stv091x_attach, &d->dev->i2c_adap,
 					    &tbs5927_stv0910_cfg, 1 );
 		if (d->fe_adap->fe != NULL) {
 			d->fe_adap->fe->ops.set_voltage = tbs5927_set_voltage;
+			d->fe_adap->fe->ops.tuner_ops.info.frequency_min_hz = 250 * MHz;
+			d->fe_adap->fe->ops.tuner_ops.info.frequency_max_hz = 2150 * MHz;
+
+			memcpy(&d->fe_adap->fe->ops.info.card_mac_address, mac, sizeof(mac));
+			strscpy(d->fe_adap->fe->ops.info.card_short_name, "TBS 5927", sizeof(d->fe_adap->fe->ops.info.card_short_name));
+			snprintf(d->fe_adap->fe->ops.info.card_address, sizeof(d->fe_adap->fe->ops.info.card_address),
+							 "usb%s", dev_name(&d->dev->udev->dev));
 
 			buf[0] = 1; /* LNB power disable */
 			buf[1] = 0;
@@ -294,9 +304,16 @@ static int tbs5927_frontend_attach(struct dvb_usb_adapter *d)
 			buf[1] = 1;
 			tbs5927_op_rw(d->dev->udev, 0x8a, 0, 0,
 					buf, 2, TBS5927_WRITE_MSG);
-			
-			strscpy(d->fe_adap->fe->ops.info.name,u->props.devices[0].name,52);
 
+			strscpy(d->fe_adap->fe->ops.info.name,u->props.devices[0].name,52);
+			strscpy(d->fe_adap->fe->ops.info.name, u->props.devices[0].name ,
+							sizeof(d->fe_adap->fe->ops.info.name));
+			snprintf(d->fe_adap->fe->ops.info.card_address,
+							 sizeof(d->fe_adap->fe->ops.info.card_address), "usb%s", dev_name(&d->dev->udev->dev));
+#if 0
+			snprintf(d->fe_adap->fe->ops.info.adapter_name, sizeof(d->fe_adap->fe->ops.info.adapter_name),
+							 "%s #%d", d->fe_adap->fe->ops.info.card_short_name, 0/*d->fe_adap->nr*/);
+#endif
 			return 0;
 		}
 	}
@@ -304,7 +321,7 @@ static int tbs5927_frontend_attach(struct dvb_usb_adapter *d)
 	return -EIO;
 }
 
-static int tbs5927_rc_query(struct dvb_usb_device *d)
+static int tbs5927_rc_query(struct neumo_dvb_usb_device *d)
 {
 	u8 key[2];
 	struct i2c_msg msg = {
@@ -390,7 +407,7 @@ static int tbs5927_load_firmware(struct usb_device *dev,
 	return ret;
 }
 
-static struct dvb_usb_device_properties tbs5927_properties = {
+static struct neumo_dvb_usb_device_properties tbs5927_properties = {
 	.caps = DVB_USB_IS_AN_I2C_ADAPTER,
 	.usb_ctrl = DEVICE_SPECIFIC,
 	.firmware = "dvb-usb-tbsqbox-id5927.fw",
@@ -432,9 +449,10 @@ static struct dvb_usb_device_properties tbs5927_properties = {
 
 	.num_device_descs = 1,
 	.devices = {
-		{"TurboSight TBS 5927 DVB-S/S2",
-			{&tbs5927_table[0], NULL},
-			{NULL},
+		{.name = "TurboSight TBS 5927 DVB-S/S2",
+		 .short_name ="TBS 5927",
+		 .cold_ids = {&tbs5927_table[0], NULL},
+		 .warm_ids = {NULL},
 		}
 	}
 };
@@ -442,7 +460,7 @@ static struct dvb_usb_device_properties tbs5927_properties = {
 static int tbs5927_probe(struct usb_interface *intf,
 		const struct usb_device_id *id)
 {
-	if (0 == dvb_usb_device_init(intf, &tbs5927_properties,
+	if (0 == neumo_dvb_usb_device_init(intf, &tbs5927_properties,
 			THIS_MODULE, NULL, adapter_nr)) {
 		return 0;
 	}
@@ -452,7 +470,7 @@ static int tbs5927_probe(struct usb_interface *intf,
 static struct usb_driver tbs5927_driver = {
 	.name = "tbs5927",
 	.probe = tbs5927_probe,
-	.disconnect = dvb_usb_device_exit,
+	.disconnect = neumo_dvb_usb_device_exit,
 	.id_table = tbs5927_table,
 };
 
@@ -477,3 +495,6 @@ MODULE_AUTHOR("TBSDTV");
 MODULE_DESCRIPTION("TurboSight TBS 5927 DVB-S2 driver");
 MODULE_VERSION("1.0");
 MODULE_LICENSE("GPL");
+
+//check for incorrect include files
+#include <media/neumo-check.h>

@@ -444,7 +444,7 @@ static int stv0288_read_ucblocks(struct neumo_dvb_frontend *fe, u32 *ucblocks)
 static int stv0288_set_frontend(struct neumo_dvb_frontend *fe)
 {
 	struct stv0288_state *state = fe->demodulator_priv;
-	struct neumo_driver_dtv_frontend_properties *c = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache;
 
 	u8 tda[3], reg, time_out = 0;
 	s8 tm;

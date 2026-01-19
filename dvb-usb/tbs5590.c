@@ -80,7 +80,7 @@ static int tbs5590_op_rw(struct usb_device *dev, u8 request, u16 value,
 static int tbs5590_i2c_transfer(struct i2c_adapter *adap, 
 					struct i2c_msg msg[], int num)
 {
-	struct dvb_usb_device *d = i2c_get_adapdata(adap);
+	struct neumo_dvb_usb_device *d = i2c_get_adapdata(adap);
 	int i = 0;
 	u8 buf6[50];
 	u8 inbuf[50];
@@ -136,7 +136,7 @@ static int tbs5590_i2c_transfer(struct i2c_adapter *adap,
 static int ecp3_read(struct i2c_adapter *adap,unsigned char chipaddr,u16 regAddr,
 							unsigned char num,unsigned char *buf)
 {
-	struct dvb_usb_device *d = i2c_get_adapdata(adap);
+	struct neumo_dvb_usb_device *d = i2c_get_adapdata(adap);
 
 	unsigned char reg[2]={(regAddr>>8)&0xff,regAddr&0xff};
 	unsigned char tmp[8];
@@ -175,7 +175,7 @@ static int ecp3_read(struct i2c_adapter *adap,unsigned char chipaddr,u16 regAddr
 static int ecp3_write(struct i2c_adapter *adap,unsigned char chipaddr,u16 regAddr,
 							unsigned char num,unsigned char *buf)
 {
-	struct dvb_usb_device *d = i2c_get_adapdata(adap);
+	struct neumo_dvb_usb_device *d = i2c_get_adapdata(adap);
 	int i;
 	unsigned char reg[2]={(regAddr>>8)&0xff,regAddr&0xff};
 	unsigned char tmp[12];
@@ -221,8 +221,8 @@ static struct i2c_algorithm tbs5590_i2c_algo = {
 static int tbs5590_set_voltage(struct neumo_dvb_frontend *fe, 
 						enum fe_sec_voltage voltage)
 {
-	struct dvb_usb_adapter *udev_adap =
-		(struct dvb_usb_adapter *)(fe->dvb->priv);
+	struct neumo_dvb_usb_adapter *udev_adap =
+		(struct neumo_dvb_usb_adapter *)(fe->dvb->priv);
 	unsigned char iobuffer[8];
 	
 	ecp3_read(&udev_adap->dev->i2c_adap,ecp3_addr,(ecp3_base_addr+ecp3_lnb),8,iobuffer);
@@ -308,7 +308,7 @@ static void tbs5590_LED_ctrl(struct i2c_adapter*i2c,u8 flag)
 
 	return ;
 }
-static int tbs5590_read_mac_address(struct dvb_usb_device *d, u8 mac[6])
+static int tbs5590_read_mac_address(struct neumo_dvb_usb_device *d, u8 mac[6])
 {
 	int i,ret;
 	u8 ibuf[3] = {0, 0,0};
@@ -339,7 +339,7 @@ static int tbs5590_read_mac_address(struct dvb_usb_device *d, u8 mac[6])
 	return 0;
 };
 
-static struct dvb_usb_device_properties tbs5590_properties;
+static struct neumo_dvb_usb_device_properties tbs5590_properties;
 
 static struct tbs_cfg tbs5590_tbs_cfg = {
 		.adr = 0x88,
@@ -371,9 +371,9 @@ static struct cxd2878_config tbs5590_Gl6822_cfg = {
 		.TS_switch = tbs5590_TS_ctrl,
 		.LED_switch = tbs5590_LED_ctrl,
 	};
-static int tbs5590_frontend_attach(struct dvb_usb_adapter *adap)
+static int tbs5590_frontend_attach(struct neumo_dvb_usb_adapter *adap)
 {
-	struct dvb_usb_device *d = adap->dev;
+	struct neumo_dvb_usb_device *d = adap->dev;
 	struct tbs5590_state *st = d->priv;
 	struct i2c_adapter *adapter;
 	struct i2c_client *client_demod;
@@ -560,9 +560,9 @@ static int tbs5590_frontend_attach(struct dvb_usb_adapter *adap)
 	return 0;
 }
 
-static int tbs5590_ASI_attach(struct dvb_usb_adapter *adap)
+static int tbs5590_ASI_attach(struct neumo_dvb_usb_adapter *adap)
 {
-	struct dvb_usb_device *u = adap->dev;
+	struct neumo_dvb_usb_device *u = adap->dev;
 
 	adap->fe_adap[0].fe = dvb_attach(tbs_attach,&u->i2c_adap, &tbs5590_tbs_cfg,0);
 			
@@ -642,7 +642,7 @@ static int tbs5590_load_firmware(struct usb_device *dev,
 	return ret;
 }
 
-static struct dvb_usb_device_properties tbs5590_properties = {
+static struct neumo_dvb_usb_device_properties tbs5590_properties = {
 	.caps = DVB_USB_IS_AN_I2C_ADAPTER,
 	.usb_ctrl = DEVICE_SPECIFIC,
 	.firmware = "dvb-usb-id5590.fw",
@@ -704,7 +704,7 @@ static struct dvb_usb_device_properties tbs5590_properties = {
 static int tbs5590_probe(struct usb_interface *intf,
 		const struct usb_device_id *id)
 {
-	if (0 == dvb_usb_device_init(intf, &tbs5590_properties,
+	if (0 == neumo_dvb_usb_device_init(intf, &tbs5590_properties,
 			THIS_MODULE, NULL, adapter_nr)) {
 		return 0;
 	}
@@ -714,7 +714,7 @@ static int tbs5590_probe(struct usb_interface *intf,
 static void tbs5590_disconnect(struct usb_interface *intf)
 {
 #if 0
-	struct dvb_usb_device *d = usb_get_intfdata(intf);
+	struct neumo_dvb_usb_device *d = usb_get_intfdata(intf);
 	struct tbs5590_state *st = d->priv;
 	struct i2c_client *client;
 
@@ -732,7 +732,7 @@ static void tbs5590_disconnect(struct usb_interface *intf)
 		i2c_unregister_device(client);
 	}
 #endif	
-	dvb_usb_device_exit(intf);
+	neumo_dvb_usb_device_exit(intf);
 }
 
 static struct usb_driver tbs5590_driver = {

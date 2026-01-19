@@ -63,7 +63,7 @@ static int stb6000_sleep(struct neumo_dvb_frontend *fe)
 
 static int stb6000_set_params(struct neumo_dvb_frontend *fe)
 {
-	struct neumo_driver_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	struct stb6000_priv *priv = fe->tuner_priv;
 	unsigned int n, m;
 	int ret;
