@@ -4,7 +4,7 @@ rev=`git --git-dir ./.git log --pretty=format:'%h' -n 1`
 tag=`git --git-dir $dir/.git describe --exact-match --tags`
 branch=`git --git-dir $dir/.git rev-parse --abbrev-ref HEAD`
 
-versionfile=dvb-core/neumo-version.c
+versionfile=neumo/dvb-core/neumo-version.c
 
 file=`mktemp`
 cat >$file << EOF

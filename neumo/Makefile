@@ -10,7 +10,6 @@ PWD	:= $(shell pwd)
 MDIR	?=
 
 ROOT_DIR :=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
-NEUMO_DIR :=$(ROOT_DIR)/neumo
 # does not work export KBUILD_EXTMOD_OUTPUT = /tmp/build
 
 
@@ -70,13 +69,13 @@ MODDEFS := CONFIG_DVB_MMAP=y \
 	CONFIG_DVB_USB_TBS5931=m \
 	CONFIG_DVB_USB_TBS5530=m CONFIG_DVB_NET=y
 
-EXTRA_CFLAGS += --include=$(NEUMO_DIR)/include/kernel_compat.h -DCONFIG_DVB_MMAP
-EXTRA_CFLAGS += -I$(NEUMO_DIR)/include \
-                -I$(NEUMO_DIR)/include/linux \
-                -I$(NEUMO_DIR)/dvb-core \
-                -I$(NEUMO_DIR)/frontends \
-                -I$(NEUMO_DIR)/frontends/stid135 \
-                -I$(NEUMO_DIR)/tuners
+EXTRA_CFLAGS += --include=$(PWD)/include/kernel_compat.h -DCONFIG_DVB_MMAP
+EXTRA_CFLAGS += -I$(PWD)/include \
+                -I$(PWD)/include/linux \
+                -I$(PWD)/dvb-core \
+                -I$(PWD)/frontends \
+                -I$(PWD)/stid135 \
+                -I$(PWD)/tuners
 
 EXTRA_CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
 # --- Targets ---
@@ -84,25 +83,23 @@ EXTRA_CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
 
 # Build modules using Kbuild M= syntax
 all:
-	$(MAKE) $(NEUMO_DIR)/include/linux/dvb/neumo-frontend.h $(NEUMO_DIR)/include/linux/dvb/neumo-dmx.h
-	$(MAKE) $(NEUMO_DIR)/include/linux/dvb/neumo-frontend.h $(NEUMO_DIR)/dvb-core/neumo-version.c
-	$(MAKE) -C $(KDIR) M=$(ROOT_DIR) $(MODDEFS) NOSTDINC_FLAGS="$(EXTRA_CFLAGS)" modules
+	$(MAKE) $(ROOT_DIR)/include/linux/dvb/neumo-frontend.h $(ROOT_DIR)/include/linux/dvb/neumo-dmx.h
+	$(MAKE) $(ROOT_DIR)/include/linux/dvb/neumo-frontend.h $(ROOT_DIR)/dvb-core/neumo-version.c
+	$(MAKE) -C $(KDIR) M=$(PWD) $(MODDEFS) NOSTDINC_FLAGS="$(EXTRA_CFLAGS)" modules
 
-$(NEUMO_DIR)/include/linux/dvb/neumo-frontend.h: $(NEUMO_DIR)/templates/common-frontend.h
+$(ROOT_DIR)/include/linux/dvb/neumo-frontend.h: $(ROOT_DIR)/templates/common-frontend.h
 	sed -s -e 's/common_//g'  -e 's/neumo_//g'  -e 's/COMMON_//g' \
 	-e 's/NEUMO_//g' < $< > $@
 
-$(NEUMO_DIR)/include/linux/dvb/neumo-dmx.h: $(NEUMO_DIR)/templates/common-dmx.h
+$(ROOT_DIR)/include/linux/dvb/neumo-dmx.h: $(ROOT_DIR)/templates/common-dmx.h
 	sed -s -e 's/common_//g'  -e 's/neumo_//g'  -e 's/COMMON_//g' \
 	-e 's/NEUMO_//g' < $< > $@
-
-$(NEUMO_DIR)/dvb-core/neumo-version.c::
-	$(NEUMO_DIR)/update_version.sh
 
 dep:
-	$(MAKE) -C $(KDIR) M=$(ROOT_DIR) dep
+	$(MAKE) -C $(KDIR) M=$(PWD) dep
 
-install: all uninstall
+install: all
+	sudo rm -fr  /lib/modules/$(KVER)/updates/*
 	$(MAKE) -C $(KDIR) M=$(PWD) INSTALL_MOD_PATH=$(MDIR) modules_install
 	@echo "Updating module dependencies..."
 	@if [ -n "$(MDIR)" ]; then \
@@ -111,8 +108,6 @@ install: all uninstall
 		depmod -a $(KVER); \
 	fi
 
-uninstall:
-	sudo rm -fr  /lib/modules/$(KVER)/updates/neumo
 clean:
 	@echo "Cleaning up..."
 	@find . -type f -name "*.o" -o -name "*.ko" -o -name "*.mod" -o \
@@ -120,3 +115,6 @@ clean:
 	              -name "*.order" -o -name "*.dwo" -o -name "modules.order" -o \
 	              -name "Module.symvers" | xargs rm -f
 	@rm -rf .tmp_versions
+
+$(ROOT_DIR)/dvb-core/neumo-version.c::
+	$(ROOT_DIR)/update_version.sh

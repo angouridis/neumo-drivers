@@ -16,5 +16,5 @@ Module.symvers
 modules.order
 .modules.order.cmd
 .tmp_versions/
-build//
-dvb-core/neumo-version.c
+build/
+neumo/dvb-core/neumo-version.c

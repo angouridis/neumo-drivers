@@ -1110,7 +1110,7 @@ static void version_log(void)
 	char const* tag = NULL;
 	char const* branch = NULL;
 	neumo_git_versions(&neumo, &rev, &tag, &branch);
-	printk(KERN_ERR "neumodvb blindscan drivers %s; %s;%s;\n", rev, tag, branch);
+	printk(KERN_ERR "neumodvb blindscan drivers %s %s %s\n", rev, tag, branch);
 }
 
 static ssize_t version_store(struct kobject *kobj, struct kobj_attribute *attr,
