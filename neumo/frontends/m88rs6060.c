@@ -42,7 +42,7 @@ struct m88rs6060_base{
 struct m88rs6060_dev {
 	struct regmap *regmap;	//demod
 	enum fe_status fe_status;
-	struct dvb_frontend fe;
+	struct neumo_dvb_frontend fe;
 	struct m88rs6060_cfg config;
 
 	bool TsClockChecked;  //clock retio
@@ -1920,7 +1920,7 @@ static void m88res6060_set_ts_mode(struct m88rs6060_dev *dev)
 
 }
 
-static int m88rs6060_set_frontend(struct dvb_frontend *fe)
+static int m88rs6060_set_frontend(struct neumo_dvb_frontend *fe)
 {
 	struct i2c_client *client = fe->demodulator_priv;
 	struct m88rs6060_dev *dev = i2c_get_clientdata(client);
@@ -2203,12 +2203,12 @@ static int m88rs6060_set_frontend(struct dvb_frontend *fe)
 	return ret;
 }
 
-static enum dvbfe_algo m88rs6060_get_algo(struct dvb_frontend *fe)
+static enum dvbfe_algo m88rs6060_get_algo(struct neumo_dvb_frontend *fe)
 {
 	return DVBFE_ALGO_HW;
 }
 
-static int m88rs6060_init(struct dvb_frontend *fe)
+static int m88rs6060_init(struct neumo_dvb_frontend *fe)
 {
 	struct i2c_client *client = fe->demodulator_priv;
 	struct m88rs6060_dev *dev = i2c_get_clientdata(client);
@@ -2617,7 +2617,7 @@ static int m88rs6060_set_clock_ratio(struct m88rs6060_dev *dev )
 	}
 	return 0;	
 }
-static int m88rs6060_read_status(struct dvb_frontend *fe,
+static int m88rs6060_read_status(struct neumo_dvb_frontend *fe,
 				 enum fe_status *status)
 {
 		struct i2c_client *client = fe->demodulator_priv;
@@ -2879,7 +2879,7 @@ static int m88rs6060_read_status(struct dvb_frontend *fe,
 	return ret;
 }
 
-static int m88rs6060_read_snr(struct dvb_frontend *fe, u16 * snr)
+static int m88rs6060_read_snr(struct neumo_dvb_frontend *fe, u16 * snr)
 {
 	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	int i;
@@ -2892,7 +2892,7 @@ static int m88rs6060_read_snr(struct dvb_frontend *fe, u16 * snr)
 	return 0;
 }
 
-static int m88rs6060_read_ber(struct dvb_frontend *fe, u32 * ber)
+static int m88rs6060_read_ber(struct neumo_dvb_frontend *fe, u32 * ber)
 {
 	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 
@@ -2904,7 +2904,7 @@ static int m88rs6060_read_ber(struct dvb_frontend *fe, u32 * ber)
 	return 0;
 }
 
-static int m88rs6060_read_signal_strength(struct dvb_frontend *fe,
+static int m88rs6060_read_signal_strength(struct neumo_dvb_frontend *fe,
 					  u16 * strength)
 {
 	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
@@ -2918,7 +2918,7 @@ static int m88rs6060_read_signal_strength(struct dvb_frontend *fe,
 	return 0;
 }
 
-static int m88rs6060_set_voltage(struct dvb_frontend*fe,
+static int m88rs6060_set_voltage(struct neumo_dvb_frontend*fe,
 								enum fe_sec_voltage voltage)
 {
 		struct i2c_client *client = fe->demodulator_priv;
@@ -2955,7 +2955,7 @@ err:
 	
 }
 
-static int m88rs6060_set_tone(struct dvb_frontend *fe,
+static int m88rs6060_set_tone(struct neumo_dvb_frontend *fe,
 			      enum fe_sec_tone_mode fe_sec_tone_mode)
 {
 		struct i2c_client *client = fe->demodulator_priv;
@@ -3003,7 +3003,7 @@ static int m88rs6060_set_tone(struct dvb_frontend *fe,
 	return ret;
 }
 
-static int m88rs6060_diseqc_send_master_cmd(struct dvb_frontend *fe, struct dvb_diseqc_master_cmd
+static int m88rs6060_diseqc_send_master_cmd(struct neumo_dvb_frontend *fe, struct dvb_diseqc_master_cmd
 					    *diseqc_cmd)
 {
 		struct i2c_client *client = fe->demodulator_priv;
@@ -3083,7 +3083,7 @@ static int m88rs6060_diseqc_send_master_cmd(struct dvb_frontend *fe, struct dvb_
 	return ret;
 }
 
-static int m88rs6060_diseqc_send_burst(struct dvb_frontend *fe,
+static int m88rs6060_diseqc_send_burst(struct neumo_dvb_frontend *fe,
 				       enum fe_sec_mini_cmd fe_sec_mini_cmd)
 {
 	struct i2c_client *client = fe->demodulator_priv;
@@ -3163,7 +3163,7 @@ static int m88rs6060_diseqc_send_burst(struct dvb_frontend *fe,
 	return ret;
 }
 
-static int m88rs6060_tune(struct dvb_frontend *fe, bool re_tune,
+static int m88rs6060_tune(struct neumo_dvb_frontend *fe, bool re_tune,
 		unsigned int mode_flags,
 		unsigned int *delay, enum fe_status *status)
 {
@@ -3186,7 +3186,7 @@ static int m88rs6060_tune(struct dvb_frontend *fe, bool re_tune,
 
 	return 0;
 }
-static int m88rs6060_get_frontend(struct dvb_frontend *fe, struct neumo_dtv_frontend_properties *p)
+static int m88rs6060_get_frontend(struct neumo_dvb_frontend *fe, struct neumo_dtv_frontend_properties *p)
 {
 	struct i2c_client *client = fe->demodulator_priv;
 	struct m88rs6060_dev *dev = i2c_get_clientdata(client);
@@ -3266,7 +3266,7 @@ static int m88rs6060_get_frontend(struct dvb_frontend *fe, struct neumo_dtv_fron
 
  return 0;
 }
-static void m88rs6060_spi_read(struct dvb_frontend *fe,
+static void m88rs6060_spi_read(struct neumo_dvb_frontend *fe,
 			       struct ecp3_info *ecp3inf)
 {
 	struct i2c_client *client = fe->demodulator_priv;
@@ -3280,7 +3280,7 @@ static void m88rs6060_spi_read(struct dvb_frontend *fe,
 	return;
 }
 
-static void m88rs6060_spi_write(struct dvb_frontend *fe,
+static void m88rs6060_spi_write(struct neumo_dvb_frontend *fe,
 				struct ecp3_info *ecp3inf)
 {
 		struct i2c_client *client = fe->demodulator_priv;
@@ -3293,7 +3293,7 @@ static void m88rs6060_spi_write(struct dvb_frontend *fe,
 	return;
 }
 
-static void m88rs6060_eeprom_read(struct dvb_frontend *fe, struct eeprom_info *eepinf)
+static void m88rs6060_eeprom_read(struct neumo_dvb_frontend *fe, struct eeprom_info *eepinf)
 {
 	struct i2c_client *client = fe->demodulator_priv;
 	struct m88rs6060_dev *dev = i2c_get_clientdata(client);
@@ -3305,7 +3305,7 @@ static void m88rs6060_eeprom_read(struct dvb_frontend *fe, struct eeprom_info *e
 	return ;
 }
 
-static void m88rs6060_eeprom_write(struct dvb_frontend *fe,struct eeprom_info *eepinf)
+static void m88rs6060_eeprom_write(struct neumo_dvb_frontend *fe,struct eeprom_info *eepinf)
 {
 	struct i2c_client *client = fe->demodulator_priv;
 	struct m88rs6060_dev *dev = i2c_get_clientdata(client);
@@ -3317,7 +3317,7 @@ static void m88rs6060_eeprom_write(struct dvb_frontend *fe,struct eeprom_info *e
 	return ;
 }
 
-static const struct dvb_frontend_ops m88rs6060_ops = {
+static const struct neumo_dvb_frontend_ops m88rs6060_ops = {
 	.delsys = {SYS_DVBS, SYS_DVBS2},
 	.info = {
 		 .name = "Montage m88rs6060",
@@ -3548,7 +3548,7 @@ static int m88rs6060_probe(struct i2c_client *client)
 
 	dev->mclk = 96000;
 
-	memcpy(&dev->fe.ops, &m88rs6060_ops, sizeof(struct dvb_frontend_ops));
+	memcpy(&dev->fe.ops, &m88rs6060_ops, sizeof(struct neumo_dvb_frontend_ops));
 	*cfg->fe = &dev->fe;
 	dev->fe_status = 0;
 
