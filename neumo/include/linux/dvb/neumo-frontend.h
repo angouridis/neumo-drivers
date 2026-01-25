@@ -1312,7 +1312,6 @@ struct dvb_select_api {
 #define DVB_API_FE_SET_PROPERTY		   _IOW('o', 82, struct dvb_api_dtv_properties)
 #define DVB_API_FE_GET_PROPERTY		   _IOR('o', 83, struct dvb_api_dtv_properties)
 
-#define FE_SELECT_API		             _IOWR('o', 100, struct dvb_select_api)
 #define FE_SET_PROPERTY		   _IOW('o', 182, struct dtv_properties)
 #define FE_GET_PROPERTY		   _IOR('o', 183, struct dtv_properties)
 #define FE_ALGO_CTRL		       _IOW('o', 184, struct dtv_algo_ctrl)
