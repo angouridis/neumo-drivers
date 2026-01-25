@@ -40,7 +40,7 @@
 	-in case new or extended structures are needed, we need to define a new url.
 
 	In the code below, all structured in common between dvb api and neumo api are prefixed by
-	. THose specific to neumo are prefixed by neumo
+	. Those specific to neumo are prefixed by neumo
 
  */
 
@@ -698,30 +698,30 @@ enum fe_interleaving {
 /* Physical layer scrambling */
 #define DTV_SCRAMBLING_SEQUENCE_INDEX	70
 
-#define DTV_MATYPE                      171
-#define DTV_FRAME_LEN                   172
-#define DTV_ENABLE_MODCOD		173
-#define DTV_ALGORITHM		174
-#define DTV_SEARCH_RANGE		175 //not needed? symbol rate could be reused
-#define DTV_ISI_LIST		176 //retrieve list of ISI codes (stream ids)
-#define DTV_PLS_SEARCH_LIST 177 //list of PLS scrambling modes/codes to test during scan
-#define DTV_PLS_SEARCH_RANGE 178 //Range of PLS scrambling modes/codes to test during scan
-#define DTV_SCAN_START_FREQUENCY 179
-#define DTV_SCAN_END_FREQUENCY 180
-#define DTV_SCAN_RESOLUTION 181
-#define DTV_SCAN_FFT_SIZE 182
-#define DTV_SCAN 183
-#define DTV_SPECTRUM 184
-#define DTV_MAX_SYMBOL_RATE	185 //for blindscan
-#define DTV_CONSTELLATION 186
-#define DTV_HEARTBEAT 187
-#define DTV_BITRATE 188
-#define DTV_LOCKTIME 189
-#define DTV_MATYPE_LIST		190 //retrieve list of present matypes and stream_ids
-#define DTV_RF_INPUT 191
-#define DTV_SET_SEC_CONFIGURED 192
-#define DTV_OUTPUT_BBFRAMES 193 //ask frontend to send bbframes to demux
-#define DTV_MODCODE		194
+#define DTV_MATYPE                      71
+#define DTV_FRAME_LEN                   72
+#define DTV_ENABLE_MODCOD		73
+#define DTV_ALGORITHM		74
+#define DTV_SEARCH_RANGE		75 //not needed? symbol rate could be reused
+#define DTV_ISI_LIST		76 //retrieve list of ISI codes (stream ids)
+#define DTV_PLS_SEARCH_LIST 77 //list of PLS scrambling modes/codes to test during scan
+#define DTV_PLS_SEARCH_RANGE 78 //Range of PLS scrambling modes/codes to test during scan
+#define DTV_SCAN_START_FREQUENCY 79
+#define DTV_SCAN_END_FREQUENCY 80
+#define DTV_SCAN_RESOLUTION 81
+#define DTV_SCAN_FFT_SIZE 82
+#define DTV_SCAN 83
+#define DTV_SPECTRUM 84
+#define DTV_MAX_SYMBOL_RATE	85 //for blindscan
+#define DTV_CONSTELLATION 86
+#define DTV_HEARTBEAT 87
+#define DTV_BITRATE 88
+#define DTV_LOCKTIME 89
+#define DTV_MATYPE_LIST	90 //retrieve list of present matypes and stream_ids
+#define DTV_RF_INPUT 91
+#define DTV_SET_SEC_CONFIGURED 92
+#define DTV_OUTPUT_BBFRAMES 93 //ask frontend to send bbframes to demux
+#define DTV_MODCODE		94
 #define DTV_MAX_COMMAND	 DTV_MODCODE
 
 //commands for controlling long running algorithms via FE_ALGO_CTRL ioctl
@@ -1207,6 +1207,11 @@ struct dvb_api_dtv_properties {
 	struct dvb_api_dtv_property *props;
 };
 
+struct dtv_progress {
+	__u32 cur_index;
+	__u32 max_index;
+};
+
 /**
  * struct dtv_properties - a set of command/value pairs.
  *
@@ -1225,6 +1230,10 @@ struct dtv_properties {
 struct dtv_algo_ctrl {
 	__u32 cmd;
 	__u32 reserved[3];
+	union {
+		__u32 data;
+		struct dtv_progress progress;
+	} u;
 };
 
 enum fe_ioctl_result {
@@ -1309,7 +1318,7 @@ struct dvb_select_api {
 #define FE_ALGO_CTRL		       _IOW('o', 184, struct dtv_algo_ctrl)
 #define FE_SET_RF_INPUT		   _IOW('o', 185, struct fe_rf_input_control)
 #define FE_GET_EXTENDED_INFO	 _IOR('o', 186, struct dvb_frontend_extended_info)
-#define FE_DISEQC_SEND_LONG_MASTER_CMD  _IOW('o', 187, struct dvb_diseqc_long_master_cmd)
+#define FE_DISEQC_SEND_LONG_MASTER_CMD  _IOW('o', 87, struct dvb_diseqc_long_master_cmd)
 
 #if defined(__DVB_CORE__) || !defined(__KERNEL__)
 
