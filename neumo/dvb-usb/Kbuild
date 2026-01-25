@@ -3,6 +3,8 @@ neumo-dvb-usb-objs += dvb-usb-firmware.o neumo-dvb-usb-init.o neumo-dvb-usb-urb.
 neumo-dvb-usb-objs += dvb-usb-dvb.o neumo-dvb-usb-remote.o usb-urb.o
 obj-$(CONFIG_DVB_USB) += neumo-dvb-usb.o
 
+obj-$(CONFIG_DVB_USB_CX231XX) += cx231xx/
+
 neumo-dvb-usb-tbsqbox-objs = tbs-qbox.o
 obj-$(CONFIG_DVB_USB_TBSQBOX) += neumo-dvb-usb-tbsqbox.o
 
