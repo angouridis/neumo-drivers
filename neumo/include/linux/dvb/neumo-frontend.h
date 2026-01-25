@@ -1317,7 +1317,7 @@ struct dvb_select_api {
 #define FE_ALGO_CTRL		       _IOW('o', 184, struct dtv_algo_ctrl)
 #define FE_SET_RF_INPUT		   _IOW('o', 185, struct fe_rf_input_control)
 #define FE_GET_EXTENDED_INFO	 _IOR('o', 186, struct dvb_frontend_extended_info)
-#define FE_DISEQC_SEND_LONG_MASTER_CMD  _IOW('o', 87, struct dvb_diseqc_long_master_cmd)
+#define FE_DISEQC_SEND_LONG_MASTER_CMD  _IOW('o', 187, struct dvb_diseqc_long_master_cmd)
 
 #if defined(__DVB_CORE__) || !defined(__KERNEL__)
 
