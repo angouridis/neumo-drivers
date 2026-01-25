@@ -132,6 +132,7 @@ struct tbsecp3_adap_config {
 struct tbsecp3_ci_config{
 	u32 base;
 };
+
 struct tbsecp3_board {
 	u16  board_id;
 	char *name;

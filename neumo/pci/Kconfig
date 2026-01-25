@@ -12,10 +12,20 @@ if MEDIA_PCI_SUPPORT
 
 
 
+
+if MEDIA_ANALOG_TV_SUPPORT || MEDIA_DIGITAL_TV_SUPPORT
+	comment "Media capture/analog/hybrid TV support"
+
+source "pci/saa716x/Kconfig"
+
+endif
+
 if MEDIA_DIGITAL_TV_SUPPORT
 	comment "Media digital TV PCI Adapters"
 
 source "pci/tbsecp3/Kconfig"
+#source "pci/tbscapture/Kconfig"
+#source "pci/tbscapture2/Kconfig"
 source "pci/tbsmod/Kconfig"
 source "pci/tbsci/Kconfig"
 
