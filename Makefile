@@ -116,6 +116,7 @@ install: all uninstall
 	fi
 
 uninstall:
+	sudo rm -fr  /lib/modules/$(KVER)/updates/extra/media # remove old neumo
 	sudo rm -fr  /lib/modules/$(KVER)/updates/neumo
 clean:
 	@echo "Cleaning up..."
