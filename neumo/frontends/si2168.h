@@ -56,6 +56,11 @@ struct si2168_config {
 	unsigned int ts_clock_inv:1;
 	unsigned int ts_clock_gapped:1;
 	unsigned int spectral_inversion:1;
+	const char* card_address;
+	const char* card_name;
+	const char* card_short_name;
+	int64_t card_mac_address;
+	int64_t adapter_mac_address;
 };
 
 #endif

@@ -969,11 +969,10 @@ static noinline_for_stack int em28xx_attach_xc3028(u8 addr, struct em28xx *dev)
 /* ------------------------------------------------------------------ */
 
 static int em28xx_register_dvb(struct em28xx_dvb *dvb, struct module *module,
-			       struct em28xx *dev, struct device *device)
+															 struct em28xx *dev, struct device *device)
 {
 	int result;
 	bool create_rf_connector = false;
-
 	mutex_init(&dvb->lock);
 
 	/* register adapter */
@@ -1392,6 +1391,11 @@ static int em28174_dvb_init_hauppauge_wintv_dualhd_dvb(struct em28xx *dev)
 	si2168_config.fe = &dvb->fe[0];
 	si2168_config.ts_mode = SI2168_TS_SERIAL;
 	si2168_config.spectral_inversion = true;
+	si2168_config.card_address = &dev->card_address[0];
+	si2168_config.card_name = &dev->board.name[0];
+	si2168_config.card_name = &dev->board.short_name[0];
+	si2168_config.card_mac_address = dev->card_mac_address;
+	si2168_config.adapter_mac_address = dev->card_mac_address;
 	addr = (dev->ts == PRIMARY_TS) ? 0x64 : 0x67;
 
 	dvb->i2c_client_demod = dvb_module_probe("si2168", NULL,

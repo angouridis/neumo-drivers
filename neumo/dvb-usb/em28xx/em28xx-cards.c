@@ -2499,6 +2499,7 @@ const struct em28xx_board em28xx_boards[] = {
 	 */
 	[EM28174_BOARD_HAUPPAUGE_WINTV_DUALHD_DVB] = {
 		.name          = "Hauppauge WinTV-dualHD DVB",
+		.short_name    = "WinTV-dualHD",
 		.def_i2c_bus   = 1,
 		.i2c_speed     = EM28XX_I2C_CLK_WAIT_ENABLE |
 				 EM28XX_I2C_FREQ_400_KHZ,
@@ -3547,6 +3548,11 @@ static int em28xx_init_dev(struct em28xx *dev, struct usb_device *udev,
 
 	dev->wait_after_write = 5;
 
+	snprintf(dev->card_address, sizeof(dev->card_address), "usb%s", dev_name(&udev->dev));
+	//create fake card mac address from usb serial number, leaving the last 4 bits free
+	memcpy(&dev->card_mac_address, udev->serial, sizeof(dev->card_mac_address));
+	dev->card_mac_address <<= 4;
+	dprintk("card_address=%s\n", dev->card_address);
 	/* Based on the Chip ID, set the device configuration */
 	retval = em28xx_read_reg(dev, EM28XX_R0A_CHIPID);
 	if (retval > 0) {
@@ -3702,7 +3708,10 @@ static int em28xx_duplicate_dev(struct em28xx *dev)
 		}
 	} while (test_and_set_bit(nr, em28xx_devused));
 	sec_dev->devno = nr;
-	snprintf(sec_dev->name, 28, "em28xx #%d", nr);
+	if(sec_dev->board.name[0]==0)
+		snprintf(sec_dev->board.name, 28, "em28xx #%d", nr);
+	if(sec_dev->board.short_name[0]==0)
+		snprintf(sec_dev->board.short_name, 28, "em28xx #%d", nr);
 	sec_dev->dev_next = NULL;
 	dev->dev_next = sec_dev;
 	return 0;
@@ -3942,7 +3951,7 @@ static int em28xx_usb_probe(struct usb_interface *intf,
 	dev->ifnum = ifnum;
 
 	dev->ts = PRIMARY_TS;
-	snprintf(dev->name, 28, "em28xx");
+	//snprintf(dev->card_name, 28, "em28xx");
 	dev->dev_next = NULL;
 
 	if (has_vendor_audio) {
@@ -4043,7 +4052,7 @@ static int em28xx_usb_probe(struct usb_interface *intf,
 		dev->dev_next->has_video = false;
 		dev->dev_next->ifnum = ifnum;
 		dev->dev_next->model = id->driver_info;
-
+		dev->adapter_mac_address += 1;
 		mutex_init(&dev->dev_next->lock);
 		retval = em28xx_init_dev(dev->dev_next, udev, intf,
 					 dev->dev_next->devno);
@@ -4139,11 +4148,11 @@ static void em28xx_usb_disconnect(struct usb_interface *intf)
 
 	if (dev->dev_next) {
 		dev_info(&dev->intf->dev, "Disconnecting dev_next %s\n",
-			 dev->dev_next->name);
+			 dev->dev_next->board.name);
 	}
 
 
-	dev_info(&dev->intf->dev, "Disconnecting dev=%p %s\n", dev, dev->name);
+	dev_info(&dev->intf->dev, "Disconnecting dev=%p %s\n", dev, dev->board.name);
 
 	flush_request_modules(dev);
 

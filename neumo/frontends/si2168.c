@@ -825,7 +825,11 @@ static const struct neumo_dvb_frontend_ops si2168_ops = {
 			FE_CAN_HIERARCHY_AUTO |
 			FE_CAN_MUTE_TS |
 			FE_CAN_2G_MODULATION |
-			FE_CAN_MULTISTREAM
+		FE_CAN_MULTISTREAM,
+
+		.default_rf_input = -1, //means: use adapter_no
+		.num_rf_inputs = 0,
+		.rf_inputs = { 0}
 	},
 
 	.get_tune_settings = si2168_get_tune_settings,
@@ -926,6 +930,14 @@ static int si2168_probe(struct i2c_client *client)
 
 	/* create dvb_frontend */
 	memcpy(&dev->fe.ops, &si2168_ops, sizeof(struct neumo_dvb_frontend_ops));
+
+	if(config->card_name)
+		strscpy(dev->fe.ops.info.name, config->card_name, sizeof(dev->fe.ops.info.name));
+	if (config->card_short_name)
+		strscpy(dev->fe.ops.info.card_short_name, config->card_short_name, sizeof(dev->fe.ops.info.card_short_name));
+	if(config->card_address)
+		strscpy(dev->fe.ops.info.card_address, config->card_address, sizeof(dev->fe.ops.info.card_address));
+	dev->fe.ops.info.card_mac_address = config->card_mac_address;
 	dev->fe.demodulator_priv = client;
 	*config->i2c_adapter = dev->muxc->adapter[0];
 	*config->fe = &dev->fe;

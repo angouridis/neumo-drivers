@@ -470,6 +470,7 @@ struct em28xx_button {
 
 struct em28xx_board {
 	char *name;
+	char *short_name;
 	int vchannels;
 	int tuner_type;
 	int tuner_addr;
@@ -655,7 +656,9 @@ struct em28xx {
 	unsigned int i2c_speed:2;
 	enum em28xx_int_audio_type int_audio_type;
 	enum em28xx_usb_audio_type usb_audio_type;
-	unsigned char name[32];
+	char card_address[64]; //string to uniquely identify the card on the system; typically dev_name(&dev->pci_dev->dev)
+	u64 adapter_mac_address;
+	u64 card_mac_address;
 
 	struct em28xx_board board;
 
