@@ -88,5 +88,4 @@ struct neumo_dvb_frontend_private {
 	struct media_pipeline pipe;
 #endif
 	struct neumo_dtv_fe_algo_state algo_state;
-	unsigned int exit;
 };

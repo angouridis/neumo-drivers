@@ -818,6 +818,7 @@ struct neumo_dvb_frontend {
 #define DVB_FRONTEND_COMPONENT_DEMOD 1
 	int (*callback)(void *adapter_priv, int component, int cmd, int arg);
 	int id;
+	unsigned int exit;
 };
 
 /**

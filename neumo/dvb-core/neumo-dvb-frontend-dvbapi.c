@@ -332,9 +332,9 @@ static void dvb_frontend_clear_events(struct dvb_frontend *fe)
 
 static void dvb_frontend_init(struct dvb_frontend *fe)
 {
-	dev_dbg(fe->dvb->device,
-		"%s: initialising adapter %i frontend %i (%s)...\n",
-		__func__, fe->dvb->num, fe->id, fe->ops.info.name);
+	fe_dprintk(fe,
+		"initialising adapter %i frontend %i (%s)...\n",
+						 fe->dvb->num, fe->id, fe->ops.info.name);
 
 	if (fe->ops.init)
 		fe->ops.init(fe);

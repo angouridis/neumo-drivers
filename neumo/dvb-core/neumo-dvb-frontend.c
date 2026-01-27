@@ -308,7 +308,7 @@ static void neumo_dvb_frontend_clear_events(struct neumo_dvb_frontend* fe)
 	mutex_unlock(&events->mtx);
 }
 
-static void dvb_frontend_init(struct neumo_dvb_frontend* fe)
+static void neumo_dvb_frontend_init(struct neumo_dvb_frontend* fe)
 {
 	dev_dbg(fe->dvb->device,
 		"%s: initialising adapter %i frontend %i (%s)...\n",
@@ -325,10 +325,274 @@ static void dvb_frontend_init(struct neumo_dvb_frontend* fe)
 	}
 }
 
+static void neumo_dvb_frontend_swzigzag_update_delay(struct neumo_dvb_frontend_private *fepriv, int locked)
+{
+	int q2;
+	struct neumo_dvb_frontend *fe = fepriv->dvbdev->priv;
+
+	dev_dbg(fe->dvb->device, "%s:\n", __func__);
+
+	if (locked)
+		(fepriv->quality) = (fepriv->quality * 220 + 36 * 256) / 256;
+	else
+		(fepriv->quality) = (fepriv->quality * 220 + 0) / 256;
+
+	q2 = fepriv->quality - 128;
+	q2 *= q2;
+
+	fepriv->delay = fepriv->min_delay + q2 * HZ / (128 * 128);
+}
+
+/**
+ * neumo_dvb_frontend_swzigzag_autotune - Performs automatic twiddling of frontend
+ *	parameters.
+ *
+ * @fe: The frontend concerned.
+ * @check_wrapped: Checks if an iteration has completed.
+ *		   DO NOT SET ON THE FIRST ATTEMPT.
+ *
+ * return: Number of complete iterations that have been performed.
+ */
+static int neumo_dvb_frontend_swzigzag_autotune(struct neumo_dvb_frontend *fe, int check_wrapped)
+{
+	int autoinversion;
+	int ready = 0;
+	int fe_set_err = 0;
+	struct neumo_dvb_frontend_private *fepriv = fe->frontend_priv;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache, tmp;
+	int original_inversion = c->inversion;
+	u32 original_frequency = c->frequency;
+
+	/* are we using autoinversion? */
+	autoinversion = ((!(fe->ops.info.caps & FE_CAN_INVERSION_AUTO)) &&
+			 (c->inversion == INVERSION_AUTO));
+
+	/* setup parameters correctly */
+	while (!ready) {
+		/* calculate the lnb_drift */
+		fepriv->lnb_drift = fepriv->auto_step * fepriv->step_size;
+
+		/* wrap the auto_step if we've exceeded the maximum drift */
+		if (fepriv->lnb_drift > fepriv->max_drift) {
+			fepriv->auto_step = 0;
+			fepriv->auto_sub_step = 0;
+			fepriv->lnb_drift = 0;
+		}
+
+		/* perform inversion and +/- zigzag */
+		switch (fepriv->auto_sub_step) {
+		case 0:
+			/* try with the current inversion and current drift setting */
+			ready = 1;
+			break;
+
+		case 1:
+			if (!autoinversion) break;
+
+			fepriv->inversion = (fepriv->inversion == INVERSION_OFF) ? INVERSION_ON : INVERSION_OFF;
+			ready = 1;
+			break;
+
+		case 2:
+			if (fepriv->lnb_drift == 0) break;
+
+			fepriv->lnb_drift = -fepriv->lnb_drift;
+			ready = 1;
+			break;
+
+		case 3:
+			if (fepriv->lnb_drift == 0) break;
+			if (!autoinversion) break;
+
+			fepriv->inversion = (fepriv->inversion == INVERSION_OFF) ? INVERSION_ON : INVERSION_OFF;
+			fepriv->lnb_drift = -fepriv->lnb_drift;
+			ready = 1;
+			break;
+
+		default:
+			fepriv->auto_step++;
+			fepriv->auto_sub_step = -1; /* it'll be incremented to 0 in a moment */
+			break;
+		}
+
+		if (!ready) fepriv->auto_sub_step++;
+	}
+
+	/* if this attempt would hit where we started, indicate a complete
+	 * iteration has occurred */
+	if ((fepriv->auto_step == fepriv->started_auto_step) &&
+			(fepriv->auto_sub_step == 0) && check_wrapped) {
+		return 1;
+	}
+
+	dev_dbg(fe->dvb->device,
+		"%s: drift:%i inversion:%i auto_step:%i auto_sub_step:%i started_auto_step:%i\n",
+		__func__, fepriv->lnb_drift, fepriv->inversion,
+		fepriv->auto_step, fepriv->auto_sub_step,
+		fepriv->started_auto_step);
+
+	/* set the frontend itself */
+	c->frequency += fepriv->lnb_drift;
+	if (autoinversion)
+		c->inversion = fepriv->inversion;
+	tmp = *c;
+	if (fe->ops.set_frontend)
+		fe_set_err = fe->ops.set_frontend(fe);
+	*c = tmp;
+	if (fe_set_err < 0) {
+		fepriv->state = FESTATE_ERROR;
+		return fe_set_err;
+	}
+
+	c->frequency = original_frequency;
+	c->inversion = original_inversion;
+
+	fepriv->auto_sub_step++;
+	return 0;
+}
+
+static void neumo_dvb_frontend_swzigzag(struct neumo_dvb_frontend *fe)
+{
+	enum fe_status s = FE_NONE;
+	int retval = 0;
+	struct neumo_dvb_frontend_private *fepriv = fe->frontend_priv;
+	struct neumo_dtv_frontend_properties *c = &fe->dtv_property_cache, tmp;
+
+	if (fepriv->max_drift)
+		dev_warn_once(fe->dvb->device,
+			      "Frontend requested software zigzag, but didn't set the frequency step size\n");
+
+	/* if we've got no parameters, just keep idling */
+	if (fepriv->state & FESTATE_IDLE) {
+		fepriv->delay = 3 * HZ;
+		fepriv->quality = 0;
+		return;
+	}
+
+	/* in SCAN mode, we just set the frontend when asked and leave it alone */
+	if (fepriv->tune_mode_flags & FE_TUNE_MODE_ONESHOT) {
+		if (fepriv->state & FESTATE_RETUNE) {
+			tmp = *c;
+			if (fe->ops.set_frontend)
+				retval = fe->ops.set_frontend(fe);
+			*c = tmp;
+			if (retval < 0)
+				fepriv->state = FESTATE_ERROR;
+			else
+				fepriv->state = FESTATE_TUNED;
+		}
+		fepriv->delay = 3 * HZ;
+		fepriv->quality = 0;
+		return;
+	}
+
+	/* get the frontend status */
+	if (fepriv->state & FESTATE_RETUNE) {
+		s = 0;
+	} else {
+		if (fe->ops.read_status)
+			fe->ops.read_status(fe, &s);
+		if (s != fepriv->status) {
+			neumo_dvb_frontend_add_event(fe, s);
+			fepriv->status = s;
+		}
+	}
+
+	/* if we're not tuned, and we have a lock, move to the TUNED state */
+	if ((fepriv->state & FESTATE_WAITFORLOCK) && (s & FE_HAS_LOCK)) {
+		neumo_dvb_frontend_swzigzag_update_delay(fepriv, s & FE_HAS_LOCK);
+		fepriv->state = FESTATE_TUNED;
+
+		/* if we're tuned, then we have determined the correct inversion */
+		if ((!(fe->ops.info.caps & FE_CAN_INVERSION_AUTO)) &&
+				(c->inversion == INVERSION_AUTO)) {
+			c->inversion = fepriv->inversion;
+		}
+		return;
+	}
+
+	/* if we are tuned already, check we're still locked */
+	if (fepriv->state & FESTATE_TUNED) {
+		neumo_dvb_frontend_swzigzag_update_delay(fepriv, s & FE_HAS_LOCK);
+
+		/* we're tuned, and the lock is still good... */
+		if (s & FE_HAS_LOCK) {
+			return;
+		} else { /* if we _WERE_ tuned, but now don't have a lock */
+			fepriv->state = FESTATE_ZIGZAG_FAST;
+			fepriv->started_auto_step = fepriv->auto_step;
+			fepriv->check_wrapped = 0;
+		}
+	}
+
+	/* don't actually do anything if we're in the LOSTLOCK state,
+	 * the frontend is set to FE_CAN_RECOVER, and the max_drift is 0 */
+	if ((fepriv->state & FESTATE_LOSTLOCK) &&
+			(fe->ops.info.caps & FE_CAN_RECOVER) && (fepriv->max_drift == 0)) {
+		neumo_dvb_frontend_swzigzag_update_delay(fepriv, s & FE_HAS_LOCK);
+		return;
+	}
+
+	/* don't do anything if we're in the DISEQC state, since this
+	 * might be someone with a motorized dish controlled by DISEQC.
+	 * If its actually a re-tune, there will be a SET_FRONTEND soon enough.	*/
+	if (fepriv->state & FESTATE_DISEQC) {
+		neumo_dvb_frontend_swzigzag_update_delay(fepriv, s & FE_HAS_LOCK);
+		return;
+	}
+
+	/* if we're in the RETUNE state, set everything up for a brand
+	 * new scan, keeping the current inversion setting, as the next
+	 * tune is _very_ likely to require the same */
+	if (fepriv->state & FESTATE_RETUNE) {
+		fepriv->lnb_drift = 0;
+		fepriv->auto_step = 0;
+		fepriv->auto_sub_step = 0;
+		fepriv->started_auto_step = 0;
+		fepriv->check_wrapped = 0;
+	}
+
+	/* fast zigzag. */
+	if ((fepriv->state & FESTATE_SEARCHING_FAST) || (fepriv->state & FESTATE_RETUNE)) {
+		fepriv->delay = fepriv->min_delay;
+
+		/* perform a tune */
+		retval = neumo_dvb_frontend_swzigzag_autotune(fe,
+							fepriv->check_wrapped);
+		if (retval < 0) {
+			return;
+		} else if (retval) {
+			/* OK, if we've run out of trials at the fast speed.
+			 * Drop back to slow for the _next_ attempt */
+			fepriv->state = FESTATE_SEARCHING_SLOW;
+			fepriv->started_auto_step = fepriv->auto_step;
+			return;
+		}
+		fepriv->check_wrapped = 1;
+
+		/* if we've just re-tuned, enter the ZIGZAG_FAST state.
+		 * This ensures we cannot return from an
+		 * FE_SET_FRONTEND ioctl before the first frontend tune
+		 * occurs */
+		if (fepriv->state & FESTATE_RETUNE) {
+			fepriv->state = FESTATE_TUNING_FAST;
+		}
+	}
+
+	/* slow zigzag */
+	if (fepriv->state & FESTATE_SEARCHING_SLOW) {
+		neumo_dvb_frontend_swzigzag_update_delay(fepriv, s & FE_HAS_LOCK);
+
+		/* Note: don't bother checking for wrapping; we stay in this
+		 * state until we get a lock */
+		neumo_dvb_frontend_swzigzag_autotune(fe, 0);
+	}
+}
+
 static int neumo_dvb_frontend_is_exiting(struct neumo_dvb_frontend* fe)
 {
 	struct neumo_dvb_frontend_private *fepriv = fe->frontend_priv;
-	if (fepriv->exit != DVB_FE_NO_EXIT)
+	if (fe->exit != DVB_FE_NO_EXIT)
 		return 1;
 
 	if (fepriv->dvbdev->writers == 1)
@@ -459,7 +723,7 @@ static void hw_algo(struct neumo_dvb_frontend_private *fepriv,
 
  */
 
-static int dvb_frontend_thread(void *data)
+static int neumo_dvb_frontend_thread(void *data)
 {
 	struct neumo_dvb_frontend* fe = data;
 	struct neumo_dvb_frontend_private *fepriv = fe->frontend_priv;
@@ -478,8 +742,8 @@ static int dvb_frontend_thread(void *data)
 	fepriv->wakeup = 0;
 	fepriv->reinitialise = 0;
 
-	dprintk("calling dvb_frontend_init\n");
-	dvb_frontend_init(fe);
+	dprintk("calling neumo_dvb_frontend_init\n");
+	neumo_dvb_frontend_init(fe);
 
 	set_freezable();
 	while (1) {
@@ -496,7 +760,7 @@ restart:
 			/* got signal or quitting */
 			if (!down_interruptible(&fepriv->sem))
 				semheld = true;
-			fepriv->exit = DVB_FE_NORMAL_EXIT;
+			fe->exit = DVB_FE_NORMAL_EXIT;
 			break;
 		}
 
@@ -507,8 +771,8 @@ restart:
 			break;
 
 		if (fepriv->reinitialise) {
-			dprintk("calling dvb_frontend_init\n");
-			dvb_frontend_init(fe);
+			dprintk("calling neumo_dvb_frontend_init\n");
+			neumo_dvb_frontend_init(fe);
 			if (fe->ops.set_tone && fepriv->tone != -1) {
 				fe_dprintk(fe, "calling set_tone: tone=%d\n", fepriv->tone);
 				fe->ops.set_tone(fe, fepriv->tone);
@@ -572,6 +836,8 @@ restart:
 				fe_dprintk(fe, "UNDEFINED ALGO !\n");
 				break;
 			}
+		} else {
+			neumo_dvb_frontend_swzigzag(fe);
 		}
 	}
 	fe_dprintk(fe, "Exiting frontend thread\n");
@@ -598,9 +864,9 @@ restart:
 
 	fepriv->thread = NULL;
 	if (kthread_should_stop())
-		fepriv->exit = DVB_FE_DEVICE_REMOVED;
+		fe->exit = DVB_FE_DEVICE_REMOVED;
 	else
-		fepriv->exit = DVB_FE_NO_EXIT;
+		fe->exit = DVB_FE_NO_EXIT;
 	mb();
 
 	if (semheld)
@@ -614,8 +880,8 @@ static void neumo_dvb_frontend_stop(struct neumo_dvb_frontend* fe)
 	struct neumo_dvb_frontend_private* fepriv = fe->frontend_priv;
 	fe_dprintk(fe, "\n");
 
-	if (fepriv->exit != DVB_FE_DEVICE_REMOVED)
-		fepriv->exit = DVB_FE_NORMAL_EXIT;
+	if (fe->exit != DVB_FE_DEVICE_REMOVED)
+		fe->exit = DVB_FE_NORMAL_EXIT;
 	mb();
 
 	if (!fepriv->thread)
@@ -640,7 +906,7 @@ static int neumo_dvb_frontend_start(struct neumo_dvb_frontend* fe)
 	struct task_struct *fe_thread;
 
 	if (fepriv->thread) {
-		if (fepriv->exit == DVB_FE_NO_EXIT)
+		if (fe->exit == DVB_FE_NO_EXIT)
 			return 0;
 		else
 			neumo_dvb_frontend_stop(fe);
@@ -652,11 +918,11 @@ static int neumo_dvb_frontend_start(struct neumo_dvb_frontend* fe)
 		return -EINTR;
 
 	fepriv->state = FESTATE_IDLE;
-	fepriv->exit = DVB_FE_NO_EXIT;
+	fe->exit = DVB_FE_NO_EXIT;
 	fepriv->thread = NULL;
 	mb();
 
-	fe_thread = kthread_run(dvb_frontend_thread, fe,
+	fe_thread = kthread_run(neumo_dvb_frontend_thread, fe,
 				"kdvb-ad-%i-fe-%i", fe->dvb->num, fe->id);
 	if (IS_ERR(fe_thread)) {
 		ret = PTR_ERR(fe_thread);
@@ -2461,7 +2727,7 @@ static int dvb_frontend_do_ioctl(struct file *file, unsigned int cmd, void *parg
 	if (down_interruptible(&fepriv->sem))
 		return -ERESTARTSYS;
 
-	if (fepriv->exit != DVB_FE_NO_EXIT) {
+	if (fe->exit != DVB_FE_NO_EXIT) {
 		up(&fepriv->sem);
 		return -ENODEV;
 	}
@@ -3630,8 +3896,8 @@ static int neumo_dvb_frontend_open_mfe(	struct neumo_dvb_frontend_private* fepri
 																				struct dvb_adapter* adapter, struct file *file)
 {
 	struct dvb_device *dvbdev = file->private_data;
-
-	if (fepriv->exit == DVB_FE_DEVICE_REMOVED)
+	struct neumo_dvb_frontend* fe = dvbdev->priv;
+	if (fe->exit == DVB_FE_DEVICE_REMOVED)
 		return -ENODEV;
 
 	if (adapter->mfe_shared == 2) {
@@ -3813,8 +4079,8 @@ static int neumo_dvb_frontend_release(struct inode *inode, struct file *file)
 		}
 		mutex_unlock(&adapter->mdev_lock);
 #endif
-		fe_dprintk(fe, "fepriv->exit=%d DVB_FE_NO_EXIT=%d\n", fepriv->exit, DVB_FE_NO_EXIT);
-		if (fepriv->exit != DVB_FE_NO_EXIT) {
+		fe_dprintk(fe, "fepriv->exit=%d DVB_FE_NO_EXIT=%d\n", fe->exit, DVB_FE_NO_EXIT);
+		if (fe->exit != DVB_FE_NO_EXIT) {
 			fe_dprintk(fe, "waking up dvbdev->wait_queue\n");
 			wake_up(&dvbdev->wait_queue);
 		}
@@ -3840,9 +4106,62 @@ static const struct file_operations neumo_dvb_frontend_fops = {
 };
 
 
-//dvb_frontend_suspend does not exist in neumo api
-//dvb_frontend_resume does not exist in neumo api
+int neumo_dvb_frontend_suspend(struct neumo_dvb_frontend *fe)
+{
+	int ret = 0;
 
+	dev_dbg(fe->dvb->device, "%s: adap=%d fe=%d\n", __func__, fe->dvb->num,
+		fe->id);
+
+	if (fe->ops.tuner_ops.suspend)
+		ret = fe->ops.tuner_ops.suspend(fe);
+	else if (fe->ops.tuner_ops.sleep) {
+		fe_dprintk(fe, "Calling tuner sleep\n");
+		ret = fe->ops.tuner_ops.sleep(fe);
+	}
+	if (fe->ops.sleep) {
+		fe_dprintk(fe, "Calling sleep adapter=%d\n", fe->dvb->num);
+		ret = fe->ops.sleep(fe);
+	}
+	return ret;
+}
+EXPORT_SYMBOL(neumo_dvb_frontend_suspend);
+
+int neumo_dvb_frontend_resume(struct neumo_dvb_frontend *fe)
+{
+	struct neumo_dvb_frontend_private *fepriv = fe->frontend_priv;
+	int ret = 0;
+
+	dev_dbg(fe->dvb->device, "%s: adap=%d fe=%d\n", __func__, fe->dvb->num,
+		fe->id);
+
+	fe->exit = DVB_FE_DEVICE_RESUME;
+	if (fe->ops.resume)
+		ret = fe->ops.resume(fe);
+	else if (fe->ops.init)
+		ret = fe->ops.init(fe);
+
+	if (fe->ops.tuner_ops.resume)
+		ret = fe->ops.tuner_ops.resume(fe);
+	else if (fe->ops.tuner_ops.init)
+		ret = fe->ops.tuner_ops.init(fe);
+	if (fe->ops.set_tone && fepriv->tone != -1) {
+		fe_dprintk(fe, "calling set_tone: tone=%d\n", fepriv->tone);
+		fe->ops.set_tone(fe, fepriv->tone);
+	}
+	if (fe->ops.set_voltage && fepriv->voltage != -1) {
+		fe_dprintk(fe, "calling set_voltage: voltage=%d\n", fepriv->voltage);
+		fe->ops.set_voltage(fe, fepriv->voltage);
+	}
+
+	fe->exit = DVB_FE_NO_EXIT;
+	fepriv->state = FESTATE_RETUNE;
+	neumo_dvb_frontend_wakeup(fe);
+
+	return ret;
+}
+
+EXPORT_SYMBOL(neumo_dvb_frontend_resume);
 
 static struct neumo_dvb_frontend_private* neumo_dvb_create_fepriv(void)
 {

@@ -8,6 +8,9 @@
 #include <linux/delay.h>
 
 #include "si2168_priv.h"
+#define fe_dprintk(fe, fmt, arg...)																			\
+	printk(KERN_DEBUG pr_fmt("%s:%d: fe%d " fmt), __func__, __LINE__, fe->dvb->num, ##arg)
+
 
 static const struct neumo_dvb_frontend_ops si2168_ops;
 
@@ -119,7 +122,7 @@ static int si2168_read_status(struct neumo_dvb_frontend *fe, enum fe_status *sta
 	int ret, i;
 	unsigned int utmp, utmp1, utmp2;
 	struct si2168_cmd cmd;
-
+	fe_dprintk(fe,"called\n");
 	*status = 0;
 
 	if (!dev->active) {
@@ -323,8 +326,7 @@ static int si2168_set_frontend(struct neumo_dvb_frontend *fe)
 	int ret;
 	struct si2168_cmd cmd;
 	u8 bandwidth, delivery_system;
-
-	dev_dbg(&client->dev,
+	fe_dprintk(fe,
 			"delivery_system=%u modulation=%u frequency=%u bandwidth_hz=%u symbol_rate=%u inversion=%u stream_id=%u\n",
 			c->delivery_system, c->modulation, c->frequency,
 			c->bandwidth_hz, c->symbol_rate, c->inversion,
@@ -973,7 +975,7 @@ static void si2168_remove(struct i2c_client *client)
 	kfree(dev);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(6,1,0)
 	return 0;
-#endif	
+#endif
 }
 
 static const struct i2c_device_id si2168_id_table[] = {
