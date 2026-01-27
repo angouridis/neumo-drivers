@@ -5,6 +5,8 @@ obj-$(CONFIG_DVB_USB) += neumo-dvb-usb.o
 
 obj-$(CONFIG_DVB_USB_CX231XX) += cx231xx/
 
+obj-$(CONFIG_DVB_USB_EM28XX) += em28xx/
+
 neumo-dvb-usb-tbsqbox-objs = tbs-qbox.o
 obj-$(CONFIG_DVB_USB_TBSQBOX) += neumo-dvb-usb-tbsqbox.o
 

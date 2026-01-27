@@ -71,6 +71,8 @@ struct neumo_dvb_frontend_private {
 	int voltage;
 
 	unsigned int state;
+	unsigned int bending;
+	int lnb_drift;
 	unsigned int inversion;
 	unsigned int auto_step;
 	unsigned int auto_sub_step;
