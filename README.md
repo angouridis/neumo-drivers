@@ -34,7 +34,7 @@ tbs5220 tbs5230 tbs5881 tbs5520 tbs5520se tbs5530 tbs5580 tbs5927 tbs5301 tbs593
 
 # Installation
 
-The `install.sh` scrript aims to automate the steps below, which you can also execute
+The `install.sh` script aims to automate the steps below, which you can also execute
 one by one, which helps to figure out what is the problem when something goes wrong.
 There is no point in executing steps if earlier steps have failed. Also note that not all
 output messages signify errors. Some steps may produce warnings even when they succeed.
@@ -66,7 +66,7 @@ output messages signify errors. Some steps may produce warnings even when they s
 * Install the drivers
 ```
     cd  ~/neumo-driver
-    sudo make install
+    make install #best to NOT run this as root, sudo is called internally where needed
 ```
 
 *  Last but not least, install rsyslog so that kernel debug messages are stored in the file system
@@ -116,6 +116,17 @@ to 9.
        GIT-REV = "3269fab2c845";
        GIT-TAG = "";
        GIT-BRANCH = "deepthought-new"
+
+# In case something goes wrong
+
+Report problems on github. Howver, there is no point in doing that if you do not
+provide enough information to actually find the cause of the problem. Apart from
+a clear description of all commands you ran, and what actions you took before the
+problem occured, you also need to provide information on driver versions and such.
+The script `bug_report.py` helps to gather some useful data into a tar file.
+At some point it will also ask for a password to invoke `sudo` to copy your kernel
+logs. You are free to edit the produced files to remove sensitive data should it be present.
+
 
 # Usage
 These drivers were designed for use with neumoDVB to support advanced features provided by
