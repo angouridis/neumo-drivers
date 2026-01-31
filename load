@@ -1,0 +1,8 @@
+#!/usr/bin/bash
+sudo modprobe  tbsecp3
+sudo modprobe neumo-dvb-usb-rtl28xxu
+#sudo modprobe tbs-pcie-ci
+sudo modprobe neumo-dvb-usb-tbs5927
+sudo modprobe  cx231xx-dvb-ci
+sudo modprobe em28xx-rc em28xx-dvb
+sudo modprobe dvb-usb-rtl28xxu
