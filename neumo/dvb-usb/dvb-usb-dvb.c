@@ -7,7 +7,7 @@
  * This file contains functions for initializing and handling the
  * linux-dvb API.
  */
-#include "dvb-usb-common.h"
+#include "neumo-dvb-usb-common.h"
 #include <media/media-device.h>
 
 #undef CONFIG_MEDIA_CONTROLLER_DVB

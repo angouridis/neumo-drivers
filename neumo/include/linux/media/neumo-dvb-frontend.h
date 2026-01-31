@@ -30,8 +30,7 @@
  *
  */
 
-#ifndef __NEUMO_DVB_FRONTEND_H_
-#define __NEUMO_DVB_FRONTEND_H_
+#pragma once
 
 #include <linux/types.h>
 #include <linux/sched.h>
@@ -951,8 +950,4 @@ void neumo_dvb_frontend_reinitialise(struct neumo_dvb_frontend *fe);
  */
 void dvb_frontend_sleep_until(ktime_t *waketime, u32 add_usec);
 
-#if 1 //neumo
 int neumo_dvb_frontend_task_should_stop(struct neumo_dvb_frontend *fe);
-#endif
-
-#endif

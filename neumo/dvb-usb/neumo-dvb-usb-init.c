@@ -8,7 +8,7 @@
  *
  * see Documentation/driver-api/media/drivers/dvb-usb.rst for more information
  */
-#include "dvb-usb-common.h"
+#include "neumo-dvb-usb-common.h"
 
 /* debug */
 int dvb_usb_debug;
@@ -207,7 +207,8 @@ err_priv_init:
 }
 
 /* determine the name and the state of the just found USB device */
-static const struct neumo_dvb_usb_device_description *dvb_usb_find_device(struct usb_device *udev, const struct neumo_dvb_usb_device_properties *props, int *cold)
+static const struct neumo_dvb_usb_device_description *dvb_usb_find_device
+(struct usb_device *udev, const struct neumo_dvb_usb_device_properties *props, int *cold)
 {
 	int i, j;
 	const struct neumo_dvb_usb_device_description *desc = NULL;

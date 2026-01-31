@@ -6,7 +6,7 @@
  *
  * This file contains functions for (de-)initializing an I2C adapter.
  */
-#include "dvb-usb-common.h"
+#include "neumo-dvb-usb-common.h"
 
 int dvb_usb_i2c_init(struct neumo_dvb_usb_device *d)
 {

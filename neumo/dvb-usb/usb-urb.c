@@ -9,7 +9,7 @@
  * Can be used for DVB-only and also, that's the plan, for
  * Hybrid USB devices (analog and DVB).
  */
-#include "dvb-usb-common.h"
+#include "neumo-dvb-usb-common.h"
 
 /* URB stuff for streaming */
 static void usb_urb_complete(struct urb *urb)

@@ -8,7 +8,7 @@
  *
  * FIXME: This part does actually not belong to dvb-usb, but to the usb-subsystem.
  */
-#include "dvb-usb-common.h"
+#include "neumo-dvb-usb-common.h"
 
 #include <linux/usb.h>
 

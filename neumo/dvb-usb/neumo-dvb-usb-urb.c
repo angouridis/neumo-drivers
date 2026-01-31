@@ -7,7 +7,7 @@
  * This file keeps functions for initializing and handling the
  * USB and URB stuff.
  */
-#include "dvb-usb-common.h"
+#include "neumo-dvb-usb-common.h"
 
 int neumo_dvb_usb_generic_rw(struct neumo_dvb_usb_device *d, u8 *wbuf, u16 wlen, u8 *rbuf,
 	u16 rlen, int delay_ms)

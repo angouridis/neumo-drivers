@@ -289,7 +289,6 @@ static int tbs5927_frontend_attach(struct neumo_dvb_usb_adapter *d)
 			d->fe_adap->fe->ops.set_voltage = tbs5927_set_voltage;
 			d->fe_adap->fe->ops.tuner_ops.info.frequency_min_hz = 250 * MHz;
 			d->fe_adap->fe->ops.tuner_ops.info.frequency_max_hz = 2150 * MHz;
-
 			memcpy(&d->fe_adap->fe->ops.info.card_mac_address, mac, sizeof(mac));
 			strscpy(d->fe_adap->fe->ops.info.card_short_name, "TBS 5927", sizeof(d->fe_adap->fe->ops.info.card_short_name));
 			snprintf(d->fe_adap->fe->ops.info.card_address, sizeof(d->fe_adap->fe->ops.info.card_address),
