@@ -174,14 +174,14 @@ struct neumo_dvb_usb_adapter_properties {
 };
 
 /**
- * struct dvb_rc_legacy - old properties of remote controller
+ * struct neumo_dvb_rc_legacy - old properties of remote controller
  * @rc_map_table: a hard-wired array of struct rc_map_table (NULL to disable
  *  remote control handling).
  * @rc_map_size: number of items in @rc_map_table.
  * @rc_query: called to query an event event.
  * @rc_interval: time in ms between two queries.
  */
-struct dvb_rc_legacy {
+struct neumo_dvb_rc_legacy {
 /* remote control properties */
 #define REMOTE_NO_KEY_PRESSED      0x00
 #define REMOTE_KEY_PRESSED         0x01
@@ -193,7 +193,7 @@ struct dvb_rc_legacy {
 };
 
 /**
- * struct dvb_rc - properties of remote controller, using rc-core
+ * struct neumo_dvb_rc - properties of remote controller, using rc-core
  * @rc_codes: name of rc codes table
  * @protocol: type of protocol(s) currently used by the driver
  * @allowed_protos: protocol(s) supported by the driver
@@ -205,7 +205,7 @@ struct dvb_rc_legacy {
  * @bulk_mode: device supports bulk mode for RC (disable polling mode)
  * @scancode_mask: scancode mask
  */
-struct dvb_rc {
+struct neumo_dvb_rc {
 	char *rc_codes;
 	u64 protocol;
 	u64 allowed_protos;
@@ -307,8 +307,8 @@ struct neumo_dvb_usb_device_properties {
 
 	struct {
 		enum dvb_usb_mode mode;	/* Drivers shouldn't touch on it */
-		struct dvb_rc_legacy legacy;
-		struct dvb_rc core;
+		struct neumo_dvb_rc_legacy legacy;
+		struct neumo_dvb_rc core;
 	} rc;
 
 	struct i2c_algorithm *i2c_algo;
