@@ -116,12 +116,12 @@ dep:
 	$(MAKE) -C $(KDIR) M=$(ROOT_DIR) dep
 
 install: all uninstall
-	$(MAKE) -C $(KDIR) M=$(PWD) INSTALL_MOD_PATH=$(MDIR) modules_install
+	sudo $(MAKE) -C $(KDIR) M=$(PWD) INSTALL_MOD_PATH=$(MDIR) modules_install
 	@echo "Updating module dependencies..."
 	@if [ -n "$(MDIR)" ]; then \
-		depmod -b "$(MDIR)" -a $(KVER); \
+		sudo depmod -b "$(MDIR)" -a $(KVER); \
 	else \
-		depmod -a $(KVER); \
+		sudo depmod -a $(KVER); \
 	fi
 
 uninstall:
