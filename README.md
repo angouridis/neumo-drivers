@@ -14,7 +14,7 @@ to support blindscan, to fix bugs and to make improvements.
 
 All other TBS cards should also be supported, but wihout the above mentioned advanced features.
 
-Supported PCI cards:
+## Supported PCI cards:
 * tbs6910X tbs6910 tbs6910se tbs6916 tbs6216 tbs6909x
 * tbs6909SE tbs6909 tbs6908 tbs6904 tbs6904X
 * tbs6904SE tbs6902 tbs6902SE tbs6590 tbs6903 tbs6903x tbs6905
@@ -26,11 +26,21 @@ Supported PCI cards:
 * tbs6302RV tbs6304X tbs6304T tbs6304RV tbs6324 tbs6322 tbs690a  tbs6331
 * tbs6900  tbs6004 tbs690b tbs6104 tbs6008 tbs6214 tbs6034 tbs6032 tbs6001
 
-Supported USB cards:
+## Supported USB cards:
 * tbs-qbox tbs-qbox2 tbs-qbox22 tbs-qboxs2 tbs-qbox2ci tbs5922se tbs5925 tbs5880
 tbs5220 tbs5230 tbs5881 tbs5520 tbs5520se tbs5530 tbs5580 tbs5927 tbs5301 tbs5930 tbs5931 tbs5590
 
+## Minimally suppored other cards
+* Hauppage wintv DVB-C/DVB-T stick
+* Astrometa DVB0C.DVB-T stick
 
+The support relates to assigning a consistent MAC address to these devices.
+
+# Important
+These drivers should work with most linux DVB applications but to make use of the special 
+features you need `neumoDVB` or one of the `blindscan` apps found on githhub. Moreoever, you need
+recent enough versions of these programs, as older versions will refuse to start, will crash, or will
+not work properly
 
 # Installation
 
@@ -116,7 +126,7 @@ to 9.
        GIT-REV = "3269fab2c845";
        GIT-TAG = "";
        GIT-BRANCH = "deepthought-new"
-
+```
 # In case something goes wrong
 
 Report problems on github. Howver, there is no point in doing that if you do not
