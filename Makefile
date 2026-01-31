@@ -2,8 +2,8 @@
 # Use ?= to allow environment overrides
 
 KVER ?= $(shell uname -r)
-KVER := 6.17.13-200.fc42.x86_64
-KVER := 6.14.4-100.fc40.x86_64
+#KVER := 6.17.13-200.fc42.x86_64
+#KVER := 6.14.4-100.fc40.x86_64
 #KVER := 6.15.3-200.fc42.x86_64
 KDIR	?= /lib/modules/$(KVER)/build
 PWD	:= $(shell pwd)
