@@ -3550,8 +3550,7 @@ static int em28xx_init_dev(struct em28xx *dev, struct usb_device *udev,
 
 	snprintf(dev->card_address, sizeof(dev->card_address), "usb%s", dev_name(&udev->dev));
 	//create fake card mac address from usb serial number, leaving the last 4 bits free
-	memcpy(&dev->card_mac_address, udev->serial, sizeof(dev->card_mac_address));
-	dev->card_mac_address <<= 4;
+	dev->card_mac_address = usb_serial_to_mac_address(udev->serial);
 	dprintk("card_address=%s\n", dev->card_address);
 	/* Based on the Chip ID, set the device configuration */
 	retval = em28xx_read_reg(dev, EM28XX_R0A_CHIPID);

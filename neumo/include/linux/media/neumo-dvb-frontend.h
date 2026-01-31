@@ -951,3 +951,4 @@ void neumo_dvb_frontend_reinitialise(struct neumo_dvb_frontend *fe);
 void dvb_frontend_sleep_until(ktime_t *waketime, u32 add_usec);
 
 int neumo_dvb_frontend_task_should_stop(struct neumo_dvb_frontend *fe);
+u64 usb_serial_to_mac_address(const char *serial);
