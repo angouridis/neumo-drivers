@@ -65,13 +65,13 @@ if [ -n "$MODULE_PATH" ];  then
 	rm -rf "$PARENT_DIR"
 fi
 
-sudo make install
+make install
 echo "V4L drivers installation done"
 echo "install the firmware"
 if [ -f tbs-tuner-firmwares*.tar.bz2 ]; then
 		tar jxvf tbs-tuner-firmwares*.tar.bz2 -C /lib/firmware/
 else
-		echo "firmware file not exist!!!"		
+		echo "firmware file not exist!!!"
 fi
 
 echo "done. please reboot the system."
