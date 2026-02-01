@@ -37,7 +37,7 @@ tbs5220 tbs5230 tbs5881 tbs5520 tbs5520se tbs5530 tbs5580 tbs5927 tbs5301 tbs593
 The support relates to assigning a consistent MAC address to these devices.
 
 # Important
-These drivers should work with most linux DVB applications but to make use of the special 
+These drivers should work with most linux DVB applications but to make use of the special
 features you need `neumoDVB` or one of the `blindscan` apps found on githhub. Moreoever, you need
 recent enough versions of these programs, as older versions will refuse to start, will crash, or will
 not work properly
@@ -52,30 +52,30 @@ output messages signify errors. Some steps may produce warnings even when they s
 * Get the source code - if this this is the first time you install the drivers:
 ```
     cd  ~/
-    git clone --depth=1  https://github.com/deeptho/neumo-driver.git
-    cd ~/neumo-driver
+    git clone --depth=1  https://github.com/deeptho/neumo-drivers.git
+    cd ~/neumo-drivers
 ```
 * Or update the source code - if you already have an older version
 ```
-    cd  ~/neumo-driver
+    cd  ~/neumo-drivers
     git reset --hard  #optional; helps to prevent problems
     git pull  https://github.com/deeptho/neumo-driver.git
 ```
 * Build or rebuild the drivers
 ```
-    cd  ~/neumo-driver
+    cd  ~/neumo-drivers
     make clean   #optional; helps to prevent problems
     make -j`nproc`
 ```
 * You can also build drivers for another kernel than the one you are running:
 ```
-    cd  ~/neumo-driver
+    cd  ~/neumo-drivers
     make clean   #optional; helps to prevent problems
     make -j`nproc` KVER=6.17.13-200.fc42.x86_64
 ```
 * Install the drivers
 ```
-    cd  ~/neumo-driver
+    cd  ~/neumo-drivers
     make install #best to NOT run this as root, sudo is called internally where needed
 ```
 
@@ -91,7 +91,7 @@ Pay attention to error messages. All steps need to succeed.
 
 Now install the firmware (if needed):
 ```
-    cd ~/neumo-driver
+    cd ~/neumo-drivers
     sudo tar jxvf tbs-tuner-firmwares*.tar.bz2 -C /lib/firmware/
 ```
 
