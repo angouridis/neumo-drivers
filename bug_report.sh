@@ -51,9 +51,17 @@ cat <<EOF
 EOF
 
 cat<<EOF
-Present adapters
+Present usb devices
 EOF
-ls -alR /dev/dvb/
+sudo lsusb -v
+cat <<EOF
+------------------------------------------------------------------
+EOF
+
+cat<<EOF
+Present pci devices
+EOF
+sudo lspci -v
 cat <<EOF
 ------------------------------------------------------------------
 EOF
