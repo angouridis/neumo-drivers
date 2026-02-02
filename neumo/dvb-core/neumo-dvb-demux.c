@@ -1143,7 +1143,9 @@ static inline bool get_t2mi_bbheader(struct t2mi_stream* t2mi, const uint8_t** p
 	struct bbframes_stream* bbf = xa_load(&t2mi->emb.bbf_streams, t2mi->plp_id);
 	if(!bbf &&  t2mi->plp_id == t2mi->default_isi) {
 		bbf = xa_load(&t2mi->emb.bbf_streams, 256);
+#if 0
 		t2mi_stream_dprintk_nice(t2mi, "Looked bbf=%p\n", bbf);
+#endif
 	}
 
 	t2mi->emb.current_bbf = bbf;
