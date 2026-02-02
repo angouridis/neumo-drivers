@@ -796,7 +796,7 @@ struct neumo_dvb_frontend *dvb_pll_attach(struct neumo_dvb_frontend *fe, int pll
 
 	b1[0] = 0;
 	msg.buf = b1;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6,14,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6,18,0)
 	nr = ida_simple_get(&pll_ida, 0, DVB_PLL_MAX, GFP_KERNEL);
 #else
 	nr = ida_alloc(&pll_ida, GFP_KERNEL);
@@ -866,7 +866,7 @@ struct neumo_dvb_frontend *dvb_pll_attach(struct neumo_dvb_frontend *fe, int pll
 	return fe;
 out:
 	kfree(b1);
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6,14,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6,18,0)
 	ida_simple_remove(&pll_ida, nr);
 #else
 	ida_free(&pll_ida, nr);
@@ -920,7 +920,7 @@ static void dvb_pll_remove(struct i2c_client *client)
 {
 	struct neumo_dvb_frontend *fe = i2c_get_clientdata(client);
 	struct dvb_pll_priv *priv = fe->tuner_priv;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6,14,0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6,18,0)
 	ida_simple_remove(&pll_ida, priv->nr);
 #else
 	ida_free(&pll_ida, priv->nr);
