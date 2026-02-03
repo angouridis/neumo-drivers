@@ -94,7 +94,9 @@ EOF
 
 output=`mktemp -d`
 gather_info > $output/bug_report
-sudo tail -c20000000 /var/log/debug > $output/debug
+sudo tail -c20000000 /var/log/debug* > $output/
+sudo tail -c20000000 /var/log/syslog* > $output/
+sudo tail -c20000000 /var/log/kern* > $output/
 cp /tmp/neumo.log $output;
 set -x
 tar -zcf /tmp/bugreport.tar.gz --transform "s%${output#/}%xxx%" $output
