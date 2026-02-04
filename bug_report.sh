@@ -92,11 +92,33 @@ cat <<EOF
 EOF
 }
 
+sudo-function() {
+    (($#)) || { echo "Usage: sudo-function FUNC [ARGS...]" >&2; return 1; }
+    sudo bash -c "$(declare -f "$1");$(printf ' %q' "$@")"
+}
+
+
+get_debug()
+{
+    file=$1
+    outdir=$2
+    outname=$outdir/`basename $1`
+    if [[ -a $file ]]
+    then
+           LINE_NUMBER=`grep -o -n '\(neumodvb blindscan drivers\|You are using an experimental version of the media stack\)' $file | tail -n 1 | sed "s/:/ \\'/g" | awk -F" " '{print $1}'`
+           tail -n +$LINE_NUMBER $file > $outname
+    else
+        echo $file does not exist
+    fi
+}
+
 output=`mktemp -d`
 gather_info > $output/bug_report
-sudo tail -c20000000 /var/log/debug* > $output/
-sudo tail -c20000000 /var/log/syslog* > $output/
-sudo tail -c20000000 /var/log/kern* > $output/
+
+for file in /var/log/debug.log /var/log/debug /var/log/kern /var/log/kernel.log /var/log/kernel /var/log/kernel.log /var/log/syslog /var/log/syslog.log
+do
+    sudo-function get_debug $file  $output/
+done
 cp /tmp/neumo.log $output;
 set -x
 tar -zcf /tmp/bugreport.tar.gz --transform "s%${output#/}%xxx%" $output
