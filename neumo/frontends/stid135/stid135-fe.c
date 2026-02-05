@@ -578,6 +578,8 @@ static enum fe_ioctl_result reserve_tuner_and_rf_in_(struct stv* state, struct f
 	struct stv_rf_in_t* old_rf_in = (old_tuner && old_tuner->active_rf_in) ? old_tuner->active_rf_in: NULL;
 
 	//output decisions
+	if(ic)
+		state_dprintk("unicable_mode=%d\n", ic->unicable_mode);
 	bool unicable_mode = ic && ic->unicable_mode;
 	bool must_be_master = ic && (ic->mode == FE_RESERVATION_MODE_MASTER);
 	bool will_be_master = ic && (ic->mode == FE_RESERVATION_MODE_MASTER ||
@@ -939,8 +941,11 @@ static enum fe_ioctl_result stid135_select_rf_in_(struct stv* state, struct fe_r
 		return FE_RESERVATION_FAILED;
 	}
 	state->is_master = (result == FE_RESERVATION_MASTER);
-	if(state->is_master)
+	if(state->is_master) {
 		new_rf_in->unicable_mode = ic->unicable_mode;
+		if(new_rf_in->unicable_mode)
+			state_dprintk("turning unicable_mode=on");
+	}
 	return result;
 }
 

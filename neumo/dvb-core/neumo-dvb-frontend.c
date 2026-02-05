@@ -3643,8 +3643,9 @@ static int dvb_frontend_handle_ioctl(struct file *file, unsigned int cmd, void *
 
 	case FE_SET_RF_INPUT: {
 		struct fe_rf_input_control* rf_input = (struct fe_rf_input_control* )parg;
-		fe_dprintk(fe, "FE_SET_RF_INPUT owner=%d config_id=%d rf_in=%d adapter=%d\n",  rf_input->owner,  rf_input->config_id, rf_input->rf_in,
-						fe->dvb->num);
+		fe_dprintk(fe, "FE_SET_RF_INPUT owner=%d config_id=%d rf_in=%d unicable=%d\n",
+							 rf_input->owner,  rf_input->config_id, rf_input->rf_in,
+							 rf_input->unicable_mode);
 		if (fe->ops.set_rf_input)
 			err = fe->ops.set_rf_input(fe, rf_input);
 		else

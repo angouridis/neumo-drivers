@@ -120,7 +120,6 @@ do
     sudo-function get_debug $file  $output/
 done
 cp /tmp/neumo.log $output;
-set -x
 tar -zcf /tmp/bugreport.tar.gz --transform "s%${output#/}%xxx%" $output
 rm -fr $output
 
