@@ -739,6 +739,7 @@ static int saa716x_tbs6284_frontend_attach(struct saa716x_adapter *adapter, int 
 	}
 
 	/* attach frontend */
+	printk(KERN_INFO "Checking symbol: %p\n", __symbol_get("cxd2820r_attach"));
 	adapter->fe = dvb_attach(cxd2820r_attach, &cxd2820r_config[count & 1],
 				 &i2c->i2c_adapter, NULL);
 	if (!adapter->fe)
