@@ -276,20 +276,23 @@ User space applications should proceed as follows
 
   The ioctl FE_SET_RF_INPUT caller should specify
 
-    ** rf_input: the desired tuner and cable to connect to
+    * *rf_input*: the desired tuner and cable to connect to
 
-    ** mode: whether the tuner wants to become master (and agrees to configure LNB and switches), slave
+    * *mode*: whether the tuner wants to become master (and agrees to configure LNB and switches), slave
      (agrees to not configure LNB and switches), or both.
 
-    **unicable_mode: whether or not the secondary system attached to the LNB operates in unicable mode.
+    * *unicable_mode*: whether or not the secondary system attached to the LNB operates in unicable mode.
     In uncable mode, DiSeqC commands need to be sent even by slave tuners, to select specific user bands.
     This creates new opportunities for races between multiple frontends trying to program user bands
     in parallel.
 
     Also, the output voltage needs to be temporarily raised to 18 volt when unicable commands are sent,
     and must be 12 volt in all other cases. User programs activate new user bands in three steps:
-    1) raising voltage to 18 volt; 2) sending unicable DiSeqC unicable command; 3) lowering voltage
-    to 12 volt. This three step process is inherited from dvbapiV5, but creates additional opportunities
+    1) raising voltage to 18 volt;
+    2) sending unicable DiSeqC unicable command;
+    3) lowering voltage to 12 volt.
+  
+    This three step process is inherited from dvbapiV5, but creates additional opportunities
     for racing. For instance, internal locking prevents step 2 from overlapping with step 2 calls made
     by other frontends, but not prevent other threads from executing step 3 after the current thread
     has executed step 1. This wll then cause user band selection to fail
@@ -303,10 +306,10 @@ User space applications should proceed as follows
     When it succeeds instead, then the thread calling the ioctl will be the only one allowed to
     send unicable commands.
 
-    ** owner: a unique identifier for the calling application. Applications can only use resources (tuners,
+    * *owner*: a unique identifier for the calling application. Applications can only use resources (tuners,
      demodulators) if they are not in use by another application. Typically this should be the process id.
 
-    ** config_id: a number which is incremented each time the application will reconfigure an RF_INPUT,
+    * config_id*: a number which is incremented each time the application will reconfigure an RF_INPUT,
      which means: select a different LNB, or a different satellite band.
 
      Whenever the driver notices an update in config_id, it will wait for all demodulators to release
@@ -320,14 +323,14 @@ User space applications should proceed as follows
 
   The ioctl's return value indicates
 
-  ** a result: master or slave. If the result is 'master', the adapter should proceed with setting
+  * a result: master or slave. If the result is 'master', the adapter should proceed with setting
      voltages, tones, sending diseqc commands, and then finally perform a tune. If the result is
      'slave', then the caller can be certain that secondary equipment is now ready and the caller
      can start tuning its adapter.
 
-  ** or permanent failure (e.g., requesting a non-existing RF_INPUT)
+  * or permanent failure (e.g., requesting a non-existing RF_INPUT)
 
-  ** or temporary failure: it is not yet possible to select the RF_INPUT, either because a master demodulator
+  * or temporary failure: it is not yet possible to select the RF_INPUT, either because a master demodulator
      has not yet finished configuring secondary equipment (which the drivers can tell, see below),
      or because some other demodulators still need to release the tuner but have not done so. The calling
      thread can simply retry after sleeping e.g., 10 milliseconds, or the application can provide a
@@ -346,29 +349,48 @@ User space applications should proceed as follows
   tuning properties have been added to indicate blind scanning and that additional properties are returned
   to indicate discovered modulation parameters:
 
-  ** DTV_ALGORITHM: specify the type of blind tuning to perform
-  ** DTV_SEARCH_RANGE: specify the frequency range to search during blind tuning
-  ** DTV_ISI_LIST: retrieve list of ISI codes (stream ids)
-  ** DTV_PLS_SEARCH_LIST: specify a ist of PLS scrambling modes/codes to test during scan
-  ** DTV_PLS_SEARCH_RANGE: specify a range of PLS scrambling modes/codes to test during scan
-  ** DTV_SCAN_START_FREQUENCY: specify the start of the frequency range to scan
-  ** DTV_SCAN_END_FREQUENCY: specify the end of the frequency range to scan
-  ** DTV_SCAN_RESOLUTION: specify the frequency step for a range scan
-  ** DTV_SCAN_FFT_SIZE: specify the FFT size of frequency scan
-  ** DTV_SCAN: request blind scanning a range of frequencies
-  ** DTV_SPECTRUM: request starting a spectrum acquisition
-  ** DTV_MAX_SYMBOL_RATE: specify maximum allowed symbol rate during blindscan
-  ** DTV_CONSTELLATION: request constellation samples to be returned after tuning
-  ** DTV_HEARTBEAT: specify how frequently the API asks the drivers to check quality, strength, lock status...
+  * *DTV_ALGORITHM*: specify the type of blind tuning to perform
+  
+  * *DTV_SEARCH_RANGE*: specify the frequency range to search during blind tuning
+  
+  * *DTV_ISI_LIST*: retrieve list of ISI codes (stream ids)
+  
+  * *DTV_PLS_SEARCH_LIST*: specify a ist of PLS scrambling modes/codes to test during scan
+  
+  * *DTV_PLS_SEARCH_RANGE*: specify a range of PLS scrambling modes/codes to test during scan
+  
+  * *DTV_SCAN_START_FREQUENCY*: specify the start of the frequency range to scan
+  
+  * DTV_SCAN_END_FREQUENCY*: specify the end of the frequency range to scan
+  
+  * *DTV_SCAN_RESOLUTION*: specify the frequency step for a range scan
+  
+  * *DTV_SCAN_FFT_SIZE*: specify the FFT size of frequency scan
+  
+  * *DTV_SCAN*: request blind scanning a range of frequencies
+  
+  * *DTV_SPECTRUM*: request starting a spectrum acquisition
+  
+  * *DTV_MAX_SYMBOL_RATE*: specify maximum allowed symbol rate during blindscan
+  
+  * *DTV_CONSTELLATION*: request constellation samples to be returned after tuning
+  
+  * *DTV_HEARTBEAT*: specify how frequently the API asks the drivers to check quality, strength, lock status...
      of currently tuned demods
-  ** DTV_BITRATE: request returning the bit rate of the received stream
-  ** DTV_LOCKTIME: request returning the time until first lock
-  ** DTV_MATYPE_LIST: request returning a list of present matypes and stream_ids
-  ** DTV_RF_INPUT: request returning the currently connected rf_input
-  ** DTV_SET_SEC_CONFIGURED: inform the driver that the frontend's secondary equipment (diseqc switches,
+  
+  * *DTV_BITRATE*: request returning the bit rate of the received stream
+  
+  * *DTV_LOCKTIME*: request returning the time until first lock
+  
+  * *DTV_MATYPE_LIST*: request returning a list of present matypes and stream_ids
+  
+  * *DTV_RF_INPUT*: request returning the currently connected rf_input
+  
+  * *DTV_SET_SEC_CONFIGURED*: inform the driver that the frontend's secondary equipment (diseqc switches,
      power supply) has been properly configured and that the equipment is fully powered up and ready for
      use by slave demods.
-  ** DTV_OUTPUT_BBFRAMES: forc stid135 based cards to send bbframes to the demux api when multi-stream
+  
+  * *DTV_OUTPUT_BBFRAMES*: forc stid135 based cards to send bbframes to the demux api when multi-stream
      is received.
 
 ### The neumoDVB demux api
