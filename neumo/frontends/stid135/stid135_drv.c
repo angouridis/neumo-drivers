@@ -5744,6 +5744,7 @@ fe_lla_error_t fe_stid135_manage_matype_info(struct stv* state)
 				dprintk("demod=%d: error=%d\n", state->nr, error1);
 			/* Free MATYPE forced mode */
 			error |= (error1=ChipSetField(state->chip->ip.handle_demod, FLD_FC8CODEW_DVBSX_PKTDELIN_BBHCTRL2_FORCE_MATYPEMSB(Demod), 0));
+			state_dprintk("force_matypemsb set to 0");
 			if(error1)
 				dprintk("demod=%d: error=%d\n", state->nr, error1);
 			/* Read Matype */
@@ -5848,6 +5849,7 @@ fe_lla_error_t fe_stid135_manage_matype_info(struct stv* state)
 					matype_info |= 0xB0;
 					error |= ChipSetOneRegister(state->chip->ip.handle_demod, (u16)REG_RC8CODEW_DVBSX_PKTDELIN_MATCST1(Demod), matype_info);
 					error |= ChipSetField(state->chip->ip.handle_demod, FLD_FC8CODEW_DVBSX_PKTDELIN_BBHCTRL2_FORCE_MATYPEMSB(Demod), 1);
+					state_dprintk("force_matypemsb set to 1");
 					error |= ChipSetField(state->chip->ip.handle_demod, FLD_FC8CODEW_DVBSX_HWARE_TSCFG0_TSFIFO_BITSPEED(Demod), 1);
 					error |= ChipSetOneRegister(state->chip->ip.handle_demod, (u16)REG_RC8CODEW_DVBSX_HWARE_TSBITRATE1(Demod), 0x80);
 					error |= ChipSetOneRegister(state->chip->ip.handle_demod, (u16)REG_RC8CODEW_DVBSX_HWARE_TSBITRATE0(Demod), 0x00);
@@ -5903,6 +5905,7 @@ fe_lla_error_t fe_stid135_manage_matype_info(struct stv* state)
 					matype_info |= 0xB0;
 					error |= ChipSetOneRegister(state->chip->ip.handle_demod, (u16)REG_RC8CODEW_DVBSX_PKTDELIN_MATCST1(Demod), matype_info);
 					error |= ChipSetField(state->chip->ip.handle_demod, FLD_FC8CODEW_DVBSX_PKTDELIN_BBHCTRL2_FORCE_MATYPEMSB(Demod), 1);
+					state_dprintk("force_matypemsb set to 1");
 					error |= ChipSetField(state->chip->ip.handle_demod, FLD_FC8CODEW_DVBSX_HWARE_TSCFG0_TSFIFO_BITSPEED(Demod), 1);
 					error |= ChipSetOneRegister(state->chip->ip.handle_demod, (u16)REG_RC8CODEW_DVBSX_HWARE_TSBITRATE1(Demod), 0x80);
 					error |= ChipSetOneRegister(state->chip->ip.handle_demod, (u16)REG_RC8CODEW_DVBSX_HWARE_TSBITRATE0(Demod), 0x00);
@@ -5921,6 +5924,7 @@ fe_lla_error_t fe_stid135_manage_matype_info(struct stv* state)
 					if(error1)
 						dprintk("demod=%d: error=%d\n", state->nr, error1);
 					error |= (error1=ChipSetField(state->chip->ip.handle_demod, FLD_FC8CODEW_DVBSX_PKTDELIN_BBHCTRL2_FORCE_MATYPEMSB(Demod), 1));
+					state_dprintk("force_matypemsb set to 1");
 					if(error1)
 						dprintk("demod=%d: error=%d\n", state->nr, error1);
 					/* Force HEM mode */
@@ -12953,6 +12957,7 @@ fe_lla_error_t stid135_set_bbframe_output(struct stv* state)
 	error |= ChipSetRegisters(handle, REG_RC8CODEW_DVBSX_PKTDELIN_PDELCTRL2(demod), 1);
 	error |= ChipSetField(handle, FLD_FC8CODEW_DVBSX_HWARE_TSCFG0_TSFIFO_EMBINDVB(demod), 1);
 	error |= ChipSetField(handle, FLD_FC8CODEW_DVBSX_PKTDELIN_BBHCTRL2_FORCE_MATYPEMSB(demod), 1);
+	state_dprintk("force_matypemsb set to 1");
 	state_dprintk("set BBFRAME mode: error=%d", error);
 	state->signal_info.bbframes_on = true;
 	return error;
@@ -12968,6 +12973,7 @@ fe_lla_error_t stid135_disable_issyi(struct stv* state)
 														 matype);
 	error |= ChipSetField(state->chip->ip.handle_demod, FLD_FC8CODEW_DVBSX_PKTDELIN_BBHCTRL2_FORCE_MATYPEMSB(demod),
 												1);
+	state_dprintk("force_matypemsb set to 1");
 	state_dprintk("HACK: Disabling ISSYI and hoping for the best: matype=0x%2x => 0x%2x error=%d",
 								state->signal_info.matype, matype, error);
 	return error;

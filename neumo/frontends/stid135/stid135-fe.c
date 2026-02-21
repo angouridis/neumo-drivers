@@ -1796,8 +1796,9 @@ static int stid135_set_demux_default_stream_id(struct neumo_dvb_frontend* fe) {
 #else
 	output_bbframes = p->output_bbframes || (bbframes_auto && is_mis && is_ts);
 #endif
-	state_dprintk("before: p->output_bbframes=%d stream_id=%d bbframes_auto=%d is_mis=%d is_ts=%d matype=0x%x\n",
-								p->output_bbframes, stream_id, bbframes_auto, is_mis, is_ts, state->signal_info.matype);
+	state_dprintk("before: p->output_bbframes=%d/%d stream_id=%d bbframes_auto=%d is_mis=%d is_ts=%d matype=0x%x\n",
+								p->output_bbframes, output_bbframes,
+								stream_id, bbframes_auto, is_mis, is_ts, state->signal_info.matype);
 	p->output_bbframes = output_bbframes;
 
 	if(demux) {
@@ -1811,8 +1812,8 @@ static int stid135_set_demux_default_stream_id(struct neumo_dvb_frontend* fe) {
 }
 
 static int stid135_tune_(struct neumo_dvb_frontend* fe, bool re_tune,
-		unsigned int mode_flags,
-		unsigned int *delay, enum fe_status *status)
+												 unsigned int mode_flags,
+												 unsigned int *delay, enum fe_status *status)
 {
 	struct stv *state = fe->demodulator_priv;
 	int r;
@@ -1881,8 +1882,8 @@ static int stid135_tune_(struct neumo_dvb_frontend* fe, bool re_tune,
 static int stid135_constellation_start_(struct neumo_dvb_frontend* fe, struct dtv_fe_constellation* user, int max_num_samples);
 
 static int stid135_tune(struct neumo_dvb_frontend* fe, bool re_tune,
-		unsigned int mode_flags,
-		unsigned int *delay, enum fe_status *status)
+												unsigned int mode_flags,
+												unsigned int *delay, enum fe_status *status)
 {
 	struct stv *state = fe->demodulator_priv;
 	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
