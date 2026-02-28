@@ -1784,17 +1784,19 @@ static int stid135_set_demux_default_stream_id(struct neumo_dvb_frontend* fe) {
 	struct neumo_dvb_demux * demux = state->demux;
 	bool output_bbframes = false;
 	int ret=0;
+	bool is_dvbs = (p->delivery_system = SYS_DVBS);
 	int stream_id = p->stream_id & 0xff;
-	bool is_mis = !((state->signal_info.matype >> 5) &0x1);
-	bool is_ts = ((state->signal_info.matype >> 6) &0x3) == 0x3;
+	bool is_mis = !is_dvbs && !((state->signal_info.matype >> 5) &0x1);
+	bool is_ts = is_dvbs || (((state->signal_info.matype >> 6) &0x3) == 0x3);
 	dprintk("isi=%d/%d is_mis=%d is_ts=%d\n", state->signal_info.isi, (p->stream_id)&0xff, is_mis, is_ts);
 	if(stream_id==0xff)
 		stream_id = -1;
 	//only apply bbframes_auto in very specific case of a multi-stream transport stream
 #if 0
-	output_bbframes = (p->output_bbframes || (bbframes_auto && is_mis && is_ts)) && (stream_id!=-1);
+	output_bbframes = (p->output_bbframes || (bbframes_auto && is_mis && is_ts
+																						)) && (stream_id!=-1);
 #else
-	output_bbframes = p->output_bbframes || (bbframes_auto && is_mis && is_ts);
+	output_bbframes = p->output_bbframes || (bbframes_auto && !is_dvbs && is_mis && is_ts);
 #endif
 	state_dprintk("before: p->output_bbframes=%d/%d stream_id=%d bbframes_auto=%d is_mis=%d is_ts=%d matype=0x%x\n",
 								p->output_bbframes, output_bbframes,
