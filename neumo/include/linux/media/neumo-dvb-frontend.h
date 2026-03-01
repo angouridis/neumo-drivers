@@ -660,7 +660,7 @@ struct neumo_dvb_fe_events {
 	This is asking for trouble. Either we should include dvbapi's dvb_frontend.h (risking all kinds of
 	name clashes  or check for problems  during compilation
 */
-	struct neumo_dtv_frontend_properties {
+struct neumo_dtv_frontend_properties {
 	u32			frequency;
 	enum fe_modulation	modulation;
 
@@ -691,10 +691,10 @@ struct neumo_dvb_fe_events {
 	u32			isdbt_sb_segment_count;
 	u8			isdbt_layer_enabled;
 	struct {
-	    u8			segment_count;
-	    enum fe_code_rate	fec;
-	    enum fe_modulation	modulation;
-	    u8			interleaving;
+		u8			segment_count;
+		enum fe_code_rate	fec;
+		enum fe_modulation	modulation;
+		u8			interleaving;
 	} layer[3];
 
 	/* Multistream specifics */
@@ -732,6 +732,8 @@ struct neumo_dvb_fe_events {
 	u8 plp_id;
 	u32		isi_bitset[8];
 	u16		matypes[256];
+	struct dtv_modcod_entry modcod_entries[128];
+	int num_modcods;
 	int num_matypes;
 	u32		pls_search_codes[64];
 	u32		pls_search_range_start;
