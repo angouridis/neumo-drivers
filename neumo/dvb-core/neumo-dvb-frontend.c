@@ -790,7 +790,7 @@ restart:
 			algo = fe->ops.get_frontend_algo(fe);
 			switch (algo) {
 			case DVBFE_ALGO_HW:
-				fe_dprintk(fe, "Frontend ALGO = DVBFE_ALGO_HW\n");
+				//fe_dprintk(fe, "Frontend ALGO = DVBFE_ALGO_HW\n");
 				hw_algo(fepriv, fe, &re_tune, &status);
 				atomic_set(&fepriv->algo_state.task_should_stop, false);
 				break;
