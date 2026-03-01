@@ -1390,7 +1390,7 @@ static int stid135_set_parameters(struct neumo_dvb_frontend* fe)
 		if(locked) {
 			dprintk("demod=%d: PLS locked=%d\n", state->nr, locked);
 			state_dprintk("Calling isi_scan\n");
-			err = fe_stid135_isi_scan(state, &state->signal_info.isi_list);
+			err = fe_stid135_isi_and_modcod_scan(state, false /*modcod_only*/);
 			if(state->mis_mode && p->stream_id == NO_STREAM_ID_FILTER) {
 				if(state->signal_info.isi_list.default_isi >=0) {
 					state_dprintk("User requested single stream or any stream; arbitrarily choosing isi=%d (%d)\n",
@@ -1632,10 +1632,26 @@ static int stid135_read_status_(struct neumo_dvb_frontend* fe, enum fe_status *s
 	//update isi list
 	if(state->mis_mode) {
 		vprintk("ISI calling isi_scan\n");
-		err = fe_stid135_isi_scan(state, &state->signal_info.isi_list);
-	}
+		err = fe_stid135_isi_and_modcod_scan(state, false/*only modcode*/);
+	} else
+		err = fe_stid135_isi_and_modcod_scan(state, true/*only modcode*/);
 	memcpy(p->isi_bitset, state->signal_info.isi_list.isi_bitset, sizeof(p->isi_bitset));
 	memcpy(p->matypes, state->signal_info.isi_list.matypes, sizeof(p->matypes));
+	const int num_modcods = sizeof(state->signal_info.modcod_list.count)/sizeof(state->signal_info.modcod_list.count[0]);
+	int tot = state->signal_info.modcod_list.totcount;
+	p->num_modcods = 0;
+	for(int i=0 ; i < num_modcods; ++i) {
+		int count = state->signal_info.modcod_list.count[i];
+		if(count >0) {
+			int frac = (count * 1000 + 499) / tot;
+			if(frac >=1) {
+				struct dtv_modcod_entry* e = &p->modcod_entries[p->num_modcods];
+				e->modcod= i;
+				e->frac = frac;
+				p->num_modcods++;
+			}
+		}
+	}
 	if(p->output_bbframes) {
 		struct neumo_dvb_demux * demux = state->demux;
 		int32_t isi_bitset[8];
@@ -1703,6 +1719,19 @@ static int stid135_read_status_(struct neumo_dvb_frontend* fe, enum fe_status *s
 	p->rolloff = dvb_rolloff(state);
 
 	p->inversion = state->signal_info.spectrum == FE_SAT_IQ_SWAPPED ? INVERSION_ON : INVERSION_OFF;
+#if 0
+	bool is_dvbs = (p->delivery_system == SYS_DVBS);
+	if(!is_dvbs) {
+		for (int count=0; count < 5; ++count) {
+			enum fe_sat_modcode	modcode;
+			enum fe_sat_pilots		pilots;		/* pilots on,off only for DVB-S2			*/
+			enum fe_sat_frame		frame_length;	/* Found frame length only for DVB-S2			*/
+			fe_stid135_get_mod_code(state, &modcode, &frame_length, &pilots);
+			state_dprintk("QQQ modcode=%d pilots=%d frame_length=%d\n", modcode, frame_length, pilots);
+		}
+	}
+#endif
+
 	p->modcode = state->signal_info.modcode;
 
 	p->pilot = state->signal_info.pilots == FE_SAT_PILOTS_ON ? PILOT_ON : PILOT_OFF;
