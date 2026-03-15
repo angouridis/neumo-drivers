@@ -1137,6 +1137,8 @@ static int dvb_frontend_clear_cache(struct neumo_dvb_frontend* fe)
 	c->pls_search_codes_len = 0;
 	c->pls_search_range_start = 0;
 	c->pls_search_range_end = 0;
+	c-> pls_code = -1;
+	c-> pls_mode = -1;
 	return 0;
 }
 
@@ -1225,6 +1227,8 @@ struct dtv_cmds_h dtv_cmds[] = {
 	_DTV_CMD(DTV_MODCODE, 1, 0),
 	_DTV_CMD(DTV_MODCOD_LIST, 1, 0),
 	_DTV_CMD(DTV_SCRAMBLING_SEQUENCE_INDEX, 1, 0),
+	_DTV_CMD(DTV_PLS_MODE, 1, 0),
+	_DTV_CMD(DTV_PLS_CODE, 1, 0),
 	_DTV_CMD(DTV_MATYPE, 0, 0),
 	_DTV_CMD(DTV_ENABLE_MODCOD, 1, 0),
 	_DTV_CMD(DTV_LNA, 1, 0),
@@ -1668,6 +1672,14 @@ static int neumouapi_dtv_property_process_get(struct neumo_dvb_frontend* fe,
 		tvp->u.data = c->scrambling_sequence_index;
 		break;
 
+	case DTV_PLS_MODE:
+		tvp->u.data = c->pls_mode;
+		break;
+
+	case DTV_PLS_CODE:
+		tvp->u.data = c->pls_code;
+		break;
+
 	case DTV_MATYPE:
 		tvp->u.data = c->matype_valid ? c->matype_val : -1;
 		break;
@@ -1915,6 +1927,14 @@ static int dvbuapi_dtv_property_process_get(struct neumo_dvb_frontend* fe,
 	/* Physical layer scrambling support */
 	case DTV_SCRAMBLING_SEQUENCE_INDEX:
 		tvp->u.data = c->scrambling_sequence_index;
+		break;
+
+	case DTV_PLS_MODE:
+		tvp->u.data = c->pls_mode;
+		break;
+
+	case DTV_PLS_CODE:
+		tvp->u.data = c->pls_code;
 		break;
 
 	/* ATSC-MH */
@@ -2408,6 +2428,15 @@ static int dtv_property_process_set_int(struct neumo_dvb_frontend* fe,
 	case DTV_SCRAMBLING_SEQUENCE_INDEX:
 		c->scrambling_sequence_index = data;
 		break;
+
+	case DTV_PLS_MODE:
+		c->pls_mode = data;
+		break;
+
+	case DTV_PLS_CODE:
+		c->pls_code = data;
+		break;
+
 #ifdef TODO
 	case DTV_ENABLE_MODCOD:
 		c->enable_modcod = data;

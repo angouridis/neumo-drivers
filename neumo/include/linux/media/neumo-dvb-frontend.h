@@ -735,6 +735,8 @@ struct neumo_dtv_frontend_properties {
 	struct dtv_modcod_entry modcod_entries[128];
 	int num_modcods;
 	int num_matypes;
+	int pls_mode;
+	int pls_code;
 	u32		pls_search_codes[64];
 	u32		pls_search_range_start;
 	u32		pls_search_range_end;

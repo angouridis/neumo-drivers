@@ -723,7 +723,9 @@ enum fe_interleaving {
 #define DTV_OUTPUT_BBFRAMES 93 //ask frontend to send bbframes to demux
 #define DTV_MODCODE	94
 #define DTV_MODCOD_LIST	95 //retrieve list of present matypes and stream_ids
-#define DTV_MAX_COMMAND	DTV_MODCOD_LIST //retrieve list of present modcodes
+#define DTV_PLS_MODE 96
+#define DTV_PLS_CODE 97
+#define DTV_MAX_COMMAND	DTV_PLS_CODE //retrieve list of present modcodes
 
 //commands for controlling long running algorithms via FE_ALGO_CTRL ioctl
 #define DTV_STOP 1
