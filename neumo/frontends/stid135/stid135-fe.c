@@ -1300,9 +1300,15 @@ static int stid135_set_parameters(struct neumo_dvb_frontend* fe)
 	search_params.isi = p->stream_id & 0xff;
 	if (search_params.isi== 0xff)
 		search_params.isi = -1;
-	search_params.pls_mode = ((p->stream_id >>26) & 0x3);
-	search_params.pls_code = ((p->stream_id >> 8)  & 0x3FFFF);
-	state_dprintk("pls_mode=%d pls_code=%d\n", search_params.pls_mode, search_params.pls_code);
+	if(p->pls_mode >=0) {
+		search_params.pls_mode = p->pls_mode;
+		search_params.pls_code = p->pls_code;
+	} else if (p->stream_id != -1) {
+		search_params.pls_mode = ((p->stream_id >>26) & 0x3);
+		search_params.pls_code = ((p->stream_id >> 8)  & 0x3FFFF);
+	}
+	state_dprintk("parameters: pls_mode=%d pls_code=%d stream_id=%d\n", search_params.pls_mode,
+								search_params.pls_code, p->stream_id);
 	search_params.frequency		=  p->frequency*1000;
 	//search_params.symbol_rate		=		p->symbol_rate;
 	vprintk("[%d] symbol_rate=%dkS/s\n", state->nr+1, p->symbol_rate/1000);
@@ -1391,6 +1397,9 @@ static int stid135_set_parameters(struct neumo_dvb_frontend* fe)
 			dprintk("demod=%d: PLS locked=%d\n", state->nr, locked);
 			state_dprintk("Calling isi_scan\n");
 			err = fe_stid135_isi_and_modcod_scan(state, false /*modcod_only*/);
+			p->pls_mode = state->signal_info.pls_mode;
+			p->pls_code = state->signal_info.pls_code;
+
 			if(state->mis_mode && p->stream_id == NO_STREAM_ID_FILTER) {
 				if(state->signal_info.isi_list.default_isi >=0) {
 					state_dprintk("User requested single stream or any stream; arbitrarily choosing isi=%d (%d)\n",
@@ -1723,7 +1732,8 @@ static int stid135_read_status_(struct neumo_dvb_frontend* fe, enum fe_status *s
 #endif
 
 	p->modcode = state->signal_info.modcode;
-
+	p->pls_mode = state->signal_info.pls_mode;
+	p->pls_code = state->signal_info.pls_code;
 	p->pilot = state->signal_info.pilots == FE_SAT_PILOTS_ON ? PILOT_ON : PILOT_OFF;
 	p->fec_inner = dvb_fec(state, p->delivery_system);
 	p->stream_id = ((state->mis_mode ? (state->signal_info.isi &0xff) :0xff) |
