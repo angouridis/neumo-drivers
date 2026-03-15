@@ -3998,9 +3998,7 @@ fe_lla_error_t fe_stid135_get_signal_info(struct stv* state)
 		error |= ChipSetOneRegister(state->chip->ip.handle_demod,
 																(u16)REG_RC8CODEW_DVBSX_HWARE_ERRCTRL1(Demod), 0x67);
 		vprintk("demod=%d: MIS: mis_mode=%d\n", state->nr, state->mis_mode);
-		if(state->mis_mode /* &&
-													(pParams->demod_search_algo[Demod-1] == FE_SAT_BLIND_SEARCH ||
-													pParams->demod_search_algo[Demod-1] == FE_SAT_NEXT)*/) {
+		if(state->mis_mode) {
 			int error1 = FE_LLA_NO_ERROR;
 			//memset(&state->signal_info.isi_list, 0, sizeof(state->signal_info.isi_list));
 			state_dprintk("Calling isi_scan\n");
@@ -10620,9 +10618,12 @@ fe_lla_error_t fe_stid135_isi_and_modcod_scan(struct stv* state, bool modcod_onl
 				if( ! (p_isi_struct->isi_bitset[j] & mask)) {
 					state->mis_mode |= !fe_stid135_check_sis_or_mis(matype);
 					state_dprintk("Found new ISI=%d matype=%d error=%d mis=%d\n",  CurrentISI, matype, error, state->mis_mode);
-					if(state->mis_mode &&  p_isi_struct->default_isi <0) {
-						p_isi_struct->default_isi = CurrentISI;
-						p_isi_struct->default_matype = matype;
+					if(p_isi_struct->default_isi <0) {
+						if(state->mis_mode)  {
+							p_isi_struct->default_isi = CurrentISI;
+							p_isi_struct->default_matype = matype;
+						} else
+							p_isi_struct->default_matype = 256;
 					}
 					if(p_isi_struct->num_matypes < sizeof(p_isi_struct->matypes)/sizeof(p_isi_struct->matypes[0]))
 						p_isi_struct->matypes[p_isi_struct->num_matypes++] = (matype<<(int)8)|CurrentISI;
@@ -10780,13 +10781,13 @@ fe_lla_error_t set_stream_index(struct stv *state, s32 isi, s32 pls_mode, s32 pl
 	state_dprintk("SET stream_id=%d pls_code=%d pls_mode=%d",  isi, pls_code, pls_mode);
 	if (isi == -1) {
 		//dev_dbg(&state->chip->i2c->dev, "%s: disable ISI filtering !\n", __func__);
-		set_pls_mode_code(state, 0, 1);
+		set_pls_mode_code(state, pls_mode, pls_code);
 		err |= fe_stid135_set_mis_filtering(state,  FALSE, 0, 0xFF);
-		state_dprintk("SET stream_id=%d pls_code=%d pls_mode=%d",  isi, 0, 1);
 		state->signal_info.isi = -1;
 		state->signal_info.matype = 256;
-		state->signal_info.pls_mode = 0;
-		state->signal_info.pls_code = 1;
+		state->signal_info.pls_mode = pls_mode;
+		state->signal_info.pls_code = pls_code;
+		state_dprintk("SET stream_id=%d pls_code=%d pls_mode=%d",  isi, pls_code, pls_mode);
 	} else  {
 		WARN_ON (isi<0);
 		set_pls_mode_code(state, pls_mode, pls_code);

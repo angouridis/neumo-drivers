@@ -1404,6 +1404,7 @@ static int stid135_set_parameters(struct neumo_dvb_frontend* fe)
 					}
 			}
 		} else if(state->signal_info.fec_locked) {
+			state_dprintk("Calling set_pls_mode_code");
 			set_pls_mode_code(state, 0, 1);
 		}
 		vprintk("After Trying pls: p->stream_id=%d locked=%d\n", p->stream_id, locked);
@@ -1500,17 +1501,6 @@ static int stid135_set_parameters(struct neumo_dvb_frontend* fe)
 		dev_dbg(&state->chip->i2c->dev, "%s: disable ISI filtering !\n", __func__);
 		err |= fe_stid135_set_mis_filtering(state, FALSE, 0, 0xFF);
 	}
-	if(p->stream_id == NO_STREAM_ID_FILTER) {
-		state->signal_info.pls_mode = 0x00; //ROOT
-		state_dprintk("setting pls_code=1 was %d \n", state->signal_info.pls_code);
-		state->signal_info.pls_code = 1;
-	} else {
-#if 0
-		state->signal_info.pls_mode = ((p->stream_id >>26) & 0x3);
-		state->signal_info.pls_code = ((p->stream_id >> 8)  & 0x3FFFF);
-#endif
-	}
-
 	dprintk("set state->signal_info pls_mode=0x%x pls_code=0x%x stream_id=0%x",
 					state->signal_info.pls_mode, state->signal_info.pls_code, p->stream_id);
 
