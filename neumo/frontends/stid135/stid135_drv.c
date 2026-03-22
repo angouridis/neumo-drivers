@@ -2952,8 +2952,6 @@ fe_lla_error_t	fe_stid135_search(struct stv* state,
 			error |= fe_stid135_manage_manual_rolloff(handle, demod);
 		}
 #endif
-#ifdef TOTEST //deepthough 20201226 In the main driver this code is disabled
-#else
 		if((pSearch->symbol_rate >= pParams->master_clock) &&
 			 (state->demod_search_algo == FE_SAT_BLIND_SEARCH ||
 				state->demod_search_algo == FE_SAT_NEXT)
@@ -3002,7 +3000,6 @@ fe_lla_error_t	fe_stid135_search(struct stv* state,
 		if(error1)
 			dprintk("demod=%d: error=%d\n", state->nr, error1);
 	}
-#endif //TOTEST
 
 	//for wideband such as 200Msymbol/s
 	if(pSearch->symbol_rate >= pParams->master_clock) { /* if SR >= MST_CLK */
