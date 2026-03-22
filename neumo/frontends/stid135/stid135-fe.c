@@ -1396,7 +1396,7 @@ static int stid135_set_parameters(struct neumo_dvb_frontend* fe)
 		if(locked) {
 			dprintk("demod=%d: PLS locked=%d\n", state->nr, locked);
 			state_dprintk("Calling isi_scan\n");
-			err = fe_stid135_isi_and_modcod_scan(state, false /*modcod_only*/);
+			err = fe_stid135_isi_and_modcod_scan(state, true /*scan_isi*/, true /*scan_modcod*/);
 			p->pls_mode = state->signal_info.pls_mode;
 			p->pls_code = state->signal_info.pls_code;
 
@@ -1420,7 +1420,8 @@ static int stid135_set_parameters(struct neumo_dvb_frontend* fe)
 	} else {
 		vprintk("now stream_id=0x%x\n", p->stream_id);
 		if(p->stream_id != NO_STREAM_ID_FILTER) {
-			vprintk("calling set_stream_index");
+			vprintk("calling set_stream_index=%d pls_mode=%d pls_code=%d\n",search_params.isi,
+							search_params.pls_mode, search_params.pls_code);
 			set_stream_index(state, search_params.isi, search_params.pls_mode, search_params.pls_code);
 		}
 	}
@@ -1628,12 +1629,9 @@ static int stid135_read_status_(struct neumo_dvb_frontend* fe, enum fe_status *s
 	if (err != FE_LLA_NO_ERROR)
 		dev_warn(&state->chip->i2c->dev, "%s: fe_stid135_filter_forbidden_modcodes error %d !\n", __func__, err);
 
-	//update isi list
-	if(state->mis_mode) {
-		vprintk("ISI calling isi_scan\n");
-		err = fe_stid135_isi_and_modcod_scan(state, false/*only modcode*/);
-	} else
-		err = fe_stid135_isi_and_modcod_scan(state, true/*only modcode*/);
+	//update isi and modcod list
+	err = fe_stid135_isi_and_modcod_scan(state, true, true /*scan_modcod*/);
+
 	memcpy(p->isi_bitset, state->signal_info.isi_list.isi_bitset, sizeof(p->isi_bitset));
 	memcpy(p->matypes, state->signal_info.isi_list.matypes, sizeof(p->matypes));
 	const int num_modcods = sizeof(state->signal_info.modcod_list.count)/sizeof(state->signal_info.modcod_list.count[0]);

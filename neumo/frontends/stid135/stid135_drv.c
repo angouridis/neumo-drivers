@@ -4001,13 +4001,12 @@ fe_lla_error_t fe_stid135_get_signal_info(struct stv* state)
 		if(state->mis_mode) {
 			int error1 = FE_LLA_NO_ERROR;
 			//memset(&state->signal_info.isi_list, 0, sizeof(state->signal_info.isi_list));
-			state_dprintk("Calling isi_scan\n");
-			error1 = fe_stid135_isi_and_modcod_scan(state, false/*only modcodes*/);
+			error1 = fe_stid135_isi_and_modcod_scan(state, true, true);
 			state_dprintk("MIS DETECTION: error=%d\n", error1);
 		} else {
 			u8 isi_read;
 			fe_stid135_read_hw_matype(state, &pInfo->matype, &isi_read);
-			error |= fe_stid135_isi_and_modcod_scan(state, true/*modcod_only*/);
+			error |= fe_stid135_isi_and_modcod_scan(state, false, true);
 		}
 
 	} else { /*DVBS1/DSS*/
@@ -10586,7 +10585,7 @@ fe_lla_error_t fe_stid135_get_isi(struct stv* state, u8 *p_isi_current)
 --PARAMS OUT	::	p_isi_struct -> Struct ISI Nb of ISI and ISI numbers
 --RETURN	::	Error (if any)
 --***************************************************/
-fe_lla_error_t fe_stid135_isi_and_modcod_scan(struct stv* state, bool modcod_only)
+fe_lla_error_t fe_stid135_isi_and_modcod_scan(struct stv* state, bool scan_isi, bool scan_modcod)
 {
 	struct fe_sat_isi_struct_t* p_isi_struct = &state->signal_info.isi_list;
 	struct fe_sat_modcod_struct_t* p_modcod_struct = &state->signal_info.modcod_list;
@@ -10597,7 +10596,10 @@ fe_lla_error_t fe_stid135_isi_and_modcod_scan(struct stv* state, bool modcod_onl
 	u8 i;
 	u32 j=0;
 	//struct fe_stid135_internal_param *pParams = (struct fe_stid135_internal_param *)handle;
-
+	if(!state->mis_mode && ! p_isi_struct->is_vcm)
+		return 0;
+	dprintk("isi_and_modcod scan; isi=%d modcod=%d\n", scan_isi && state->mis_mode,
+					scan_modcod && p_isi_struct->is_vcm);
 	if (state->chip->ip.handle_demod->Error) {
 		error=FE_LLA_I2C_ERROR;
 		state_dprintk("chip in error\n");
@@ -10607,18 +10609,19 @@ fe_lla_error_t fe_stid135_isi_and_modcod_scan(struct stv* state, bool modcod_onl
 		error |= ChipSetField(state->chip->ip.handle_demod, FLD_FC8CODEW_DVBSX_PKTDELIN_TPKTDELIN_TESTBUS_SELECT(demod), 8);
 		/* Setup HW to store Current ISI */
 		error |= ChipSetField(state->chip->ip.handle_demod, FLD_FC8CODEW_DVBSX_PKTDELIN_PDELCTRL0_ISIOBS_MODE(demod), 0);
-		state_chip_sleep(state, 100);
+		state_chip_sleep(state, 20);
 		/* Get Current ISI and store in struct */
-		for (i=0; i < 40; i++) {
+		for (i=0; i < 10; i++) {
 			uint32_t mask;
-			if(!modcod_only) {
+			if(scan_isi && state->mis_mode) {
 				error |= fe_stid135_read_hw_matype(state, &matype, &CurrentISI);
 				j = CurrentISI/32;
+				p_isi_struct->is_vcm |= !((matype >> 4) & 1);
 				mask = ((uint32_t)1)<< (CurrentISI%32);
 				if( ! (p_isi_struct->isi_bitset[j] & mask)) {
 					state->mis_mode |= !fe_stid135_check_sis_or_mis(matype);
 					state_dprintk("Found new ISI=%d matype=%d error=%d mis=%d\n",  CurrentISI, matype, error, state->mis_mode);
-					if(p_isi_struct->default_isi <0) {
+					if(p_isi_struct->default_isi < 0) {
 						if(state->mis_mode)  {
 							p_isi_struct->default_isi = CurrentISI;
 							p_isi_struct->default_matype = matype;
@@ -10638,17 +10641,18 @@ fe_lla_error_t fe_stid135_isi_and_modcod_scan(struct stv* state, bool modcod_onl
 #endif
 				}
 			}
-			enum fe_sat_modcode	modcode;
-			enum fe_sat_pilots		pilots;		/* pilots on,off only for DVB-S2			*/
-			enum fe_sat_frame		frame_length;	/* Found frame length only for DVB-S2			*/
-			error |= fe_stid135_get_mod_code(state, &modcode, &frame_length, &pilots);
-			if(modcode < 128) {
-				if (p_modcod_struct->count[modcode] ==0)
-					state_dprintk("new modcode: %d\n", modcode);
-				p_modcod_struct->count[modcode]++;
+			if (scan_modcod && p_isi_struct->is_vcm) {
+				enum fe_sat_modcode	modcode;
+				enum fe_sat_pilots		pilots;		/* pilots on,off only for DVB-S2			*/
+				enum fe_sat_frame		frame_length;	/* Found frame length only for DVB-S2			*/
+				error |= fe_stid135_get_mod_code(state, &modcode, &frame_length, &pilots);
+				if(modcode < 128) {
+					if (p_modcod_struct->count[modcode] ==0)
+						state_dprintk("new modcode: %d\n", modcode);
+					p_modcod_struct->count[modcode]++;
 				p_modcod_struct->totcount++;
+				}
 			}
-
 			state_chip_sleep(state, 10);
 		}
 		// Go back to previous value of test mode
