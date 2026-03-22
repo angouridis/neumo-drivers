@@ -3904,7 +3904,7 @@ fe_lla_error_t fe_stid135_get_signal_info(struct stv* state)
 																	state->chip->ip.handle_demod, Demod, &(pInfo->standard));
 
 	error |= FE_STiD135_GetViterbiPunctureRate(state, &(pInfo->puncture_rate));
-#if 0
+#if 1
 	for(count=0; count<5;++count) {
 		error |= ChipGetField(state->chip->ip.handle_demod, FLD_FC8CODEW_DVBSX_DEMOD_TMGOBS_ROLLOFF_STATUS(Demod), &(fld_value[0]));
 		if(pInfo->modcode != FE_SAT_DUMMY_PLF)
@@ -3912,6 +3912,8 @@ fe_lla_error_t fe_stid135_get_signal_info(struct stv* state)
 		state_chip_sleep(state,5);
 	}
 #else
+	if(pInfo->modcode == FE_SAT_DUMMY_PLF)
+		dprintk("modcode=dummy (still) at this point\n");
 	error |= ChipGetField(state->chip->ip.handle_demod, FLD_FC8CODEW_DVBSX_DEMOD_TMGOBS_ROLLOFF_STATUS(Demod), &(fld_value[0]));
 #endif
 	pInfo->roll_off = (enum fe_sat_rolloff)(fld_value[0]);
