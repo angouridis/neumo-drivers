@@ -3689,7 +3689,12 @@ static int dvb_frontend_handle_ioctl(struct file *file, unsigned int cmd, void *
 		}
 
 		if (fe->ops.read_status) {
+#if 0
 			err = fe->ops.read_status(fe, status);
+#else
+			err = 0;
+			*status = fepriv->status;
+#endif
 		}
 		break;
 	}
