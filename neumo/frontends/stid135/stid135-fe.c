@@ -1389,10 +1389,13 @@ static int stid135_set_parameters(struct neumo_dvb_frontend* fe)
 		//print_signal_info(state, "(before trying pls)");
 		vprintk("demod=%d: Trying pls: p->stream_id=%d state->signal_info.isi=0x%x\n", state->nr,
 						p->stream_id, state->signal_info.isi);
-		if(!state->signal_info.fec_locked)
+		if(!state->signal_info.fec_locked) {
 			locked = pls_search_list(fe);
-		if(!state->signal_info.fec_locked && !locked)
+			err |= (error1=fe_stid135_manage_matype_info(state));
+		} if(!state->signal_info.fec_locked && !locked) {
 			locked = pls_search_range(fe);
+			err |= (error1=fe_stid135_manage_matype_info(state));
+		}
 		if(locked) {
 			dprintk("demod=%d: PLS locked=%d\n", state->nr, locked);
 			state_dprintk("Calling isi_scan\n");
