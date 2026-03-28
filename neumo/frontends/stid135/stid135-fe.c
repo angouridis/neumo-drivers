@@ -1822,6 +1822,8 @@ static int stid135_set_demux_default_stream_id(struct neumo_dvb_frontend* fe) {
 					(p->stream_id)&0xff, is_dvbs, p->delivery_system, is_mis, is_ts);
 	if(stream_id==0xff)
 		stream_id = -1;
+	if(stream_id == -1)
+		stream_id = state->signal_info.isi;
 	//only apply bbframes_auto in very specific case of a multi-stream transport stream
 #if 0
 	output_bbframes = (p->output_bbframes || (bbframes_auto && is_mis && is_ts
