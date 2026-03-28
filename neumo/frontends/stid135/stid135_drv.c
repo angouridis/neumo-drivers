@@ -1817,7 +1817,8 @@ fe_lla_error_t fe_stid135_get_lock_status(struct stv* state, bool*carrier_lock, 
 													FLD_FC8CODEW_DVBSX_DEMOD_DSTATUS_TMGLOCK_QUALITY(state->nr+1),
 																	&(fld_value[4])));
 		state->signal_info.has_timing_lock =  fld_value[4]&2;
-
+		dprintk("FE_SAT_DVBS2_FOUND fld_values= 0x%x 0x%x 0x%x 0x%x\n", fld_value[0], fld_value[1],
+						fld_value[2], fld_value[4]);
 		if(error1) {
 			state_dprintk("error getting tmglockquality\n");
 		}
@@ -3853,22 +3854,27 @@ fe_lla_error_t fe_stid135_get_signal_info(struct stv* state)
 	/* On auxiliary demod, SR found is not true, we have to pick it on master demod  */
 	if(Demod == FE_SAT_DEMOD_2) {
 		error |= ChipGetField(state->chip->ip.handle_demod, FLD_FC8CODEW_DVBSX_DEMOD_HDEBITCFG2_MODE_HAUTDEBIT(Demod), &(fld_value[0]));
-		dprintk("demod=%d: HAUTDEBIT read=%d\n", state->nr, fld_value[0]);
 		if(fld_value[0] == 3) { //if demod is in aux demod mode
+			dprintk("demod=%d in aux demod mode: HAUTDEBIT read=%d\n", state->nr, fld_value[0]);
 			error |= FE_STiD135_GetCarrierFrequencyOffset_(state->chip->ip.handle_demod, FE_SAT_DEMOD_1, pParams->master_clock, &carrier_frequency);
 			carrier_frequency /= 1000;
 			error |= FE_STiD135_GetSymbolRate_(state->chip->ip.handle_demod, FE_SAT_DEMOD_1, pParams->master_clock, &(pInfo->symbol_rate));
 			error |= FE_STiD135_TimingGetOffset_(state->chip->ip.handle_demod, FE_SAT_DEMOD_1, pInfo->symbol_rate,  &symbolRateOffset);
+		} else {
+			dprintk("demod=%d in regular demod mode: HAUTDEBIT read=%d\n", state->nr, fld_value[0]);
 		}
 	}
 	if(Demod == FE_SAT_DEMOD_4) {
 		error |= ChipGetField(state->chip->ip.handle_demod, FLD_FC8CODEW_DVBSX_DEMOD_HDEBITCFG2_MODE_HAUTDEBIT(Demod), &(fld_value[0]));
 		dprintk("demod=%d: HAUTDEBIT read=%d\n", state->nr, fld_value[0]);
 		if(fld_value[0] == 3) { //if demod is in aux demod mode
+			dprintk("demod=%d in aux demod mode: HAUTDEBIT read=%d\n", state->nr, fld_value[0]);
 			error |= FE_STiD135_GetCarrierFrequencyOffset_(state->chip->ip.handle_demod, FE_SAT_DEMOD_3, pParams->master_clock,  &carrier_frequency);
 			carrier_frequency /= 1000;
 			error |= FE_STiD135_GetSymbolRate_(state->chip->ip.handle_demod, FE_SAT_DEMOD_3, pParams->master_clock, &(pInfo->symbol_rate));
 			error |= FE_STiD135_TimingGetOffset_(state->chip->ip.handle_demod, FE_SAT_DEMOD_3, pInfo->symbol_rate, &symbolRateOffset);
+		} else {
+			dprintk("demod=%d in regular demod mode: HAUTDEBIT read=%d\n", state->nr, fld_value[0]);
 		}
 	}
 	if(((Demod != FE_SAT_DEMOD_2) && (Demod != FE_SAT_DEMOD_4)) ||
@@ -3928,7 +3934,7 @@ fe_lla_error_t fe_stid135_get_signal_info(struct stv* state)
 		pInfo->spectrum = (enum fe_sat_iq_inversion)(fld_value[0]);
 		if(pInfo->modcode == FE_SAT_DUMMY_PLF) {
 			pInfo->modulation = FE_SAT_MOD_DUMMY_PLF;
-			dprintk("state->signal_info.modulation=%d\n", pInfo->modulation);
+			dprintk("state->signal_info.modulation = dummy\n");
 		} else if (((pInfo->modcode >= FE_SAT_QPSK_14) && (pInfo->modcode <= FE_SAT_QPSK_910))
 							 || ((pInfo->modcode >= FE_SAT_DVBS1_QPSK_12) && (pInfo->modcode <= FE_SAT_DVBS1_QPSK_78))
 							 || ((pInfo->modcode >= FE_SATX_QPSK_13_45) && (pInfo->modcode <= FE_SATX_QPSK_11_20))
@@ -4951,7 +4957,9 @@ static  fe_lla_error_t FE_STiD135_GetSignalParams(
 
 	error |=
 		FE_STiD135_GetViterbiPunctureRate(state, &state->signal_info.puncture_rate);
-
+	if(error) {
+		dprintk("Error getting ViterbiPunctureRate\n");
+	}
 	error = error | fe_stid135_get_mod_code(state,
 				&state->signal_info.modcode,
 				&state->signal_info.frame_length,
