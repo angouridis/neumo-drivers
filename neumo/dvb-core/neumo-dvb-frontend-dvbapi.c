@@ -3006,9 +3006,9 @@ static int dvb_frontend_handle_ioctl(struct file *file, unsigned int cmd, void *
 		info->adapter_mac_address =  proposed_mac ? proposed_mac : (0x2L | ((((uint64_t)fe->dvb->num) << 8) <<32));
 		fe_dprintk(fe, "MAC: 0x%llx", info->adapter_mac_address);
 		info->card_mac_address = fe->dvb->num; //best we can do; each adapter will appear as different card
-		strscpy(info->card_address, "");
+		strscpy(info->card_address, "", sizeof(info->card_address));
 		strscpy(info->card_name, fe->ops.info.name, sizeof(info->card_name));
-		strscpy(info->card_short_name, info->card_name);
+		strscpy(info->card_short_name, info->card_name, sizeof(info->card_short_name));
 		snprintf(info->adapter_name, sizeof(info->adapter_name), "A%d %s",
 						 fe->dvb->num,  info->card_short_name);
 		info->symbol_rate_min = fe->ops.info.symbol_rate_min;

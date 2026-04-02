@@ -302,10 +302,18 @@ struct neumo_dvb_frontend *tas2971_attach(const struct tas2101_config *cfg,
 		goto err1;
 	}
 	base->muxc->priv = priv;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 10, 0)
 	ret = i2c_mux_add_adapter(base->muxc, 0, 0);
+#else
+	ret = i2c_mux_add_adapter(base->muxc, 0, 0, 0);
+#endif
 	if (ret)
 		goto err1;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 10, 0)
 	ret = i2c_mux_add_adapter(base->muxc, 0, 1);
+#else
+	ret = i2c_mux_add_adapter(base->muxc, 0, 1, 0);
+#endif
 	if (ret)
 		goto err1;
 	base->i2c_demod = base->muxc->adapter[0];

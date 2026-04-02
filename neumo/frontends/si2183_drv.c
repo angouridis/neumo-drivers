@@ -1745,7 +1745,11 @@ static int si2183_probe(struct i2c_client *client)
 			goto err_base_kfree;
 		}
 		base->muxc->priv = client;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 10, 0)
 		ret = i2c_mux_add_adapter(base->muxc, 0, 0);
+#else
+		ret = i2c_mux_add_adapter(base->muxc, 0, 0, 0);
+#endif
 		if (ret)
 			goto err_base_kfree;
 		base->tuner_adapter = base->muxc->adapter[0];

@@ -1462,7 +1462,11 @@ err:
 	return ret;
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 11, 0)
+static int rtl2832_sdr_remove(struct platform_device *pdev)
+#else
 static void rtl2832_sdr_remove(struct platform_device *pdev)
+#endif
 {
 	struct rtl2832_sdr_dev *dev = platform_get_drvdata(pdev);
 
@@ -1478,6 +1482,9 @@ static void rtl2832_sdr_remove(struct platform_device *pdev)
 	mutex_unlock(&dev->vb_queue_lock);
 	v4l2_device_put(&dev->v4l2_dev);
 	module_put(pdev->dev.parent->driver->owner);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 11, 0)
+	return 0;
+#endif
 }
 
 static struct platform_driver rtl2832_sdr_driver = {

@@ -660,8 +660,14 @@ static void hw_algo(struct neumo_dvb_frontend_private *fepriv,
 		} else {
 			*re_tune = false;
 		}
-		if (fe->ops.tune) {
+		if (fe->ops.tune && (*re_tune || !fe->ops.read_status)) {
 			fe->ops.tune(fe, *re_tune, fepriv->tune_mode_flags, &fepriv->delay, status);
+		} else if (fe->ops.read_status) {
+			fe->ops.read_status(fe, status);
+			if (*status & FE_HAS_LOCK)
+				fepriv->delay = 3 * HZ;
+			else
+				fepriv->delay = HZ / 2;
 		}
 	}
 	if ((*status != fepriv->status && !(fepriv->tune_mode_flags & FE_TUNE_MODE_ONESHOT))

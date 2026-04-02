@@ -1041,7 +1041,7 @@ static bool pls_search_list(struct neumo_dvb_frontend* fe)
 		set_pls_mode_code(state, (pls_code>>26) & 0x3, (pls_code>>8) & 0x3FFFF);
 		//write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x15);
 		//write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x18);
-		msleep(timeout? timeout: 100); //0 means: use default
+		state_chip_sleep(state, timeout ? timeout : 100); //0 means: use default
 		error = (fe_lla_error_t) ChipGetField(state->chip->ip.handle_demod,
 												FLD_FC8CODEW_DVBSX_PKTDELIN_PDELSTATUS1_PKTDELIN_LOCK(state->nr+1), &pktdelin);
 		if(error)
@@ -1139,7 +1139,7 @@ static bool pls_search_range(struct neumo_dvb_frontend* fe)
 		set_pls_mode_code(state, (pls_code>>26) & 0x3, (pls_code>>8) & 0x3FFFF);
 		//write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x15);
 		//write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x18);
-		msleep(timeout? timeout: 25); //0 means: use default
+		state_chip_sleep(state, timeout ? timeout : 25); //0 means: use default
 
 		error = (fe_lla_error_t) ChipGetField(state->chip->ip.handle_demod,
 												FLD_FC8CODEW_DVBSX_PKTDELIN_PDELSTATUS1_PKTDELIN_LOCK(state->nr+1), &pktdelin);
