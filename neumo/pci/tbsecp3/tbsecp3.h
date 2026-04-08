@@ -264,6 +264,9 @@ struct tbsecp3_dev {
 	u64 card_mac_address;
 	u8 mac_num;
 	int cimode; //for 6910X
+
+	/* One-time bring-up/reset helpers */
+	bool demod_reset_done;
 };
 
 #define tbs_read(_b, _o)	readl(dev->lmmio + (_b + _o))

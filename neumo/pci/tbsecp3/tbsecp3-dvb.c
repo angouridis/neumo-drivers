@@ -681,6 +681,36 @@ static void reset_demod(struct tbsecp3_adapter *adapter)
 	usleep_range(50000, 100000);
 }
 
+static void tbsecp3_reset_demod_once(struct tbsecp3_dev *dev)
+{
+	struct tbsecp3_gpio_pin *reset;
+
+	if (dev->demod_reset_done)
+		return;
+
+	/*
+	 * TBS6909x: only adapter0 has the demod reset pin configured in
+	 * tbsecp3-cards.c. If we start probing STiD135 (I2C @ 0x68) before a
+	 * proper reset pulse, the chip can NACK everything.
+	 */
+	reset = &dev->adapter[0].cfg->gpio.demod_reset;
+	if (reset->lvl == TBSECP3_GPIODEF_NONE)
+		return;
+
+	tbsecp3_gpio_set_pin(dev, reset, 1);
+	usleep_range(10000, 20000);
+	tbsecp3_gpio_set_pin(dev, reset, 0);
+	usleep_range(50000, 100000);
+
+	/*
+	 * Be extra conservative: allow STiD135 to complete internal boot before
+	 * the first I2C transaction.
+	 */
+	msleep(20);
+
+	dev->demod_reset_done = true;
+}
+
 
 static struct tas2101_config tbs6902_demod_cfg[] = {
 	{
@@ -2828,6 +2858,7 @@ static int tbsecp3_frontend_attach(struct tbsecp3_adapter *adapter)
 			goto frontend_atach_fail;
 		break;
 	case TBSECP3_BOARD_TBS6909X:
+		tbsecp3_reset_demod_once(dev);
 		if(pci->subsystem_device==0x0010)
 			adapter->fe = dvb_attach(stid135_attach, dev, dvbdemux, i2c,
 				&tbs6909x_stid135_cfg, adapter->nr, adapter->nr%4);
