@@ -1898,7 +1898,11 @@ struct tbsecp3_board tbsecp3_boards[] = {
 	},
 	[TBSECP3_BOARD_TBS6909X] = {
 #if 1
-		.i2c_speed = 4, //default=9
+		/* Bring-up: use conservative I2C speed (see tbsecp3-i2c.c comment).
+		 * baud=39 is ~100kHz; improves reliability if the demod is marginal
+		 * during reset/boot.
+		 */
+		.i2c_speed = 39,
 #endif
 		.board_id	= TBSECP3_BOARD_TBS6909X,
 		.name		= "TurboSight TBS 6909x ",
