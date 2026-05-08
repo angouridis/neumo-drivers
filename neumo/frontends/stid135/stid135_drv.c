@@ -5753,10 +5753,11 @@ fe_lla_error_t fe_stid135_manage_matype_info(struct stv* state)
 				dprintk("demod=%d: error=%d\n", state->nr, error1);
 			/* Read Matype */
 			error = (error1 = fe_stid135_read_hw_matype(state, &matype_info, &isi));
-			dprintk("demod=%d: isi=%d matype=%d\n", state->nr, isi, matype_info);
 			genuine_matype = matype_info;
 			state->signal_info.matype = genuine_matype;
+			state->signal_info.isi_list.is_vcm |=  !((genuine_matype >> 4) & 1);
 			state->signal_info.isi = isi;
+			dprintk("demod=%d: isi=%d matype=%d vcm=%d\n", state->nr, isi, matype_info, state->signal_info.isi_list.is_vcm);
 			if(error1)
 				dprintk("demod=%d: error=%d\n", state->nr, error1);
 			/* Check if MIS stream (Multi Input Stream). If yes then set the MIS Filter to get the Min ISI */
@@ -5921,6 +5922,7 @@ fe_lla_error_t fe_stid135_manage_matype_info(struct stv* state)
 					//error |= ChipSetField(state->chip->ip.handle_demod, FLD_FC8CODEW_DVBSX_HWARE_TSSYNC_TSFIFO_SYNCMODE(Demod), 2);
 					//error |= ChipSetField(state->chip->ip.handle_demod, FLD_FC8CODEW_DVBSX_HWARE_TSCFG0_TSFIFO_EMBINDVB(Demod), 1); //TEST
 #endif
+#ifdef NO_FORCE_MATYPEMSB
 					matype_info &= 0x0F;
 					/* Set bit 5 to ignore ISI/MIS bit because not compatible with NCR feature (latency regulation) */
 					matype_info |= 0xB0;
@@ -5931,6 +5933,7 @@ fe_lla_error_t fe_stid135_manage_matype_info(struct stv* state)
 					state_dprintk("force_matypemsb set to 1");
 					if(error1)
 						dprintk("demod=%d: error=%d\n", state->nr, error1);
+#endif
 					/* Force HEM mode */
 					error |= (error1=ChipSetField(state->chip->ip.handle_demod, FLD_FC8CODEW_DVBSX_PKTDELIN_PDELCTRL0_HEMMODE_SELECT(Demod), 3));
 					if(error1)
@@ -10598,15 +10601,16 @@ fe_lla_error_t fe_stid135_isi_and_modcod_scan(struct stv* state, bool scan_isi, 
 	struct fe_sat_modcod_struct_t* p_modcod_struct = &state->signal_info.modcod_list;
 	enum fe_stid135_demod demod = state->nr+1;
 	int error = FE_LLA_NO_ERROR;
+	int error1 = FE_LLA_NO_ERROR;
 	u8 CurrentISI;
 	int matype;
 	u8 i;
 	u32 j=0;
 	//struct fe_stid135_internal_param *pParams = (struct fe_stid135_internal_param *)handle;
-	if(!state->mis_mode && ! p_isi_struct->is_vcm)
+	if(!state->mis_mode /*&& ! p_isi_struct->is_vcm*/)
 		return 0;
-	dprintk("isi_and_modcod scan; isi=%d modcod=%d\n", scan_isi && state->mis_mode,
-					scan_modcod && p_isi_struct->is_vcm);
+	dprintk("isi_and_modcod scan; scan_isi=%d scan_modcod=%d/%d\n", scan_isi && state->mis_mode,
+					scan_modcod, scan_modcod && p_isi_struct->is_vcm);
 	if (state->chip->ip.handle_demod->Error) {
 		error=FE_LLA_I2C_ERROR;
 		state_dprintk("chip in error\n");
@@ -10621,13 +10625,14 @@ fe_lla_error_t fe_stid135_isi_and_modcod_scan(struct stv* state, bool scan_isi, 
 		for (i=0; i < 10; i++) {
 			uint32_t mask;
 			if(scan_isi && state->mis_mode) {
-				error |= fe_stid135_read_hw_matype(state, &matype, &CurrentISI);
+				error |= (error1=fe_stid135_read_hw_matype(state, &matype, &CurrentISI));
 				j = CurrentISI/32;
 				p_isi_struct->is_vcm |= !((matype >> 4) & 1);
 				mask = ((uint32_t)1)<< (CurrentISI%32);
 				if( ! (p_isi_struct->isi_bitset[j] & mask)) {
 					state->mis_mode |= !fe_stid135_check_sis_or_mis(matype);
-					state_dprintk("Found new ISI=%d matype=%d error=%d mis=%d\n",  CurrentISI, matype, error, state->mis_mode);
+					state_dprintk("Found new ISI=%d matype=%d error=%d mis=%d error1=%d\n",
+												CurrentISI, matype, error, state->mis_mode, error1);
 					if(p_isi_struct->default_isi < 0) {
 						if(state->mis_mode)  {
 							p_isi_struct->default_isi = CurrentISI;
@@ -12985,6 +12990,8 @@ fe_lla_error_t stid135_set_bbframe_output(struct stv* state)
 	error |= ChipSetField(handle, FLD_FC8CODEW_DVBSX_HWARE_TSCFG0_TSFIFO_EMBINDVB(demod), 1);
 	error |= ChipSetField(handle, FLD_FC8CODEW_DVBSX_PKTDELIN_BBHCTRL2_FORCE_MATYPEMSB(demod), 1);
 	state_dprintk("force_matypemsb set to 1");
+	error |= (ChipSetField(state->chip->ip.handle_demod, FLD_FC8CODEW_DVBSX_PKTDELIN_PDELCTRL2_FRAME_MODE(demod), 1));
+
 	state_dprintk("set BBFRAME mode: error=%d", error);
 	state->signal_info.bbframes_on = true;
 	return error;

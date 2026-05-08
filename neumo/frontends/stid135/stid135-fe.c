@@ -1767,7 +1767,11 @@ static int stid135_set_demux_default_stream_id(struct neumo_dvb_frontend* fe) {
 	int ret=0;
 	bool is_dvbs = (p->delivery_system == SYS_DVBS);
 	int stream_id = p->stream_id & 0xff;
+#if 0
 	bool is_mis = !is_dvbs && !((state->signal_info.matype >> 5) &0x1);
+#else
+	bool is_mis = !is_dvbs && state->mis_mode;
+#endif
 	bool is_ts = is_dvbs || (((state->signal_info.matype >> 6) &0x3) == 0x3);
 	dprintk("isi=%d/%d  is_dvbs=%d delsys=%d is_mis=%d is_ts=%d\n", state->signal_info.isi,
 					(p->stream_id)&0xff, is_dvbs, p->delivery_system, is_mis, is_ts);
@@ -1831,7 +1835,9 @@ static int stid135_tune_(struct neumo_dvb_frontend* fe, bool re_tune,
 			 retrieve information about modulation, frequency, symbol_rate
 			 and CNR, BER
 		*/
+#if 0
 		memset(&state->signal_info.isi_list, 0, sizeof(state->signal_info.isi_list));
+#endif
 		fe_stid135_get_signal_info(state);
 		stid135_set_demux_default_stream_id(fe);
 		if(p->output_bbframes) {
