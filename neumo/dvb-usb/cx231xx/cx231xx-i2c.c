@@ -599,7 +599,11 @@ int cx231xx_i2c_mux_create(struct cx231xx *dev)
 
 int cx231xx_i2c_mux_register(struct cx231xx *dev, int mux_no)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 10, 0)
 	return i2c_mux_add_adapter(dev->muxc, 0, mux_no);
+#else
+	return i2c_mux_add_adapter(dev->muxc, 0, mux_no, 0);
+#endif
 }
 
 void cx231xx_i2c_mux_unregister(struct cx231xx *dev)

@@ -1082,7 +1082,11 @@ static int rtl2832_probe(struct i2c_client *client)
 		goto err_regmap_exit;
 	}
 	dev->muxc->priv = dev;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 10, 0)
 	ret = i2c_mux_add_adapter(dev->muxc, 0, 0);
+#else
+	ret = i2c_mux_add_adapter(dev->muxc, 0, 0, 0);
+#endif
 	if (ret)
 		goto err_regmap_exit;
 
