@@ -12830,9 +12830,16 @@ void state_chip_lock_(struct stv* state, const char*func, int line) {
 	struct lock_t* lock = &state->chip->lock;
 	if(!state_chip_trylock_(state, func, line)) {
 		const char *fn = lock->func;
+		int64_t delta;
+
 		if(!fn)
 			fn="??";
-		state_dprintk_(func, line, "Waiting for chip mutex created at %s:%d by demod=%d.%d\n", fn, lock->line, lock->chip_no, lock->demod);
+		delta = ktime_ms_delta(ktime_get_boottime(), lock->lock_time);
+
+		if (delta > 50) {
+			state_dprintk_(func, line, "Waiting for chip mutex created at %s:%d by demod=%d.%d (held for %d ms)\n",
+						 fn, lock->line, lock->chip_no, lock->demod, (int)delta);
+		}
 		mutex_lock(&lock->mutex);
 #ifdef DEBUG_LOCK
 		state_dprintk_(func, line, "card mutex locked now\n");
@@ -12895,19 +12902,10 @@ bool state_chip_is_locked_by_state(struct stv* state) {
 }
 
 void state_chip_sleep_(struct stv* state, int timens, const char* func, int line) {
-	bool may_unlock_chip = !card_is_locked_by_state(state);
 	WARN_ON (!state_chip_is_locked_by_state(state));
-	if (may_unlock_chip) //??? TODO not needed
-		state_chip_unlock_(state, func, line);
-	else {
-		state_dprintk_(func, line, "Sleeping without state_unlock because card is locked by %d.%d at %s:%d\n",
-									 state->chip->card->lock.chip_no, state->chip->card->lock.demod,
-									 state->chip->card->lock.func ? state->chip->card->lock.func: "??", state->chip->card->lock.line);
-		//dump_stack();
-	}
+	state_chip_unlock_(state, func, line);
 	msleep(timens);
-	if(may_unlock_chip)
-		state_chip_lock_(state, func, line);
+	state_chip_lock_(state, func, line);
 }
 
 fe_lla_error_t reserve_llr(struct stv* state, s32 required_llr)

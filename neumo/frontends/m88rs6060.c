@@ -2921,14 +2921,15 @@ static int m88rs6060_read_signal_strength(struct neumo_dvb_frontend *fe,
 static int m88rs6060_set_voltage(struct neumo_dvb_frontend*fe,
 								enum fe_sec_voltage voltage)
 {
-		struct i2c_client *client = fe->demodulator_priv;
+	struct i2c_client *client = fe->demodulator_priv;
 	struct m88rs6060_dev *dev = i2c_get_clientdata(client);
 	struct i2c_adapter *i2c = dev->base->i2c;
 	int ret;
 	u8 utmp;
 	bool voltage_sel, lnb_power;
 
-	
+	mutex_lock(&dev->base->i2c_mutex);
+
 	switch(voltage){
 		case SEC_VOLTAGE_18:
 			voltage_sel = 1;
@@ -2942,23 +2943,27 @@ static int m88rs6060_set_voltage(struct neumo_dvb_frontend*fe,
 			voltage_sel = 0;
 			lnb_power = 0;		
 			break;
+		default:
+			ret = -EINVAL;
+			goto err;
 	}
 	utmp = lnb_power << 1 | voltage_sel << 0;
 	ret = m88rs6060_update_bits(dev, 0xa2, 0x03, utmp);
 	if (ret)
 		goto err;
 
+	mutex_unlock(&dev->base->i2c_mutex);
 	return 0;
 err:
+	mutex_unlock(&dev->base->i2c_mutex);
 	dev_dbg(&i2c->dev, "failed=%d\n", ret);
 	return ret;
-	
 }
 
 static int m88rs6060_set_tone(struct neumo_dvb_frontend *fe,
 			      enum fe_sec_tone_mode fe_sec_tone_mode)
 {
-		struct i2c_client *client = fe->demodulator_priv;
+	struct i2c_client *client = fe->demodulator_priv;
 	struct m88rs6060_dev *dev = i2c_get_clientdata(client);
 	struct i2c_adapter *i2c = dev->base->i2c;
 	int ret;
@@ -2968,10 +2973,16 @@ static int m88rs6060_set_tone(struct neumo_dvb_frontend *fe,
 
 	if (!dev->warm) {
 		ret = -EAGAIN;
-		goto err;
+		return ret;
 	}
+
+	mutex_lock(&dev->base->i2c_mutex);
+
 	if((dev->config.num%2)&&(dev->config.disable_22k))   //for 6909se tuner 1,3,5,7 can not output 22k
-		return 0;
+	{
+		ret = 0;
+		goto out;
+	}
 	switch (fe_sec_tone_mode) {
 	case SEC_TONE_ON:
 		tone = 0;
@@ -2997,8 +3008,11 @@ static int m88rs6060_set_tone(struct neumo_dvb_frontend *fe,
 	if (ret)
 		goto err;
 
+out:
+	mutex_unlock(&dev->base->i2c_mutex);
 	return 0;
- err:
+err:
+	mutex_unlock(&dev->base->i2c_mutex);
 	dev_dbg(&i2c->dev, "failed=%d\n", ret);
 	return ret;
 }
@@ -3006,7 +3020,7 @@ static int m88rs6060_set_tone(struct neumo_dvb_frontend *fe,
 static int m88rs6060_diseqc_send_master_cmd(struct neumo_dvb_frontend *fe, struct dvb_diseqc_master_cmd
 					    *diseqc_cmd)
 {
-		struct i2c_client *client = fe->demodulator_priv;
+	struct i2c_client *client = fe->demodulator_priv;
 	struct m88rs6060_dev *dev = i2c_get_clientdata(client);
 	struct i2c_adapter *i2c = dev->base->i2c;
 	int ret;
@@ -3018,13 +3032,15 @@ static int m88rs6060_diseqc_send_master_cmd(struct neumo_dvb_frontend *fe, struc
 
 	if (!dev->warm) {
 		ret = -EAGAIN;
-		goto err;
+		return ret;
 	}
 
 	if (diseqc_cmd->msg_len < 3 || diseqc_cmd->msg_len > 6) {
 		ret = -EINVAL;
-		goto err;
+		return ret;
 	}
+
+	mutex_lock(&dev->base->i2c_mutex);
 
 	utmp = dev->config.envelope_mode << 5;
 	ret = m88rs6060_update_bits(dev, 0xa2, 0xe0, utmp);
@@ -3077,8 +3093,10 @@ static int m88rs6060_diseqc_send_master_cmd(struct neumo_dvb_frontend *fe, struc
 		goto err;
 	}
 
+	mutex_unlock(&dev->base->i2c_mutex);
 	return 0;
  err:
+	mutex_unlock(&dev->base->i2c_mutex);
 	dev_dbg(&i2c->dev, "failed=%d\n", ret);
 	return ret;
 }
@@ -3097,8 +3115,10 @@ static int m88rs6060_diseqc_send_burst(struct neumo_dvb_frontend *fe,
 
 	if (!dev->warm) {
 		ret = -EAGAIN;
-		goto err;
+		return ret;
 	}
+
+	mutex_lock(&dev->base->i2c_mutex);
 
 	utmp = dev->config.envelope_mode << 5;
 	ret = m88rs6060_update_bits(dev, 0xa2, 0xe0, utmp);
@@ -3157,8 +3177,10 @@ static int m88rs6060_diseqc_send_burst(struct neumo_dvb_frontend *fe,
 		goto err;
 	}
 
+	mutex_unlock(&dev->base->i2c_mutex);
 	return 0;
  err:
+	mutex_unlock(&dev->base->i2c_mutex);
 	dev_dbg(&i2c->dev, "failed=%d\n", ret);
 	return ret;
 }

@@ -58,12 +58,7 @@ echo "V4L drivers building..."
 make -j$(nproc)
 echo "V4L drivers installing..."
 
-TARGET_MODULE="tbsecp3"
-MODULE_PATH=$(modinfo -n "$TARGET_MODULE" 2>/dev/null)
-if [ -n "$MODULE_PATH" ];  then
-	PARENT_DIR=$(dirname $(dirname $(dirname "$MODULE_PATH")))
-	rm -rf "$PARENT_DIR"
-fi
+echo "Installing modules..."
 
 make install
 echo "V4L drivers installation done"
