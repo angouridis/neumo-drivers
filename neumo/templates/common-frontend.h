@@ -1066,17 +1066,6 @@ struct neumo_dtv_pls_search_list {
 	__u32* codes;
 };
 
-struct neumo_dtv_modcod_entry {
-	__u8 modcod;
-	__u8 reserved;
-	__u16 frac; // fraction of frames in which this modcod occurs
-};
-
-struct neumo_dtv_modcod_list {
-	struct neumo_dtv_modcod_entry* entries;
-	__u32 num_entries;
-};
-
 /**
  * struct common_dtv_fe_spectrum - decriptor for a spectrum scan buffer
  * This is passed as an input to COMMON_FE_GET_PROPERTY
@@ -1210,7 +1199,6 @@ struct neumo_dtv_property {
 		struct neumo_dtv_matype_list matype_list;
 		struct neumo_dtv_modcod_list modcod_list;
 		struct neumo_dtv_pls_search_list pls_search_codes;
-		struct neumo_dtv_modcod_list modcod_list;
 		struct {
 			__u8 data[32];
 			__u32 len;
