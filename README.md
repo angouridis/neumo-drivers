@@ -1,3 +1,11 @@
+# Fork Notice
+
+This is a fork of [deeptho/neumo-drivers](https://github.com/deeptho/neumo-drivers), which is not actively maintained. It was used in a personal project to fix compilation errors and improve compatibility with **Ubuntu 24.04.1 LTS** (GNU/Linux 6.8.0-106-generic x86_64) using **TBS 6903X** and **TBS 6904SE** cards.
+
+**Use at your own risk.** No free support is provided whatsoever — I'm on a busy schedule.
+
+---
+
 # What is this?
 This repository contains the neumo drivers for TBS dvb cards.
 These drivers add support for advanced features such as spectrum acquisition, blindscan
@@ -44,75 +52,72 @@ not work properly
 
 # Installation
 
-The `install.sh` script aims to automate the steps below, which you can also execute
-one by one, which helps to figure out what is the problem when something goes wrong.
-There is no point in executing steps if earlier steps have failed. Also note that not all
-output messages signify errors. Some steps may produce warnings even when they succeed.
-* First install the required compilers, git ...
-* Get the source code - if this this is the first time you install the drivers:
-```
-    cd  ~/
-    git clone --depth=1  https://github.com/deeptho/neumo-drivers.git
-    cd ~/neumo-drivers
-```
-* Or update the source code - if you already have an older version
-```
-    cd  ~/neumo-drivers
-    git reset --hard  #optional; helps to prevent problems
-    git pull  https://github.com/deeptho/neumo-driver.git
-```
-* Build or rebuild the drivers
-```
-    cd  ~/neumo-drivers
-    make clean   #optional; helps to prevent problems
-    make -j`nproc`
-```
-* You can also build drivers for another kernel than the one you are running:
-```
-    cd  ~/neumo-drivers
-    make clean   #optional; helps to prevent problems
-    make -j`nproc` KVER=6.17.13-200.fc42.x86_64
-```
-* Install the drivers
-```
-    cd  ~/neumo-drivers
-    make install #best to NOT run this as root, sudo is called internally where needed
+### 1. Prerequisites
+
+#### Ubuntu / Debian
+Ensure you have the latest kernel headers and the **extra modules** package (required for core media symbols like `mc.ko` and `videobuf2` on modern kernels like 6.8):
+```bash
+sudo apt update
+sudo apt install linux-headers-$(uname -r) linux-modules-extra-$(uname -r)
+sudo apt install libproc-processtable-perl libelf-dev patchutils patch gcc make
 ```
 
-*  Last but not least, install rsyslog so that kernel debug messages are stored in the file system
-in /var/log/debug. E.g., on Fedora:
-```
-    sudo dnf install -y rsyslog
-    sudo vi /etc/rsyslog.conf # add "kern.debug /var/log/debug" line
-    sudo systemctl enable rsyslog
-    sudo systemctl start rsyslog #to have log messages in /var/log/debug
-```
-Pay attention to error messages. All steps need to succeed.
-
-Now install the firmware (if needed):
-```
-    cd ~/neumo-drivers
-    sudo tar jxvf tbs-tuner-firmwares*.tar.bz2 -C /lib/firmware/
+#### Fedora
+```bash
+sudo dnf install -y kernel-devel patchutils ccache perl-File-Copy perl perl-Proc-ProcessTable
 ```
 
-
-Now load the drivers: the safest is to reboot the computer. This is needed when
-existing drivers of another type were installed before (e.g., when replacing official TBS drivers
-with neumo drivers). In some cases (e.g., when upgrading from older neumo-driovers) you can also
-unload the modules and then reload them. For example:
-```
-    sudo modprobe -r tbsecp3
-    # more modules may need to be unloaded
-    sudo modprobe -r dvb-core
-    #now reload
-    sudo modprobe  dvb-core
-    sudo modprobe  tbsecp3-core
-    # more modules may need to be reloaded
+### 2. Get the source
+```bash
+git clone --depth=1 https://github.com/angouridis/neumo-drivers.git
+cd neumo-drivers
 ```
 
-Check /var/log/debug for messages. If there are i2c_xfer error messages, try editing
-the file tbsecp3-cards.c. In that file lcate the entry for your card and change i2c_speed
-to 9.
+### 3. Build and install
+
+Easiest option — use the fixed `install.sh` (does **not** delete existing media drivers):
+```bash
+./install.sh
+```
+
+Or step by step:
+```bash
+# Clean previous builds
+make clean
+
+# Compile
+make -j$(nproc)
+
+# Install modules
+sudo make install
+
+# Update dependencies
+sudo depmod -a
+```
+
+You can also build for another kernel than the one you are running:
+```bash
+make clean
+make -j$(nproc) KVER=6.8.0-106-generic
+```
+
+### 4. Firmware
+Download and extract the TBS tuner firmwares:
+```bash
+wget http://www.tbsdtv.com/download/document/linux/tbs-tuner-firmwares_v1.0.tar.bz2
+sudo tar jxvf tbs-tuner-firmwares_v1.0.tar.bz2 -C /lib/firmware/
+```
+
+### 5. Loading drivers
+Reboot (recommended), or manually load the modules:
+```bash
+sudo modprobe mc
+sudo modprobe videobuf2-core
+sudo modprobe dvb-core
+sudo modprobe tbsecp3  # or your specific card driver
+```
+
+If there are `i2c_xfer` error messages, try editing `neumo/pci/tbsecp3/tbsecp3-cards.c`, find your card entry, and change `i2c_speed` (e.g. to `9` or a more conservative value like `39`).
 
 # Checking that it works
 ```
