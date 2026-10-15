@@ -72,6 +72,11 @@ static void vendor_phase_transitions_to_fallback_at_range_start(void)
 	assert(traversal.fallback_frequency_khz == 950000);
 }
 
+static void vendor_miss_advances_by_acquisition_span(void)
+{
+	assert(stv091x_blindscan_vendor_failed_frequency(950000) == 966000);
+}
+
 static void vendor_lock_advances_by_half_occupied_bandwidth(void)
 {
 	assert(stv091x_blindscan_vendor_after_lock_frequency(
@@ -132,6 +137,7 @@ int main(void)
 	lock_moves_next_window_past_carrier();
 	modcod_classifies_dvb_s2_modulation_family();
 	vendor_phase_transitions_to_fallback_at_range_start();
+	vendor_miss_advances_by_acquisition_span();
 	vendor_lock_advances_by_half_occupied_bandwidth();
 	duplicate_suppression_preserves_nearby_one_msps_carriers();
 	duplicate_suppression_checks_all_candidate_locks();

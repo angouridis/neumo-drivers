@@ -2511,7 +2511,7 @@ static int stv091x_vendor_probe(struct neumo_dvb_frontend *fe,
 	if (candidate_frequency < (s32)p->scan_start_frequency ||
 	    candidate_frequency >= (s32)p->scan_end_frequency) {
 		state->blindscan_traversal.vendor_frequency_khz =
-			center + STV091X_BLINDSCAN_VENDOR_CFR_STEP_HZ / 1000;
+			stv091x_blindscan_vendor_failed_frequency(center);
 		return 0;
 	}
 	p->frequency = candidate_frequency;
@@ -2544,10 +2544,9 @@ static int stv091x_vendor_probe(struct neumo_dvb_frontend *fe,
 		next = stv091x_blindscan_vendor_after_lock_frequency(
 			p->frequency, state->symbol_rate);
 	else
-		next = p->frequency +
-			STV091X_BLINDSCAN_VENDOR_CFR_STEP_HZ / 1000;
+		next = stv091x_blindscan_vendor_failed_frequency(center);
 	if (next <= center)
-		next = center + STV091X_BLINDSCAN_VENDOR_CFR_STEP_HZ / 1000;
+		next = stv091x_blindscan_vendor_failed_frequency(center);
 	state->blindscan_traversal.vendor_frequency_khz = next;
 	dprintk("vendor acquisition edge=%d freq=%dkHz locked=%d sr=%d next=%dkHz\n",
 		edge, p->frequency, *locked_ret, state->symbol_rate, next);

@@ -48,6 +48,12 @@ s32 stv091x_blindscan_vendor_after_lock_frequency(s32 frequency_khz,
 	return frequency_khz + (s32)(((u64)symbol_rate * 675) / 1000000);
 }
 
+s32 stv091x_blindscan_vendor_failed_frequency(s32 center_khz)
+{
+	return center_khz +
+		STV091X_BLINDSCAN_VENDOR_ACQUISITION_RANGE_HZ / 1000;
+}
+
 void stv091x_blindscan_traversal_init(
 	struct stv091x_blindscan_traversal *traversal,
 	s32 start_frequency_khz)
