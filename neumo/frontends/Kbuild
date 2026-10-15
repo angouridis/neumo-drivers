@@ -44,7 +44,7 @@ obj-$(CONFIG_DVB_MXL58X) += mxl58x.o
 si2183-objs := si2183_drv.o si2183_blindscan.o
 obj-$(CONFIG_DVB_SI2183) += si2183.o
 
-stv091x-objs :=  stv091x_drv.o stv091x_chip.o stv091x_peak_detector.o
+stv091x-objs :=  stv091x_drv.o stv091x_chip.o stv091x_blindscan_algo.o
 obj-$(CONFIG_DVB_STV091X) +=  stv091x.o
 
 obj-$(CONFIG_DVB_AVL6882) += avl6882.o

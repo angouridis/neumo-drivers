@@ -198,10 +198,6 @@ struct stv {
 	bool satellite_scan;
 	s32 scan_next_frequency;
 	s32 scan_end_frequency;
-	/* Peak list for spectrum-first blindscan (kHz IF frequencies). */
-	s32 *blind_peaks;
-	int blind_num_peaks;
-	int blind_peak_idx;
 	int mis_mode;
 	struct stv_spectrum_scan_state scan_state;
 	struct stv_constellation_scan_state constellation_scan_state;
