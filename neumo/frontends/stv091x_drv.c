@@ -2424,7 +2424,8 @@ static int stv091x_tune_once(struct neumo_dvb_frontend *fe, bool* need_retune)
 		set_stream_index(state, p->stream_id, pls_mode, pls_code);
 	}
 
-	state->signal_info.has_timedout = !state->signal_info.has_viterbi;
+	/* wait_for_dmdlock() returns the authoritative data-lock result. */
+	state->signal_info.has_timedout = !locked;
 	if(locked) {
 		/*
 			retrieve information about modulation, frequency, symbol_rate
