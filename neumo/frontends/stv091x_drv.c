@@ -2526,82 +2526,250 @@ static int stv091x_tune(struct neumo_dvb_frontend *fe, bool re_tune,
 }
 
 /*
-	init = 1: start the scan at the search range specified by the user
-	init = 0: start the scan just beyond the last found frequency
+ * Fast spectrum fill (no per-bin sleep). Caller must hold status_lock.
+ * Allocates state->scan_state.freq/spectrum.
+ */
+static int stv091x_acquire_spectrum_locked(struct neumo_dvb_frontend *fe)
+{
+	struct stv *state = fe->demodulator_priv;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	struct stv_spectrum_scan_state *ss = &state->scan_state;
+	u32 start_frequency = p->scan_start_frequency;
+	u32 end_frequency = p->scan_end_frequency;
+	uint32_t resolution = (p->scan_resolution > 0) ? p->scan_resolution : 2000; /* kHz */
+	uint32_t bandwidth = 2 * resolution; /* kHz */
+	u32 num_freq;
+	int i;
+	int val1 = 0, val2 = 0, val3 = 0;
+
+	if (end_frequency <= start_frequency)
+		return -EINVAL;
+	num_freq = (end_frequency - start_frequency + resolution - 1) / resolution;
+	if (num_freq < 3)
+		return -EINVAL;
+
+	if (ss->freq)
+		kfree(ss->freq);
+	if (ss->spectrum)
+		kfree(ss->spectrum);
+	ss->freq = kzalloc(num_freq * sizeof(ss->freq[0]), GFP_KERNEL);
+	ss->spectrum = kzalloc(num_freq * sizeof(ss->spectrum[0]), GFP_KERNEL);
+	ss->spectrum_len = num_freq;
+	if (!ss->freq || !ss->spectrum)
+		return -ENOMEM;
+
+	write_reg(state, RSTV0910_P2_AGC2O + state->regoff, 0x03);
+	write_reg(state, RSTV0910_P2_AGC2REF + state->regoff, 0x38);
+	stv091x_set_symbol_rate(state, resolution * 1000);
+	write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x5C);
+	write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x1C);
+	write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x18);
+
+	dprintk("blind spectrum: [%d,%d]kHz n=%d res=%dkHz\n",
+					start_frequency, end_frequency, num_freq, resolution);
+
+	for (i = 0; i < (int)num_freq; i++) {
+		uint32_t frequency;
+
+		if ((i % 40 == 39) &&
+				(kthread_should_stop() || neumo_dvb_frontend_task_should_stop(fe)))
+			break;
+
+		ss->freq[i] = start_frequency + i * resolution;
+		frequency = ss->freq[i];
+		if (fe->ops.tuner_ops.set_frequency_and_bandwidth)
+			fe->ops.tuner_ops.set_frequency_and_bandwidth(fe, frequency, bandwidth);
+
+		if (i == 0) {
+			val1 = stv091x_narrow_band_signal_power_dbm(fe);
+			val2 = val3 = val1;
+			continue;
+		}
+		val3 = val2;
+		val2 = val1;
+		val1 = stv091x_narrow_band_signal_power_dbm(fe);
+		ss->spectrum[i - 1] = (val1 + val2 + val3) / 3;
+	}
+	if (num_freq > 0)
+		ss->spectrum[num_freq - 1] = (2 * val1 + val2) / 3;
+
+	write_reg(state, RSTV0910_P2_AGC2O + state->regoff, 0x5B);
+	ss->spectrum_present = true;
+	return 0;
+}
+
+/* Build peak list from acquired spectrum. Requires status_lock. */
+static int stv091x_build_blind_peaks(struct stv *state)
+{
+	struct stv_spectrum_scan_state *ss = &state->scan_state;
+	const s32 thresh = 2500; /* 2.5 dB in 0.001 dB */
+	const s32 min_sep = 4000; /* kHz between peaks */
+	int i, n, count = 0;
+	s32 *tmp;
+
+	if (state->blind_peaks) {
+		kfree(state->blind_peaks);
+		state->blind_peaks = NULL;
+	}
+	state->blind_num_peaks = 0;
+	state->blind_peak_idx = 0;
+
+	if (!ss->spectrum || !ss->freq || ss->spectrum_len < 3)
+		return -EINVAL;
+
+	n = ss->spectrum_len;
+	tmp = kzalloc(n * sizeof(tmp[0]), GFP_KERNEL);
+	if (!tmp)
+		return -ENOMEM;
+
+	for (i = 1; i < n - 1; i++) {
+		s32 left = ss->spectrum[i - 1];
+		s32 mid = ss->spectrum[i];
+		s32 right = ss->spectrum[i + 1];
+		s32 floor_l, floor_r, prom;
+		int j;
+
+		if (!(mid >= left && mid > right) && !(mid > left && mid >= right))
+			continue;
+
+		floor_l = left;
+		for (j = i - 1; j >= 0 && j >= i - 4; j--)
+			if (ss->spectrum[j] < floor_l)
+				floor_l = ss->spectrum[j];
+		floor_r = right;
+		for (j = i + 1; j < n && j <= i + 4; j++)
+			if (ss->spectrum[j] < floor_r)
+				floor_r = ss->spectrum[j];
+		prom = mid - ((floor_l > floor_r) ? floor_l : floor_r);
+		if (prom < thresh)
+			continue;
+
+		if (count > 0 && (ss->freq[i] - tmp[count - 1]) < min_sep) {
+			/* Keep stronger of two close peaks */
+			int prev_idx = count - 1;
+			/* find spectrum index of previous peak */
+			int k;
+			for (k = i - 1; k > 0; k--)
+				if (ss->freq[k] == tmp[prev_idx])
+					break;
+			if (k > 0 && mid > ss->spectrum[k])
+				tmp[prev_idx] = ss->freq[i];
+			continue;
+		}
+		tmp[count++] = ss->freq[i];
+	}
+
+	if (count == 0) {
+		kfree(tmp);
+		dprintk("blind peaks: none (len=%d)\n", n);
+		return 0;
+	}
+
+	state->blind_peaks = krealloc(tmp, count * sizeof(tmp[0]), GFP_KERNEL);
+	if (!state->blind_peaks) {
+		state->blind_peaks = tmp;
+	}
+	state->blind_num_peaks = count;
+	state->blind_peak_idx = 0;
+	dprintk("blind peaks: %d candidates\n", count);
+	return 0;
+}
+
+/*
+	init = 1: acquire spectrum once, build peak list, tune first peak
+	init = 0: tune next peak
  */
 static int stv091x_sat_scan(struct neumo_dvb_frontend *fe, bool init,
 														unsigned int *delay,  enum fe_status *status)
 {
 	struct stv *state = fe->demodulator_priv;
 	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
-	int asperity;
 	bool locked = false;
-	if(init) {
+	bool need_retune = false;
+	int old_algo;
+
+	if (init) {
 		stv091x_stop_task(fe);
-		//clean up any left over spectrum
+		if (state->blind_peaks) {
+			kfree(state->blind_peaks);
+			state->blind_peaks = NULL;
+		}
+		state->blind_num_peaks = 0;
+		state->blind_peak_idx = 0;
 	}
 
 	mutex_lock(&state->base->status_lock);
 	state->Started = 0;
 	state->satellite_scan = true;
-	//todo: 	MinSymbolRate
-	state->search_range_hz =  500000;
-	state->symbol_rate =  1000000;							/*	minimum symbol rate for scan = 1Msps	*/
-	dprintk("set symbol_rate=%d\n", state->symbol_rate);
+	state->search_range_hz = p->search_range > 0 ? p->search_range : 10000000;
+	state->symbol_rate = 1000000;
 
-	if(init) {
+	if (init) {
 		state->scan_next_frequency = p->scan_start_frequency;
 		state->scan_end_frequency = p->scan_end_frequency;
-	}
-
-	while(state->scan_next_frequency < state->scan_end_frequency) {
-		*status = 0;
-		if (kthread_should_stop() || neumo_dvb_frontend_task_should_stop(fe)) {
-			dprintk("exiting on should stop\n");
-			*status =0;
+		if (stv091x_acquire_spectrum_locked(fe) < 0) {
+			dprintk("blind spectrum acquire failed\n");
+			*status = FE_TIMEDOUT | FE_HAS_SIGNAL | FE_HAS_CARRIER |
+				FE_HAS_VITERBI | FE_HAS_SYNC | FE_HAS_LOCK;
 			mutex_unlock(&state->base->status_lock);
 			return 0;
 		}
-		p->frequency = state->scan_next_frequency;
-		dprintk("start=%d end=%d init=%d\n",
-						state->scan_next_frequency, state->scan_end_frequency,  init);
-
-		if(p->frequency >= state->scan_end_frequency) {
-			dprintk("Invalid range");
+		if (stv091x_build_blind_peaks(state) < 0) {
+			*status = FE_TIMEDOUT | FE_HAS_SIGNAL | FE_HAS_CARRIER |
+				FE_HAS_VITERBI | FE_HAS_SYNC | FE_HAS_LOCK;
 			mutex_unlock(&state->base->status_lock);
-			return -1;
+			return 0;
 		}
-#if 0
-		p->algorithm = ALGORITHM_SEARCH_NEXT;
-#endif
-		asperity = scan_within_tuner_bw(fe, &locked);
-		dprintk("asperity=%d locked=%d freq=%dkHz start_freq=%dkHz end_freq=%dkHz\n", asperity, locked,
-						p->frequency/1000, state->scan_next_frequency/1000, state->scan_end_frequency);
-		if(locked) {
-			//state->scan_end_frequency = p->frequency;
-			uint32_t step = 135*((state->symbol_rate/1000) / (2*100));
+	}
+
+	while (state->blind_peak_idx < state->blind_num_peaks) {
+		s32 peak_freq;
+
+		*status = 0;
+		if (kthread_should_stop() || neumo_dvb_frontend_task_should_stop(fe)) {
+			*status = 0;
+			mutex_unlock(&state->base->status_lock);
+			return 0;
+		}
+
+		peak_freq = state->blind_peaks[state->blind_peak_idx++];
+		p->frequency = peak_freq;
+		state->scan_next_frequency = peak_freq;
+		state->symbol_rate =
+			(p->max_symbol_rate > 0) ? p->max_symbol_rate : 45000000;
+		if (state->symbol_rate < 1000000)
+			state->symbol_rate = 45000000;
+
+		dprintk("blind peak %d/%d freq=%dkHz\n",
+						state->blind_peak_idx, state->blind_num_peaks, peak_freq);
+
+		old_algo = p->algorithm;
+		p->algorithm = ALGORITHM_BLIND;
+		state->Started = 0;
+		Stop(state);
+		stv091x_tune_once(fe, &need_retune);
+		p->algorithm = old_algo;
+		locked = !state->signal_info.has_timedout;
+
+		if (locked) {
+			uint32_t step = 135 * ((state->symbol_rate / 1000) / (2 * 100));
 			uint32_t next = p->frequency + step;
-			dprintk("symbol_rate=%d step=%d next-%d\n", state->symbol_rate, step, next);
-			if(next < state->scan_next_frequency) {
-				next += state->search_range_hz/1000;
-				dprintk ("Adjusting next to prevent going backwards: new next=%d\n", next);
-			}
-			state->tune_time = jiffies;
 
+			if (next < (uint32_t)state->scan_next_frequency)
+				next = state->scan_next_frequency + 2000;
 			state->scan_next_frequency = next;
-
-			*status = FE_HAS_SIGNAL|FE_HAS_CARRIER|FE_HAS_VITERBI|FE_HAS_SYNC|FE_HAS_LOCK;
+			state->tune_time = jiffies;
+			*status = FE_HAS_SIGNAL | FE_HAS_CARRIER | FE_HAS_VITERBI |
+				FE_HAS_SYNC | FE_HAS_LOCK;
 			*delay = HZ;
 			mutex_unlock(&state->base->status_lock);
 			return 0;
-		} else {
-			*status = 0;
 		}
 	}
-	if(state->scan_next_frequency >= state->scan_end_frequency) {
-		dprintk("Signaling DONE\n");
-		*status =  FE_TIMEDOUT|FE_HAS_SIGNAL|FE_HAS_CARRIER|FE_HAS_VITERBI|FE_HAS_SYNC|FE_HAS_LOCK;
-	}
+
+	dprintk("Signaling DONE (peaks exhausted %d)\n", state->blind_num_peaks);
+	*status = FE_TIMEDOUT | FE_HAS_SIGNAL | FE_HAS_CARRIER | FE_HAS_VITERBI |
+		FE_HAS_SYNC | FE_HAS_LOCK;
 	mutex_unlock(&state->base->status_lock);
 	return 0;
 }
@@ -2985,6 +3153,12 @@ static int stv091x_stop_task(struct neumo_dvb_frontend *fe)
 #endif
 	if(ss->spectrum)
 		kfree(ss->spectrum);
+	if (state->blind_peaks) {
+		kfree(state->blind_peaks);
+		state->blind_peaks = NULL;
+		state->blind_num_peaks = 0;
+		state->blind_peak_idx = 0;
+	}
 	if(cs->samples)
 		kfree(cs->samples);
 	memset(ss, 0, sizeof(*ss));
