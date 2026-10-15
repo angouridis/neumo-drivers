@@ -7,6 +7,7 @@
 #else
 #include <stdint.h>
 typedef int32_t s32;
+typedef uint8_t u8;
 typedef uint32_t u32;
 typedef uint64_t u64;
 #endif
@@ -25,6 +26,11 @@ typedef uint64_t u64;
 #define STV091X_BLINDSCAN_VENDOR_TUNER_BW_HZ	72000000
 #define STV091X_BLINDSCAN_VENDOR_ACQ_RANGE_PAD_KHZ	24000
 #define STV091X_BLINDSCAN_VENDOR_ACQ_RANGE_MAX_HZ	40000000
+/* tbs6903.sys 0x1BEF4: sticky jump after asperity-1 */
+#define STV091X_BLINDSCAN_VENDOR_STICKY_JUMP_KHZ	16000
+/* tbs6903.sys probe mode: 1 = run edge, 2 = skip edge and acquire */
+#define STV091X_BLINDSCAN_VENDOR_PROBE_EDGE	1
+#define STV091X_BLINDSCAN_VENDOR_PROBE_ACQUIRE	2
 
 enum stv091x_blindscan_phase {
 	STV091X_BLINDSCAN_VENDOR,
@@ -35,6 +41,12 @@ struct stv091x_blindscan_traversal {
 	enum stv091x_blindscan_phase phase;
 	s32 vendor_frequency_khz;
 	s32 fallback_frequency_khz;
+	/* tbs6903.sys [demod+0x54] jump used for search range / fail zig-zag */
+	s32 stored_jump_khz;
+	/* tbs6903.sys edi: 0 = first fail, 1 = second fail, 2 = after asperity-1 */
+	u8 fail_phase;
+	/* tbs6903.sys edx: 1 = edge probe, 2 = skip-edge acquire */
+	u8 probe_mode;
 };
 
 struct stv091x_blindscan_lock {
@@ -70,6 +82,14 @@ s32 stv091x_blindscan_vendor_next_frequency(s32 center_khz, int asperity,
 					     u32 tuner_bw_hz, int locked,
 					     s32 locked_frequency_khz,
 					     u32 symbol_rate);
+/*
+ * tbs6903.sys 0x1BE9F aftermath: updates frequency, stored jump, fail_phase,
+ * and probe_mode. asperity 0=miss, 1=filter-edge, 2=acquire attempted.
+ */
+void stv091x_blindscan_vendor_apply_result(
+	struct stv091x_blindscan_traversal *traversal, int asperity,
+	s32 frequency_jump_khz, u32 tuner_bw_hz, int locked,
+	s32 locked_frequency_khz, u32 symbol_rate);
 u32 stv091x_blindscan_vendor_acquisition_range_hz(s32 frequency_jump_khz);
 void stv091x_blindscan_traversal_init(
 	struct stv091x_blindscan_traversal *traversal,

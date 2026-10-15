@@ -2469,59 +2469,37 @@ restore:
 
 static int stv091x_tune_once(struct neumo_dvb_frontend *fe, bool* need_retune);
 
-static int stv091x_vendor_probe(struct neumo_dvb_frontend *fe,
-				bool *locked_ret)
+static int stv091x_vendor_rf_empty(struct stv *state)
+{
+	s32 agc_power_gain;
+	s32 iq_power = 0;
+	int ret;
+
+	ret = stv091x_vendor_rf_gate(state, &agc_power_gain, &iq_power);
+	if (ret)
+		return ret;
+	if (agc_power_gain || iq_power >= STV091X_BLINDSCAN_IQ_THRESHOLD)
+		return 0;
+	return 1;
+}
+
+static int stv091x_vendor_blind_acquire(struct neumo_dvb_frontend *fe,
+					s32 frequency_jump_khz)
 {
 	struct stv *state = fe->demodulator_priv;
 	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
-	s32 center = state->blindscan_traversal.vendor_frequency_khz;
-	s32 frequency_jump = 0;
-	s32 next;
 	bool need_retune = false;
 	int old_algo;
-	int edge;
 	int ret;
 
-	*locked_ret = false;
-	p->frequency = center;
-	state->symbol_rate = STV091X_BLINDSCAN_INIT_SR;
 	/*
-	 * The 500 kHz range is only the edge-discovery starting state.
-	 * A detected edge is acquired below with the 16 MHz range.
+	 * tbs6903.sys: acquire at the tuner center with
+	 * min((jump+24000)*1kHz, 40MHz).
 	 */
+	p->frequency = state->blindscan_traversal.vendor_frequency_khz;
 	state->search_range_hz =
-		STV091X_BLINDSCAN_VENDOR_EDGE_SEARCH_RANGE_HZ;
-	Stop(state);
-	ret = stv091x_set_frequency_symbol_rate_bandwidth(state);
-	if (ret)
-		return ret;
-	/* tbs6903.sys 0x1F445: 10 ms settle after tuner BW before edge walk */
-	msleep(STV091X_BLINDSCAN_VENDOR_SETTLE_MS);
-
-	edge = stv091x_carrier_search(state, &frequency_jump);
-	if (edge < 0)
-		return edge;
-	/*
-	 * tbs6903.sys: asperity 0 and 1 never blind-acquire. Asperity 1
-	 * (zigzag / filter-edge) only advances by the CFR jump.
-	 */
-	if (edge != 2) {
-		next = stv091x_blindscan_vendor_next_frequency(
-			center, edge, frequency_jump, state->tuner_bw,
-			0, center, 0);
-		state->blindscan_traversal.vendor_frequency_khz = next;
-		dprintk("vendor skip-acquire edge=%d jump=%dkHz next=%dkHz\n",
-			edge, frequency_jump, next);
-		return 0;
-	}
-
-	/*
-	 * tbs6903.sys: asperity-2 acquires at the tuner center, not
-	 * center+jump. Search span is min((jump+24000)*1kHz, 40MHz).
-	 */
-	p->frequency = center;
-	state->search_range_hz =
-		stv091x_blindscan_vendor_acquisition_range_hz(frequency_jump);
+		stv091x_blindscan_vendor_acquisition_range_hz(
+			frequency_jump_khz);
 	state->symbol_rate = STV091X_BLINDSCAN_INIT_SR;
 	if (kthread_should_stop() ||
 	    neumo_dvb_frontend_task_should_stop(fe)) {
@@ -2543,14 +2521,108 @@ static int stv091x_vendor_probe(struct neumo_dvb_frontend *fe,
 		Stop(state);
 		return -ECANCELED;
 	}
+	return 0;
+}
+
+static int stv091x_vendor_probe(struct neumo_dvb_frontend *fe,
+				bool *locked_ret)
+{
+	struct stv *state = fe->demodulator_priv;
+	struct stv091x_blindscan_traversal *trav = &state->blindscan_traversal;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	s32 center = trav->vendor_frequency_khz;
+	s32 frequency_jump = trav->stored_jump_khz;
+	int edge = 2;
+	int ret;
+	int rf_empty;
+
+	*locked_ret = false;
+	p->frequency = center;
+	state->symbol_rate = STV091X_BLINDSCAN_INIT_SR;
+
+	if (trav->probe_mode == STV091X_BLINDSCAN_VENDOR_PROBE_ACQUIRE) {
+		/*
+		 * tbs6903.sys mode 2: skip edge detection, keep sticky /
+		 * halved jump, RF-gate then blind-acquire. This breaks the
+		 * edge=2 jump=500 crawl by not rediscovering the same false
+		 * edge every 250 kHz.
+		 */
+		if (frequency_jump <= 0)
+			frequency_jump =
+				STV091X_BLINDSCAN_VENDOR_STICKY_JUMP_KHZ;
+		state->search_range_hz =
+			stv091x_blindscan_vendor_acquisition_range_hz(
+				frequency_jump);
+		Stop(state);
+		ret = stv091x_set_frequency_symbol_rate_bandwidth(state);
+		if (ret)
+			return ret;
+		msleep(STV091X_BLINDSCAN_VENDOR_SETTLE_MS);
+		rf_empty = stv091x_vendor_rf_empty(state);
+		if (rf_empty < 0)
+			return rf_empty;
+		if (rf_empty) {
+			stv091x_blindscan_vendor_apply_result(
+				trav, 0, frequency_jump, state->tuner_bw,
+				0, center, 0);
+			dprintk("vendor mode2 RF-empty jump=%dkHz next=%dkHz\n",
+				frequency_jump, trav->vendor_frequency_khz);
+			return 0;
+		}
+		ret = stv091x_vendor_blind_acquire(fe, frequency_jump);
+		if (ret)
+			return ret;
+		*locked_ret = !state->signal_info.has_timedout;
+		stv091x_blindscan_vendor_apply_result(
+			trav, 2, frequency_jump, state->tuner_bw,
+			*locked_ret, p->frequency, state->symbol_rate);
+		dprintk("vendor mode2 acquire freq=%dkHz jump=%dkHz locked=%d sr=%d phase=%u next=%dkHz\n",
+			p->frequency, frequency_jump, *locked_ret,
+			state->symbol_rate, trav->fail_phase,
+			trav->vendor_frequency_khz);
+		return 2;
+	}
+
+	/*
+	 * Mode 1: 500 kHz edge-discovery tune, then CFR/AGC2 walk.
+	 */
+	state->search_range_hz =
+		STV091X_BLINDSCAN_VENDOR_EDGE_SEARCH_RANGE_HZ;
+	Stop(state);
+	ret = stv091x_set_frequency_symbol_rate_bandwidth(state);
+	if (ret)
+		return ret;
+	/* tbs6903.sys 0x1F445: 10 ms settle after tuner BW before edge walk */
+	msleep(STV091X_BLINDSCAN_VENDOR_SETTLE_MS);
+
+	edge = stv091x_carrier_search(state, &frequency_jump);
+	if (edge < 0)
+		return edge;
+	/*
+	 * tbs6903.sys: asperity 0 and 1 never blind-acquire in this probe.
+	 * Asperity 1 arms sticky 16 MHz mode-2 acquire on the next probe.
+	 */
+	if (edge != 2) {
+		stv091x_blindscan_vendor_apply_result(
+			trav, edge, frequency_jump, state->tuner_bw,
+			0, center, 0);
+		dprintk("vendor skip-acquire edge=%d jump=%dkHz mode=%u next=%dkHz\n",
+			edge, frequency_jump, trav->probe_mode,
+			trav->vendor_frequency_khz);
+		return 0;
+	}
+
+	ret = stv091x_vendor_blind_acquire(fe, frequency_jump);
+	if (ret)
+		return ret;
 
 	*locked_ret = !state->signal_info.has_timedout;
-	next = stv091x_blindscan_vendor_next_frequency(
-		center, edge, frequency_jump, state->tuner_bw,
+	stv091x_blindscan_vendor_apply_result(
+		trav, edge, frequency_jump, state->tuner_bw,
 		*locked_ret, p->frequency, state->symbol_rate);
-	state->blindscan_traversal.vendor_frequency_khz = next;
-	dprintk("vendor acquisition edge=%d freq=%dkHz locked=%d sr=%d next=%dkHz\n",
-		edge, p->frequency, *locked_ret, state->symbol_rate, next);
+	dprintk("vendor acquisition edge=%d freq=%dkHz locked=%d sr=%d phase=%u next=%dkHz\n",
+		edge, p->frequency, *locked_ret, state->symbol_rate,
+		trav->fail_phase, trav->vendor_frequency_khz);
 	return edge;
 }
 

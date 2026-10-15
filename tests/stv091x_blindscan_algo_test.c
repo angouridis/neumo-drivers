@@ -96,13 +96,60 @@ static void vendor_next_frequency_matches_windows_status_codes(void)
 	/* asperity 1: skip acquire, full edge jump */
 	assert(stv091x_blindscan_vendor_next_frequency(
 		       950000, 1, 21500, 72000000, 0, 950000, 0) == 971500);
-	/* asperity 2 lock fail: half edge jump */
+	/* asperity 2 lock fail phase 0: half edge jump */
 	assert(stv091x_blindscan_vendor_next_frequency(
 		       950000, 2, 20000, 72000000, 0, 970000, 0) == 960000);
 	/* asperity 2 lock ok: past half occupied BW from lock */
 	assert(stv091x_blindscan_vendor_next_frequency(
 		       950000, 2, 2000, 72000000, 1, 1296234,
 		       1000833) == 1296909);
+}
+
+static void vendor_fail_zigzag_skips_edge_and_preserves_jump(void)
+{
+	struct stv091x_blindscan_traversal trav;
+
+	stv091x_blindscan_traversal_init(&trav, 950000);
+	assert(trav.probe_mode == STV091X_BLINDSCAN_VENDOR_PROBE_EDGE);
+
+	/* First asperity-2 fail: store J/2, arm mode-2 acquire */
+	stv091x_blindscan_vendor_apply_result(
+		&trav, 2, 500, 72000000, 0, 950000, 0);
+	assert(trav.vendor_frequency_khz == 950250);
+	assert(trav.stored_jump_khz == 250);
+	assert(trav.fail_phase == 1);
+	assert(trav.probe_mode == STV091X_BLINDSCAN_VENDOR_PROBE_ACQUIRE);
+
+	/* Mode-2 acquire fail (phase 1): advance full stored jump, back to edge */
+	stv091x_blindscan_vendor_apply_result(
+		&trav, 2, trav.stored_jump_khz, 72000000, 0,
+		trav.vendor_frequency_khz, 0);
+	assert(trav.vendor_frequency_khz == 950500);
+	assert(trav.stored_jump_khz == 250);
+	assert(trav.fail_phase == 0);
+	assert(trav.probe_mode == STV091X_BLINDSCAN_VENDOR_PROBE_EDGE);
+}
+
+static void vendor_asperity1_arms_sticky_mode2_acquire(void)
+{
+	struct stv091x_blindscan_traversal trav;
+
+	stv091x_blindscan_traversal_init(&trav, 950000);
+	stv091x_blindscan_vendor_apply_result(
+		&trav, 1, 21500, 72000000, 0, 950000, 0);
+	assert(trav.vendor_frequency_khz == 971500);
+	assert(trav.stored_jump_khz ==
+	       STV091X_BLINDSCAN_VENDOR_STICKY_JUMP_KHZ);
+	assert(trav.fail_phase == 2);
+	assert(trav.probe_mode == STV091X_BLINDSCAN_VENDOR_PROBE_ACQUIRE);
+
+	/* Mode-2 fail after asperity-1: no advance, return to edge */
+	stv091x_blindscan_vendor_apply_result(
+		&trav, 2, trav.stored_jump_khz, 72000000, 0,
+		trav.vendor_frequency_khz, 0);
+	assert(trav.vendor_frequency_khz == 971500);
+	assert(trav.fail_phase == 0);
+	assert(trav.probe_mode == STV091X_BLINDSCAN_VENDOR_PROBE_EDGE);
 }
 
 static void vendor_acquisition_range_matches_windows_pad(void)
@@ -177,6 +224,8 @@ int main(void)
 	vendor_miss_advances_by_acquisition_span();
 	vendor_edge_steps_match_windows_half_span();
 	vendor_next_frequency_matches_windows_status_codes();
+	vendor_fail_zigzag_skips_edge_and_preserves_jump();
+	vendor_asperity1_arms_sticky_mode2_acquire();
 	vendor_acquisition_range_matches_windows_pad();
 	vendor_lock_advances_by_half_occupied_bandwidth();
 	duplicate_suppression_preserves_nearby_one_msps_carriers();

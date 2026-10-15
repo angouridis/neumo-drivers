@@ -94,29 +94,84 @@ s32 stv091x_blindscan_vendor_next_frequency(s32 center_khz, int asperity,
 					     s32 locked_frequency_khz,
 					     u32 symbol_rate)
 {
-	s32 next;
+	struct stv091x_blindscan_traversal traversal;
+
+	stv091x_blindscan_traversal_init(&traversal, center_khz);
+	stv091x_blindscan_vendor_apply_result(
+		&traversal, asperity, frequency_jump_khz, tuner_bw_hz,
+		locked, locked_frequency_khz, symbol_rate);
+	return traversal.vendor_frequency_khz;
+}
+
+void stv091x_blindscan_vendor_apply_result(
+	struct stv091x_blindscan_traversal *traversal, int asperity,
+	s32 frequency_jump_khz, u32 tuner_bw_hz, int locked,
+	s32 locked_frequency_khz, u32 symbol_rate)
+{
+	s32 center = traversal->vendor_frequency_khz;
+	s32 jump = frequency_jump_khz;
+	s32 next = center;
 
 	/*
-	 * tbs6903.sys 0x1BE9F aftermath:
-	 *  asperity 0 / empty (status 0x11): += bw/3000 - 1000
-	 *  asperity 1 (status 0x12): no acquire, += full edge jump
-	 *  asperity 2 lock fail: += edge jump / 2
-	 *  asperity 2 lock ok: past half occupied BW from lock freq
+	 * tbs6903.sys 0x1BE9F aftermath (edi=fail_phase, edx=probe_mode):
+	 *  asperity 0 / empty (status 0x11): += bw/3000 - 1000; mode=1
+	 *  asperity 1 (status 0x12): += J; sticky J=16000; phase=2; mode=2
+	 *  asperity 2 lock ok: past half occupied BW; mode=1
+	 *  asperity 2 fail phase 0: store J/2; += J/2; phase=1; mode=2
+	 *  asperity 2 fail phase 1: += stored J; phase=0; mode=1
+	 *  asperity 2 fail phase 2: no advance; phase=0; mode=1
 	 */
-	if (asperity <= 0)
-		next = center_khz +
+	if (asperity <= 0) {
+		next = center +
 			stv091x_blindscan_vendor_miss_jump_khz(tuner_bw_hz);
-	else if (asperity == 1)
-		next = center_khz + frequency_jump_khz;
-	else if (locked)
+		traversal->fail_phase = 0;
+		traversal->probe_mode = STV091X_BLINDSCAN_VENDOR_PROBE_EDGE;
+	} else if (asperity == 1) {
+		if (jump < STV091X_BLINDSCAN_STEP_KHZ)
+			jump = STV091X_BLINDSCAN_STEP_KHZ;
+		next = center + jump;
+		traversal->stored_jump_khz =
+			STV091X_BLINDSCAN_VENDOR_STICKY_JUMP_KHZ;
+		traversal->fail_phase = 2;
+		traversal->probe_mode =
+			STV091X_BLINDSCAN_VENDOR_PROBE_ACQUIRE;
+	} else if (locked) {
 		next = stv091x_blindscan_vendor_after_lock_frequency(
 			locked_frequency_khz, symbol_rate);
-	else
-		next = center_khz + frequency_jump_khz / 2;
+		traversal->fail_phase = 0;
+		traversal->probe_mode = STV091X_BLINDSCAN_VENDOR_PROBE_EDGE;
+	} else if (traversal->fail_phase == 0) {
+		/* tbs6903.sys 0x1BF46: store and advance by floor(J/2) */
+		if (jump < 0)
+			jump = 0;
+		jump /= 2;
+		if (jump < 1)
+			jump = 1;
+		traversal->stored_jump_khz = jump;
+		next = center + jump;
+		traversal->fail_phase = 1;
+		traversal->probe_mode =
+			STV091X_BLINDSCAN_VENDOR_PROBE_ACQUIRE;
+	} else if (traversal->fail_phase == 1) {
+		/* tbs6903.sys 0x1BF82: advance by full stored jump */
+		jump = traversal->stored_jump_khz;
+		if (jump < 1)
+			jump = 1;
+		next = center + jump;
+		traversal->fail_phase = 0;
+		traversal->probe_mode = STV091X_BLINDSCAN_VENDOR_PROBE_EDGE;
+	} else {
+		/* fail_phase == 2: re-probe same frequency with edge */
+		traversal->fail_phase = 0;
+		traversal->probe_mode = STV091X_BLINDSCAN_VENDOR_PROBE_EDGE;
+		next = center;
+	}
 
-	if (next <= center_khz)
-		next = center_khz + STV091X_BLINDSCAN_STEP_KHZ;
-	return next;
+	/* Never retreat; phase-2 may keep the same center on purpose. */
+	if (next < center)
+		next = center + STV091X_BLINDSCAN_STEP_KHZ;
+
+	traversal->vendor_frequency_khz = next;
 }
 
 u32 stv091x_blindscan_vendor_acquisition_range_hz(s32 frequency_jump_khz)
@@ -143,6 +198,9 @@ void stv091x_blindscan_traversal_init(
 	traversal->phase = STV091X_BLINDSCAN_VENDOR;
 	traversal->vendor_frequency_khz = start_frequency_khz;
 	traversal->fallback_frequency_khz = start_frequency_khz;
+	traversal->stored_jump_khz = 0;
+	traversal->fail_phase = 0;
+	traversal->probe_mode = STV091X_BLINDSCAN_VENDOR_PROBE_EDGE;
 }
 
 s32 stv091x_blindscan_transition_to_fallback(
