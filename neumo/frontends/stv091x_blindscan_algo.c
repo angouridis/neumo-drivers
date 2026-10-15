@@ -45,7 +45,18 @@ s32 stv091x_blindscan_failed_frequency(s32 frequency_khz, u32 scan_span_hz,
 s32 stv091x_blindscan_vendor_after_lock_frequency(s32 frequency_khz,
 						   u32 symbol_rate)
 {
-	return frequency_khz + (s32)(((u64)symbol_rate * 675) / 1000000);
+	s32 advance_khz = (s32)(((u64)symbol_rate * 675) / 1000000);
+
+	/*
+	 * Half occupied BW can be < dup floor for 1Msps (~675 kHz), which
+	 * re-locks the same carrier on the next probe. Step at least past
+	 * the duplicate window.
+	 */
+	if (advance_khz < STV091X_BLINDSCAN_VENDOR_DUP_FLOOR_KHZ +
+			    STV091X_BLINDSCAN_STEP_KHZ / 2)
+		advance_khz = STV091X_BLINDSCAN_VENDOR_DUP_FLOOR_KHZ +
+			STV091X_BLINDSCAN_STEP_KHZ / 2;
+	return frequency_khz + advance_khz;
 }
 
 s32 stv091x_blindscan_vendor_failed_frequency(s32 center_khz)
@@ -126,6 +137,7 @@ void stv091x_blindscan_vendor_apply_result(
 			stv091x_blindscan_vendor_miss_jump_khz(tuner_bw_hz);
 		traversal->fail_phase = 0;
 		traversal->probe_mode = STV091X_BLINDSCAN_VENDOR_PROBE_EDGE;
+		traversal->sticky_fail_streak = 0;
 	} else if (asperity == 1) {
 		if (jump < STV091X_BLINDSCAN_STEP_KHZ)
 			jump = STV091X_BLINDSCAN_STEP_KHZ;
@@ -140,6 +152,7 @@ void stv091x_blindscan_vendor_apply_result(
 			locked_frequency_khz, symbol_rate);
 		traversal->fail_phase = 0;
 		traversal->probe_mode = STV091X_BLINDSCAN_VENDOR_PROBE_EDGE;
+		traversal->sticky_fail_streak = 0;
 	} else if (traversal->fail_phase == 0) {
 		/* tbs6903.sys 0x1BF46: store and advance by floor(J/2) */
 		if (jump < 0)
@@ -152,6 +165,7 @@ void stv091x_blindscan_vendor_apply_result(
 		traversal->fail_phase = 1;
 		traversal->probe_mode =
 			STV091X_BLINDSCAN_VENDOR_PROBE_ACQUIRE;
+		traversal->sticky_fail_streak = 0;
 	} else if (traversal->fail_phase == 1) {
 		/*
 		 * tbs6903.sys 0x1BF82: advance by full stored jump.
@@ -167,12 +181,25 @@ void stv091x_blindscan_vendor_apply_result(
 		next = center + jump;
 		traversal->fail_phase = 0;
 		traversal->probe_mode = STV091X_BLINDSCAN_VENDOR_PROBE_EDGE;
+		traversal->sticky_fail_streak = 0;
 	} else {
 		/*
-		 * tbs6903.sys phase 2: no advance. Robustness: small hop to
-		 * escape asperity-1 sticky fail loops without skipping TPs.
+		 * tbs6903.sys phase 2: no advance. Robustness: hop forward;
+		 * after a few consecutive sticky fails, miss-hop out of the
+		 * filter-edge storm so the scan does not look hung.
 		 */
-		next = center + STV091X_BLINDSCAN_VENDOR_CRAWL_ESCAPE_KHZ;
+		if (traversal->sticky_fail_streak < 255)
+			traversal->sticky_fail_streak++;
+		if (traversal->sticky_fail_streak >=
+		    STV091X_BLINDSCAN_VENDOR_STICKY_FAIL_MAX) {
+			next = center +
+				stv091x_blindscan_vendor_miss_jump_khz(
+					tuner_bw_hz);
+			traversal->sticky_fail_streak = 0;
+		} else {
+			next = center +
+				STV091X_BLINDSCAN_VENDOR_CRAWL_ESCAPE_KHZ;
+		}
 		traversal->fail_phase = 0;
 		traversal->probe_mode = STV091X_BLINDSCAN_VENDOR_PROBE_EDGE;
 	}
@@ -210,6 +237,7 @@ void stv091x_blindscan_traversal_init(
 	traversal->stored_jump_khz = 0;
 	traversal->fail_phase = 0;
 	traversal->probe_mode = STV091X_BLINDSCAN_VENDOR_PROBE_EDGE;
+	traversal->sticky_fail_streak = 0;
 }
 
 s32 stv091x_blindscan_transition_to_fallback(

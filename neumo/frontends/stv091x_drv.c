@@ -799,9 +799,10 @@ static int wait_for_dmdlock(struct neumo_dvb_frontend *fe, bool require_data)
 #else
 	/*
 	 * tbs6903.sys 0x2507C / StreamReader blind @ <=1.5Msps seed:
-	 * DemodTimeout=2000, FecTimeout=500. A hard 500ms cap here was
-	 * starving SFR/CFR blind search and dropping weaker / mid-SR TPs
-	 * that Windows BLScan2 still locks.
+	 * DemodTimeout=2000, FecTimeout=500. Keep the full budget when
+	 * demod locks, but stop at DemodTimeout if LOCK_DEFINITIF never
+	 * appears — otherwise every false edge burns Demod+Fec (~2.5s)
+	 * and asperity-1 storms look "stuck".
 	 */
 	if (state->satellite_scan) {
 		timeout = state->DemodTimeout + state->FecTimeout;
@@ -824,7 +825,8 @@ static int wait_for_dmdlock(struct neumo_dvb_frontend *fe, bool require_data)
 	}
 
 #endif
-	dprintk("timeout=%d\n", timeout);
+	dprintk("timeout=%d demod=%d fec=%d\n", timeout,
+		state->DemodTimeout, state->FecTimeout);
 
 	while (timer < timeout && !lock) {
 		enum ReceiveMode receive_mode = Mode_None;
@@ -893,6 +895,15 @@ static int wait_for_dmdlock(struct neumo_dvb_frontend *fe, bool require_data)
 			//dprintk("tsstatus=%d\n", tsstatus);
 			//lock will be set to 0 if we have errors in the stream
 		}
+		/*
+		 * No demod lock within DemodTimeout: abort. FEC budget is
+		 * only for finishing after LOCK_DEFINITIF.
+		 */
+		if (state->satellite_scan &&
+		    !state->signal_info.demod_locked &&
+		    state->DemodTimeout > 0 &&
+		    timer + 10 >= state->DemodTimeout)
+			break;
 		if (!lock)
 			msleep(10);
 		timer += 10;

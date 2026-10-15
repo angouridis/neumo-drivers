@@ -100,10 +100,10 @@ static void vendor_next_frequency_matches_windows_status_codes(void)
 	/* asperity 2 lock fail phase 0: half edge jump */
 	assert(stv091x_blindscan_vendor_next_frequency(
 		       950000, 2, 20000, 72000000, 0, 970000, 0) == 960000);
-	/* asperity 2 lock ok: past half occupied BW from lock */
+	/* asperity 2 lock ok: past dup-floor for ~1Msps lock */
 	assert(stv091x_blindscan_vendor_next_frequency(
 		       950000, 2, 2000, 72000000, 1, 1296234,
-		       1000833) == 1296909);
+		       1000833) == 1297734);
 }
 
 static void vendor_fail_zigzag_skips_edge_and_preserves_jump(void)
@@ -170,8 +170,37 @@ static void vendor_asperity1_arms_sticky_mode2_acquire(void)
 		trav.vendor_frequency_khz, 0);
 	assert(trav.vendor_frequency_khz ==
 	       971500 + STV091X_BLINDSCAN_VENDOR_CRAWL_ESCAPE_KHZ);
+	assert(trav.sticky_fail_streak == 1);
 	assert(trav.fail_phase == 0);
 	assert(trav.probe_mode == STV091X_BLINDSCAN_VENDOR_PROBE_EDGE);
+}
+
+static void vendor_sticky_fail_storm_miss_hops(void)
+{
+	struct stv091x_blindscan_traversal trav;
+	s32 freq;
+	int i;
+
+	stv091x_blindscan_traversal_init(&trav, 950000);
+	freq = 950000;
+	for (i = 0; i < STV091X_BLINDSCAN_VENDOR_STICKY_FAIL_MAX - 1; i++) {
+		stv091x_blindscan_vendor_apply_result(
+			&trav, 1, 2000, 72000000, 0, freq, 0);
+		freq = trav.vendor_frequency_khz;
+		stv091x_blindscan_vendor_apply_result(
+			&trav, 2, trav.stored_jump_khz, 72000000, 0, freq, 0);
+		freq = trav.vendor_frequency_khz;
+	}
+	assert(trav.sticky_fail_streak ==
+	       STV091X_BLINDSCAN_VENDOR_STICKY_FAIL_MAX - 1);
+
+	stv091x_blindscan_vendor_apply_result(
+		&trav, 1, 2000, 72000000, 0, freq, 0);
+	freq = trav.vendor_frequency_khz;
+	stv091x_blindscan_vendor_apply_result(
+		&trav, 2, trav.stored_jump_khz, 72000000, 0, freq, 0);
+	assert(trav.sticky_fail_streak == 0);
+	assert(trav.vendor_frequency_khz == freq + 23000);
 }
 
 static void vendor_acquisition_range_matches_windows_pad(void)
@@ -189,8 +218,9 @@ static void vendor_lock_advances_by_half_occupied_bandwidth(void)
 {
 	assert(stv091x_blindscan_vendor_after_lock_frequency(
 		       1220376, 4798000) == 1223614);
+	/* 1Msps: floor past dup window (1500), not raw half-BW 675 */
 	assert(stv091x_blindscan_vendor_after_lock_frequency(
-		       1100000, 1000000) == 1100675);
+		       1100000, 1000000) == 1101500);
 }
 
 static void duplicate_suppression_preserves_nearby_one_msps_carriers(void)
@@ -252,6 +282,7 @@ int main(void)
 	vendor_fail_zigzag_skips_edge_and_preserves_jump();
 	vendor_medium_jump_fail_keeps_windows_half_advance();
 	vendor_asperity1_arms_sticky_mode2_acquire();
+	vendor_sticky_fail_storm_miss_hops();
 	vendor_acquisition_range_matches_windows_pad();
 	vendor_lock_advances_by_half_occupied_bandwidth();
 	duplicate_suppression_preserves_nearby_one_msps_carriers();

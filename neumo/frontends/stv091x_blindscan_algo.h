@@ -40,6 +40,11 @@ typedef uint64_t u64;
 #define STV091X_BLINDSCAN_VENDOR_SMALL_JUMP_KHZ	500
 #define STV091X_BLINDSCAN_VENDOR_CRAWL_ESCAPE_KHZ	2000
 /*
+ * After this many consecutive asperity-1 sticky acquire fails, take a
+ * miss-sized hop so filter-edge storms cannot burn minutes at ~2s/fail.
+ */
+#define STV091X_BLINDSCAN_VENDOR_STICKY_FAIL_MAX	3
+/*
  * tbs6903.sys 0x1C00D: treat prior locks within 1000 kHz as the same TP.
  * Also keep the SR/2000 rule for wide carriers.
  */
@@ -63,6 +68,8 @@ struct stv091x_blindscan_traversal {
 	u8 fail_phase;
 	/* tbs6903.sys edx: 1 = edge probe, 2 = skip-edge acquire */
 	u8 probe_mode;
+	/* consecutive asperity-1 mode-2 acquire failures */
+	u8 sticky_fail_streak;
 };
 
 struct stv091x_blindscan_lock {
