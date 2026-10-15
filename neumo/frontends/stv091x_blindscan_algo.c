@@ -54,6 +54,37 @@ s32 stv091x_blindscan_vendor_failed_frequency(s32 center_khz)
 		STV091X_BLINDSCAN_VENDOR_ACQUISITION_RANGE_HZ / 1000;
 }
 
+s32 stv091x_blindscan_vendor_edge_steps(u32 tuner_bw_hz)
+{
+	s32 steps = (s32)((tuner_bw_hz / 3000000) * 2);
+
+	if (steps < 10)
+		steps = 10;
+	return steps;
+}
+
+s32 stv091x_blindscan_vendor_miss_jump_khz(u32 tuner_bw_hz)
+{
+	s32 jump_khz = stv091x_blindscan_vendor_edge_steps(tuner_bw_hz) *
+		(STV091X_BLINDSCAN_VENDOR_CFR_STEP_HZ / 1000);
+
+	if (jump_khz < STV091X_BLINDSCAN_STEP_KHZ)
+		jump_khz = STV091X_BLINDSCAN_STEP_KHZ;
+	return jump_khz;
+}
+
+s32 stv091x_blindscan_vendor_edge_jump_khz(s32 step_index, int asperity,
+					    s32 edge_samples)
+{
+	s32 steps = step_index;
+
+	if (asperity == 1)
+		steps -= (edge_samples + 2) / 2;
+	if (steps < 0)
+		steps = 0;
+	return steps * (STV091X_BLINDSCAN_VENDOR_CFR_STEP_HZ / 1000);
+}
+
 void stv091x_blindscan_traversal_init(
 	struct stv091x_blindscan_traversal *traversal,
 	s32 start_frequency_khz)

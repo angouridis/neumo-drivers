@@ -20,6 +20,9 @@ typedef uint64_t u64;
 #define STV091X_BLINDSCAN_VENDOR_EDGE_SEARCH_RANGE_HZ	500000
 #define STV091X_BLINDSCAN_VENDOR_SETTLE_MS	10
 #define STV091X_BLINDSCAN_VENDOR_ACQUISITION_RANGE_HZ	16000000
+/* tbs6903.sys edge walk: ratio > 0x28, steps = 2*(tuner_bw/3e6), CFR from 0 up */
+#define STV091X_BLINDSCAN_VENDOR_AGC2_RATIO	40
+#define STV091X_BLINDSCAN_VENDOR_TUNER_BW_HZ	72000000
 
 enum stv091x_blindscan_phase {
 	STV091X_BLINDSCAN_VENDOR,
@@ -56,6 +59,10 @@ s32 stv091x_blindscan_failed_frequency(s32 frequency_khz, u32 scan_span_hz,
 s32 stv091x_blindscan_vendor_after_lock_frequency(s32 frequency_khz,
 						   u32 symbol_rate);
 s32 stv091x_blindscan_vendor_failed_frequency(s32 center_khz);
+s32 stv091x_blindscan_vendor_edge_steps(u32 tuner_bw_hz);
+s32 stv091x_blindscan_vendor_miss_jump_khz(u32 tuner_bw_hz);
+s32 stv091x_blindscan_vendor_edge_jump_khz(s32 step_index, int asperity,
+					    s32 edge_samples);
 void stv091x_blindscan_traversal_init(
 	struct stv091x_blindscan_traversal *traversal,
 	s32 start_frequency_khz);

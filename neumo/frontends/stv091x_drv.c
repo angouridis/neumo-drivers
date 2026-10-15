@@ -1080,13 +1080,15 @@ static int stv091x_set_frequency_symbol_rate_bandwidth(struct stv* state)
 
 	state-> tuner_frequency = p->frequency;
 	if(state->satellite_scan) {
-		state->tuner_bw = 2*36000000; 	/* Use maximal bandwidth */
+		/* tbs6903.sys blind path programs STV6120 with 72 MHz full BW */
+		state->tuner_bw = STV091X_BLINDSCAN_VENDOR_TUNER_BW_HZ;
 		/* If Blind search set the init symbol rate to 1Msps*/
 		dprintk("requesting stv6120 to set: freq=%dkHz bw=%dkHz\n", state->tuner_frequency, state->tuner_bw/1000);
 		if(state->fe.ops.tuner_ops.set_frequency_and_bandwidth) {
+			/* tuner API takes frequency and full BW in kHz */
 			ret = state->fe.ops.tuner_ops.set_frequency_and_bandwidth(
 				&state->fe, state->tuner_frequency,
-				state->tuner_bw);
+				state->tuner_bw / 1000);
 			if (ret)
 				return ret;
 		}
@@ -1105,10 +1107,11 @@ static int stv091x_set_frequency_symbol_rate_bandwidth(struct stv* state)
 
 		dprintk("symrate=%d bw=%d\n", state->symbol_rate, state->tuner_bw);
 		if(state->fe.ops.tuner_ops.set_frequency_and_bandwidth) {
-			dprintk("requesting stv6120 to set: freq=%d bw=%d\n", state->tuner_frequency, state->tuner_bw);
+			dprintk("requesting stv6120 to set: freq=%d bw=%dkHz\n",
+				state->tuner_frequency, state->tuner_bw / 1000);
 			ret = state->fe.ops.tuner_ops.set_frequency_and_bandwidth(
 				&state->fe, state->tuner_frequency,
-				state->tuner_bw);
+				state->tuner_bw / 1000);
 			if (ret)
 				return ret;
 		}
@@ -2142,7 +2145,7 @@ typedef enum
 		*/
 	} stv091x_SIGNALTYPE_t;
 
-#define STV0910_BLIND_SEARCH_AGC2BANDWIDTH	20
+#define STV0910_BLIND_SEARCH_AGC2BANDWIDTH	STV091X_BLINDSCAN_VENDOR_AGC2_RATIO
 #define STV0910_VENDOR_EDGE_WINDOW		10
 #define STV0910_VENDOR_MAX_EDGE_STEPS		128
 #define STV0910_VENDOR_MAX_LOCKS			8192
@@ -2229,8 +2232,8 @@ static int stv091x_restore_edge_state(
 }
 
 /*
- * Vendor CFR edge walk. The tuner remains fixed while CFRINIT moves in
- * 500 kHz steps and AGC2 is evaluated over a rolling 10-sample window.
+ * Vendor CFR edge walk (tbs6903.sys 0x1E928). Tuner stays fixed; CFRINIT
+ * walks upward from 0 in 500 kHz steps. AGC2 ratio threshold is 40.
  */
 static int stv091x_carrier_check(struct stv *state, s32 *frequency_jump,
 				 u8 saved_dmdcfgmd)
@@ -2246,7 +2249,7 @@ static int stv091x_carrier_check(struct stv *state, s32 *frequency_jump,
 	u32 sum;
 	u32 level;
 	s32 cfr_step;
-	s32 cfr_init;
+	s32 cfr_init = 0;
 	s32 max_steps;
 	s32 num_steps;
 	s32 edge_samples = 0;
@@ -2267,17 +2270,14 @@ static int stv091x_carrier_check(struct stv *state, s32 *frequency_jump,
 				 65536, state->base->mclk);
 	if (cfr_step <= 0)
 		return -EINVAL;
-	num_steps = (state->tuner_bw / 3000000) * 4;
-	if (num_steps < STV0910_VENDOR_EDGE_WINDOW)
-		num_steps = STV0910_VENDOR_EDGE_WINDOW;
+	num_steps = stv091x_blindscan_vendor_edge_steps(state->tuner_bw);
 	if (num_steps > STV0910_VENDOR_MAX_EDGE_STEPS)
 		num_steps = STV0910_VENDOR_MAX_EDGE_STEPS;
-	max_steps = (32767 * 2) / cfr_step;
+	max_steps = 32767 / cfr_step;
 	if (num_steps > max_steps)
 		num_steps = max_steps;
 	if (num_steps < STV0910_VENDOR_EDGE_WINDOW)
 		return -ERANGE;
-	cfr_init = -(num_steps / 2) * cfr_step;
 
 	ret |= write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff,
 			 0x1c);
@@ -2359,6 +2359,8 @@ static int stv091x_carrier_check(struct stv *state, s32 *frequency_jump,
 		else
 			ratio = (u32)(((u64)(level - min_level) * 128) /
 				      mean_level);
+		if (ratio > 0xffff)
+			ratio = 0xffff;
 
 		if ((i % 8) == 0)
 			dprintk("vendor edge step=%d/%d cfr=%d agc2=%u min=%u max=%u avg=%u ratio=%u\n",
@@ -2381,16 +2383,12 @@ static int stv091x_carrier_check(struct stv *state, s32 *frequency_jump,
 			break;
 	}
 
-	if (asperity == 1)
-		*frequency_jump =
-			(STV091X_BLINDSCAN_VENDOR_CFR_STEP_HZ / 1000) *
-			((i - num_steps / 2) - (edge_samples + 2) / 2);
-	else if (asperity == 2)
-		*frequency_jump =
-			(STV091X_BLINDSCAN_VENDOR_CFR_STEP_HZ / 1000) *
-			(i - num_steps / 2);
+	if (asperity)
+		*frequency_jump = stv091x_blindscan_vendor_edge_jump_khz(
+			i, asperity, edge_samples);
 	else
-		*frequency_jump = max_t(s32, state->tuner_bw / 2000, 1000);
+		*frequency_jump = stv091x_blindscan_vendor_miss_jump_khz(
+			state->tuner_bw);
 
 	dprintk("vendor edge result=%d jump=%dkHz global=%u..%u rolling=%u..%u avg=%u ratio=%u steps=%d\n",
 		asperity, *frequency_jump, global_min, global_max,
@@ -2457,7 +2455,8 @@ static int stv091x_carrier_search(struct stv *state,  s32* frequency_jump)
 		goto restore;
 	}
 
-	*frequency_jump = max_t(s32, state->tuner_bw / 2000, 1000);
+	*frequency_jump = stv091x_blindscan_vendor_miss_jump_khz(
+		state->tuner_bw);
 	dprintk("vendor RF gate empty agc1=%d iq=%d jump=%dkHz\n",
 		agc_power_gain, iq_power, *frequency_jump);
 
@@ -2503,7 +2502,7 @@ static int stv091x_vendor_probe(struct neumo_dvb_frontend *fe,
 		return edge;
 	if (!edge) {
 		state->blindscan_traversal.vendor_frequency_khz =
-			center + max_t(s32, state->tuner_bw / 2000, 1000);
+			center + frequency_jump;
 		return 0;
 	}
 
