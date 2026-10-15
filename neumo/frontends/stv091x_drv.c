@@ -2541,6 +2541,7 @@ static int stv091x_acquire_spectrum_locked(struct neumo_dvb_frontend *fe)
 	u32 num_freq;
 	int i;
 	int val1 = 0, val2 = 0, val3 = 0;
+	s32 min_p = INT_MAX, max_p = INT_MIN;
 
 	if (end_frequency <= start_frequency)
 		return -EINVAL;
@@ -2558,18 +2559,22 @@ static int stv091x_acquire_spectrum_locked(struct neumo_dvb_frontend *fe)
 	if (!ss->freq || !ss->spectrum)
 		return -ENOMEM;
 
+	/*
+	 * Same narrow-band AGC2 probe as stv091x_carrier_check / spectrum_start.
+	 * STV6120 bandwidth arg is kHz. Per-bin DMDISTATE restart + settle is
+	 * required: without it AGC2 stays flat and peak detection finds nothing.
+	 */
 	write_reg(state, RSTV0910_P2_AGC2O + state->regoff, 0x03);
 	write_reg(state, RSTV0910_P2_AGC2REF + state->regoff, 0x38);
 	stv091x_set_symbol_rate(state, resolution * 1000);
 	write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x5C);
-	write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x1C);
-	write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x18);
 
-	dprintk("blind spectrum: [%d,%d]kHz n=%d res=%dkHz\n",
-					start_frequency, end_frequency, num_freq, resolution);
+	dprintk("blind spectrum: [%d,%d]kHz n=%d res=%dkHz bw=%dkHz\n",
+					start_frequency, end_frequency, num_freq, resolution, bandwidth);
 
 	for (i = 0; i < (int)num_freq; i++) {
 		uint32_t frequency;
+		s32 sample;
 
 		if ((i % 40 == 39) &&
 				(kthread_should_stop() || neumo_dvb_frontend_task_should_stop(fe)))
@@ -2580,14 +2585,24 @@ static int stv091x_acquire_spectrum_locked(struct neumo_dvb_frontend *fe)
 		if (fe->ops.tuner_ops.set_frequency_and_bandwidth)
 			fe->ops.tuner_ops.set_frequency_and_bandwidth(fe, frequency, bandwidth);
 
+		write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x1C);
+		write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x18);
+		msleep(12);
+
+		sample = stv091x_narrow_band_signal_power_dbm(fe);
+		if (sample < min_p)
+			min_p = sample;
+		if (sample > max_p)
+			max_p = sample;
+
 		if (i == 0) {
-			val1 = stv091x_narrow_band_signal_power_dbm(fe);
+			val1 = sample;
 			val2 = val3 = val1;
 			continue;
 		}
 		val3 = val2;
 		val2 = val1;
-		val1 = stv091x_narrow_band_signal_power_dbm(fe);
+		val1 = sample;
 		ss->spectrum[i - 1] = (val1 + val2 + val3) / 3;
 	}
 	if (num_freq > 0)
@@ -2595,6 +2610,8 @@ static int stv091x_acquire_spectrum_locked(struct neumo_dvb_frontend *fe)
 
 	write_reg(state, RSTV0910_P2_AGC2O + state->regoff, 0x5B);
 	ss->spectrum_present = true;
+	dprintk("blind spectrum done: min=%d max=%d span=%d (0.001dB)\n",
+					min_p, max_p, (max_p == INT_MIN) ? 0 : (max_p - min_p));
 	return 0;
 }
 
@@ -2602,10 +2619,11 @@ static int stv091x_acquire_spectrum_locked(struct neumo_dvb_frontend *fe)
 static int stv091x_build_blind_peaks(struct stv *state)
 {
 	struct stv_spectrum_scan_state *ss = &state->scan_state;
-	const s32 thresh = 2500; /* 2.5 dB in 0.001 dB */
+	const s32 thresh = 2000; /* 2.0 dB in 0.001 dB */
 	const s32 min_sep = 4000; /* kHz between peaks */
 	int i, n, count = 0;
 	s32 *tmp;
+	s32 best_prom = 0;
 
 	if (state->blind_peaks) {
 		kfree(state->blind_peaks);
@@ -2641,6 +2659,8 @@ static int stv091x_build_blind_peaks(struct stv *state)
 			if (ss->spectrum[j] < floor_r)
 				floor_r = ss->spectrum[j];
 		prom = mid - ((floor_l > floor_r) ? floor_l : floor_r);
+		if (prom > best_prom)
+			best_prom = prom;
 		if (prom < thresh)
 			continue;
 
@@ -2661,7 +2681,8 @@ static int stv091x_build_blind_peaks(struct stv *state)
 
 	if (count == 0) {
 		kfree(tmp);
-		dprintk("blind peaks: none (len=%d)\n", n);
+		dprintk("blind peaks: none (len=%d best_prom=%d thresh=%d)\n",
+						n, best_prom, thresh);
 		return 0;
 	}
 
