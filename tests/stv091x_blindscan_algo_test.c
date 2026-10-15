@@ -3,40 +3,32 @@
 
 #include "stv091x_blindscan_algo.h"
 
-static void grid_constants_match_blscan2_policy(void)
+static void scan_constants_restore_wide_search_policy(void)
 {
-	assert(STV091X_BLINDSCAN_STEP_KHZ == 2000);
-	assert(STV091X_BLINDSCAN_SEARCH_RANGE_HZ == 2000000);
+	assert(STV091X_BLINDSCAN_STEP_KHZ == 1000);
+	assert(STV091X_BLINDSCAN_SEARCH_RANGE_HZ == 60000000);
 }
 
-static void next_grid_frequency_advances_on_band_anchor(void)
+static void first_failed_probe_advances_half_scan_span(void)
 {
-	assert(stv091x_blindscan_next_grid_frequency(10700000, 10700000) ==
-	       10702000);
-	assert(stv091x_blindscan_next_grid_frequency(10701000, 10700000) ==
-	       10702000);
-	assert(stv091x_blindscan_next_grid_frequency(10699000, 10700000) ==
-	       10700000);
+	assert(stv091x_blindscan_failed_frequency(
+		       950000, STV091X_BLINDSCAN_SEARCH_RANGE_HZ, 1) ==
+	       980000);
 }
 
-static void after_lock_skips_carrier_and_aligns_to_grid(void)
+static void later_failed_probe_advances_full_scan_span(void)
 {
-	assert(stv091x_blindscan_after_lock_frequency(
-		       10960016, 10960016, 1362000, 10700000,
-		       STV091X_BLINDSCAN_SEARCH_RANGE_HZ) == 10962000);
-	assert(stv091x_blindscan_after_lock_frequency(
-		       1220376, 1220376, 4798000, 950000,
-		       STV091X_BLINDSCAN_SEARCH_RANGE_HZ) == 1226000);
-	assert(stv091x_blindscan_after_lock_frequency(
-		       11230417, 11230417, 41994000, 10700000,
-		       STV091X_BLINDSCAN_SEARCH_RANGE_HZ) == 11260000);
+	assert(stv091x_blindscan_failed_frequency(
+		       980000, STV091X_BLINDSCAN_SEARCH_RANGE_HZ, 0) ==
+	       1040000);
 }
 
-static void after_lock_always_advances_beyond_probe_frequency(void)
+static void lock_moves_next_window_past_carrier(void)
 {
-	assert(stv091x_blindscan_after_lock_frequency(
-		       10998500, 11000000, 0, 10700000,
-		       STV091X_BLINDSCAN_SEARCH_RANGE_HZ) == 11002000);
+	s32 next = stv091x_blindscan_after_lock_frequency(
+		1220376, 4798000, STV091X_BLINDSCAN_SEARCH_RANGE_HZ);
+
+	assert(next == 1253614);
 }
 
 static void modcod_classifies_dvb_s2_modulation_family(void)
@@ -65,11 +57,11 @@ static void modcod_classifies_dvb_s2_modulation_family(void)
 
 int main(void)
 {
-	grid_constants_match_blscan2_policy();
-	next_grid_frequency_advances_on_band_anchor();
-	after_lock_skips_carrier_and_aligns_to_grid();
-	after_lock_always_advances_beyond_probe_frequency();
+	scan_constants_restore_wide_search_policy();
+	first_failed_probe_advances_half_scan_span();
+	later_failed_probe_advances_full_scan_span();
+	lock_moves_next_window_past_carrier();
 	modcod_classifies_dvb_s2_modulation_family();
-	puts("stv091x BLScan2 grid policy tests passed");
+	puts("stv091x restored blindscan policy tests passed");
 	return 0;
 }
