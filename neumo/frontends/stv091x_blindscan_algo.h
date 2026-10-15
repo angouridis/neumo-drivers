@@ -15,7 +15,11 @@ typedef uint64_t u64;
 #define STV091X_BLINDSCAN_STEP_KHZ		1000
 #define STV091X_BLINDSCAN_INIT_SR		1000000
 #define STV091X_BLINDSCAN_SEARCH_RANGE_HZ	60000000
-#define STV091X_BLINDSCAN_LOCK_TIMEOUT_MS	500
+/*
+ * Fallback when DemodTimeout/FecTimeout were not computed. Windows blind
+ * @1Msps seed uses 2000+500; keep the sum as the satellite-scan floor.
+ */
+#define STV091X_BLINDSCAN_LOCK_TIMEOUT_MS	2500
 #define STV091X_BLINDSCAN_IQ_THRESHOLD		30
 #define STV091X_BLINDSCAN_VENDOR_CFR_STEP_HZ	500000
 #define STV091X_BLINDSCAN_VENDOR_EDGE_SEARCH_RANGE_HZ	500000
@@ -29,13 +33,12 @@ typedef uint64_t u64;
 /* tbs6903.sys 0x1BEF4: sticky jump after asperity-1 */
 #define STV091X_BLINDSCAN_VENDOR_STICKY_JUMP_KHZ	16000
 /*
- * Robustness (not in tbs6903.sys): after a mode1+mode2 fail pair whose
- * stored jump is still one CFR step or less, skip further micro-crawling
- * and take a miss-sized advance. Same for escaping asperity-1 sticky
- * fails that would otherwise re-probe the same center forever.
+ * Robustness only: after a micro-jump fail pair or sticky asperity-1 fail,
+ * hop a few CFR steps forward. Must stay well below inter-TP spacing so
+ * we do not skip 11118/11134-style clusters (miss-sized 23MHz hops did).
  */
 #define STV091X_BLINDSCAN_VENDOR_SMALL_JUMP_KHZ	500
-#define STV091X_BLINDSCAN_VENDOR_STICKY_ESCAPE_KHZ	2000
+#define STV091X_BLINDSCAN_VENDOR_CRAWL_ESCAPE_KHZ	2000
 /* tbs6903.sys probe mode: 1 = run edge, 2 = skip edge and acquire */
 #define STV091X_BLINDSCAN_VENDOR_PROBE_EDGE	1
 #define STV091X_BLINDSCAN_VENDOR_PROBE_ACQUIRE	2

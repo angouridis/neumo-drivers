@@ -790,9 +790,17 @@ static int wait_for_dmdlock(struct neumo_dvb_frontend *fe, bool require_data)
 	else
 		timeout = 200;
 #else
-	if (state->satellite_scan)
-		timeout = STV091X_BLINDSCAN_LOCK_TIMEOUT_MS;
-	else if(p->algorithm != ALGORITHM_WARM)
+	/*
+	 * tbs6903.sys 0x2507C / StreamReader blind @ <=1.5Msps seed:
+	 * DemodTimeout=2000, FecTimeout=500. A hard 500ms cap here was
+	 * starving SFR/CFR blind search and dropping weaker / mid-SR TPs
+	 * that Windows BLScan2 still locks.
+	 */
+	if (state->satellite_scan) {
+		timeout = state->DemodTimeout + state->FecTimeout;
+		if (!timeout)
+			timeout = STV091X_BLINDSCAN_LOCK_TIMEOUT_MS;
+	} else if(p->algorithm != ALGORITHM_WARM)
 		timeout = 8000;
 	else if (state->symbol_rate <= 1000000) {         /*          SR <=  1Msps */
 		timeout = 16000;

@@ -7,6 +7,7 @@ static void scan_constants_restore_wide_search_policy(void)
 {
 	assert(STV091X_BLINDSCAN_STEP_KHZ == 1000);
 	assert(STV091X_BLINDSCAN_SEARCH_RANGE_HZ == 60000000);
+	assert(STV091X_BLINDSCAN_LOCK_TIMEOUT_MS == 2500);
 	assert(STV091X_BLINDSCAN_VENDOR_CFR_STEP_HZ == 500000);
 	assert(STV091X_BLINDSCAN_VENDOR_EDGE_SEARCH_RANGE_HZ == 500000);
 	assert(STV091X_BLINDSCAN_VENDOR_SETTLE_MS == 10);
@@ -121,13 +122,14 @@ static void vendor_fail_zigzag_skips_edge_and_preserves_jump(void)
 	assert(trav.probe_mode == STV091X_BLINDSCAN_VENDOR_PROBE_ACQUIRE);
 
 	/*
-	 * Mode-2 fail with micro stored jump: miss-sized escape instead of
-	 * +250 kHz crawl.
+	 * Mode-2 fail with micro stored jump: small escape instead of
+	 * +250 kHz crawl (not a miss-sized hop that skips TP clusters).
 	 */
 	stv091x_blindscan_vendor_apply_result(
 		&trav, 2, trav.stored_jump_khz, 72000000, 0,
 		trav.vendor_frequency_khz, 0);
-	assert(trav.vendor_frequency_khz == 950250 + 23000);
+	assert(trav.vendor_frequency_khz ==
+	       950250 + STV091X_BLINDSCAN_VENDOR_CRAWL_ESCAPE_KHZ);
 	assert(trav.fail_phase == 0);
 	assert(trav.probe_mode == STV091X_BLINDSCAN_VENDOR_PROBE_EDGE);
 }
@@ -162,23 +164,23 @@ static void vendor_asperity1_arms_sticky_mode2_acquire(void)
 	assert(trav.fail_phase == 2);
 	assert(trav.probe_mode == STV091X_BLINDSCAN_VENDOR_PROBE_ACQUIRE);
 
-	/* Mode-2 fail after asperity-1: escape forward, return to edge */
+	/* Mode-2 fail after asperity-1: small escape, return to edge */
 	stv091x_blindscan_vendor_apply_result(
 		&trav, 2, trav.stored_jump_khz, 72000000, 0,
 		trav.vendor_frequency_khz, 0);
-	assert(trav.vendor_frequency_khz == 971500 + 5750);
+	assert(trav.vendor_frequency_khz ==
+	       971500 + STV091X_BLINDSCAN_VENDOR_CRAWL_ESCAPE_KHZ);
 	assert(trav.fail_phase == 0);
 	assert(trav.probe_mode == STV091X_BLINDSCAN_VENDOR_PROBE_EDGE);
 }
 
 static void vendor_acquisition_range_matches_windows_pad(void)
 {
-	/* Floored to sticky 16MHz jump → always Windows max 40MHz */
-	assert(stv091x_blindscan_vendor_acquisition_range_hz(0) == 40000000);
+	assert(stv091x_blindscan_vendor_acquisition_range_hz(0) == 24000000);
 	assert(stv091x_blindscan_vendor_acquisition_range_hz(2000) ==
-	       40000000);
+	       26000000);
 	assert(stv091x_blindscan_vendor_acquisition_range_hz(500) ==
-	       40000000);
+	       24500000);
 	assert(stv091x_blindscan_vendor_acquisition_range_hz(21500) ==
 	       40000000);
 }
