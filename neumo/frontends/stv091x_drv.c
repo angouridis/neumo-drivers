@@ -1631,6 +1631,7 @@ static void stv091x_update_detected_properties_locked(
 		}
 	} else if (p->delivery_system == SYS_DVBS) {
 		p->modulation = QPSK;
+		p->pilot = PILOT_OFF;
 		tmp = read_reg(state, RSTV0910_P2_VITCURPUN + state->regoff);
 		switch (tmp & 0x1F) {
 		case 0x0d:
@@ -1653,6 +1654,11 @@ static void stv091x_update_detected_properties_locked(
 			break;
 		}
 		p->rolloff = ROLLOFF_35;
+	} else {
+		p->modulation = QAM_AUTO;
+		p->fec_inner = FEC_AUTO;
+		p->pilot = PILOT_AUTO;
+		p->rolloff = ROLLOFF_AUTO;
 	}
 }
 
@@ -1699,6 +1705,9 @@ static bool stv091x_get_signal_info(struct neumo_dvb_frontend *fe)
 									);
 
 	switch (p->rolloff) {
+	case ROLLOFF_15:
+		occupied_bw_factor = 115;
+		break;
 	case ROLLOFF_20:
 		occupied_bw_factor = 120;
 		break;
@@ -2796,7 +2805,7 @@ static int stv091x_sat_scan(struct neumo_dvb_frontend *fe, bool init,
 		if (locked) {
 			state->scan_next_frequency =
 				stv091x_blindscan_after_lock_frequency(
-					p->frequency, state->symbol_rate,
+					p->frequency, probe_frequency, state->symbol_rate,
 					p->scan_start_frequency,
 					state->search_range_hz);
 			state->tune_time = jiffies;
@@ -2814,6 +2823,7 @@ static int stv091x_sat_scan(struct neumo_dvb_frontend *fe, bool init,
 
 	dprintk("Signaling DONE (band exhausted)\n");
 	state->satellite_scan = false;
+	state->signal_info.standard = SYS_UNDEFINED;
 	*status = FE_TIMEDOUT | FE_HAS_SIGNAL | FE_HAS_CARRIER | FE_HAS_VITERBI |
 		FE_HAS_SYNC | FE_HAS_LOCK;
 	mutex_unlock(&state->base->status_lock);

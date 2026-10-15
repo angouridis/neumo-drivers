@@ -30,6 +30,7 @@ stv091x_blindscan_modulation_from_modcod(u32 modcod);
 s32 stv091x_blindscan_next_grid_frequency(s32 frequency_khz,
 					   s32 grid_start_khz);
 s32 stv091x_blindscan_after_lock_frequency(s32 frequency_khz,
+					    s32 probe_frequency_khz,
 					    u32 symbol_rate,
 					    s32 grid_start_khz,
 					    u32 search_range_hz);

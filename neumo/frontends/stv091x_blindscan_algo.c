@@ -50,6 +50,7 @@ s32 stv091x_blindscan_next_grid_frequency(s32 frequency_khz,
 }
 
 s32 stv091x_blindscan_after_lock_frequency(s32 frequency_khz,
+					    s32 probe_frequency_khz,
 					    u32 symbol_rate,
 					    s32 grid_start_khz,
 					    u32 search_range_hz)
@@ -57,13 +58,21 @@ s32 stv091x_blindscan_after_lock_frequency(s32 frequency_khz,
 	u32 occupied_half_width_khz;
 	u32 acquisition_radius_khz;
 	s32 minimum_next_khz;
+	s32 aligned_next_khz;
+	s32 probe_next_khz;
 
-	occupied_half_width_khz =
-		(u32)((135ULL * symbol_rate) / (200ULL * 1000ULL));
+	occupied_half_width_khz = ((symbol_rate / 1000U) * 135U) / 200U;
 	acquisition_radius_khz = search_range_hz / 2000;
 	minimum_next_khz = frequency_khz + (s32)occupied_half_width_khz +
 			   (s32)acquisition_radius_khz;
-
-	return stv091x_blindscan_grid_align_at_or_after(minimum_next_khz,
+	aligned_next_khz =
+		stv091x_blindscan_grid_align_at_or_after(minimum_next_khz,
 							 grid_start_khz);
+	probe_next_khz = stv091x_blindscan_next_grid_frequency(
+		probe_frequency_khz, grid_start_khz);
+
+	if (aligned_next_khz < probe_next_khz)
+		return probe_next_khz;
+
+	return aligned_next_khz;
 }
