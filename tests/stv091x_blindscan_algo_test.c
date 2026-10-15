@@ -18,18 +18,19 @@ static void later_failed_probe_advances_full_scan_span(void)
 	       1040000);
 }
 
-static void lock_skips_half_occupied_bandwidth(void)
+static void lock_moves_next_window_past_carrier(void)
 {
-	s32 next = stv091x_blindscan_next_frequency(1844890, 1, 29995000);
+	s32 next = stv091x_blindscan_after_lock_frequency(
+		1220376, 4798000, STV091X_BLINDSCAN_SEARCH_RANGE_HZ);
 
-	assert(next == 1865136);
+	assert(next == 1253614);
 }
 
 int main(void)
 {
 	first_failed_probe_advances_half_scan_span();
 	later_failed_probe_advances_full_scan_span();
-	lock_skips_half_occupied_bandwidth();
+	lock_moves_next_window_past_carrier();
 	puts("stv091x direct blindscan policy tests passed");
 	return 0;
 }

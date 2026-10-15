@@ -1,15 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0
 #include "stv091x_blindscan_algo.h"
 
-s32 stv091x_blindscan_next_frequency(s32 frequency_khz, int locked,
-				      u32 symbol_rate)
+s32 stv091x_blindscan_after_lock_frequency(s32 frequency_khz,
+					    u32 symbol_rate,
+					    u32 scan_span_hz)
 {
-	s32 step = STV091X_BLINDSCAN_STEP_KHZ;
+	u32 carrier_edge_khz = STV091X_BLINDSCAN_STEP_KHZ;
+	u32 window_radius_khz = scan_span_hz / 2000;
 
-	if (locked && symbol_rate >= STV091X_BLINDSCAN_INIT_SR)
-		step = 135 * (symbol_rate / 1000) / 200;
+	if (symbol_rate >= STV091X_BLINDSCAN_INIT_SR)
+		carrier_edge_khz = 135 * (symbol_rate / 1000) / 200;
 
-	return frequency_khz + step;
+	return frequency_khz + carrier_edge_khz + window_radius_khz;
 }
 
 s32 stv091x_blindscan_failed_frequency(s32 frequency_khz, u32 scan_span_hz,
