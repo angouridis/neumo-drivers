@@ -203,6 +203,7 @@ struct stv {
 	int blind_peak_idx;
 	bool blind_candidates_active;
 	s32 blind_skip_before_frequency;
+	int blind_candidate_lock_count;
 	int mis_mode;
 	struct stv_spectrum_scan_state scan_state;
 	struct stv_constellation_scan_state constellation_scan_state;

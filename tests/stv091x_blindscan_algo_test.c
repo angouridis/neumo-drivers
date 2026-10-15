@@ -106,6 +106,28 @@ static void scan_constants_restore_wide_search_policy(void)
 	assert(STV091X_BLINDSCAN_SEARCH_RANGE_HZ == 60000000);
 }
 
+static void candidate_acquisition_uses_configured_max_symbol_rate(void)
+{
+	assert(stv091x_blindscan_candidate_symbol_rate(45000000) ==
+	       45000000);
+	assert(stv091x_blindscan_candidate_symbol_rate(0) ==
+	       45000000);
+	assert(stv091x_blindscan_candidate_symbol_rate(500000) ==
+	       45000000);
+	assert(stv091x_blindscan_candidate_symbol_rate(60000000) ==
+	       45000000);
+}
+
+static void implausibly_short_candidate_list_uses_fallback(void)
+{
+	assert(!stv091x_blindscan_candidate_list_usable(
+		4, 10700000, 11700000));
+	assert(stv091x_blindscan_candidate_list_usable(
+		20, 10700000, 11700000));
+	assert(stv091x_blindscan_candidates_need_fallback(12, 0));
+	assert(!stv091x_blindscan_candidates_need_fallback(12, 1));
+}
+
 static void first_failed_probe_advances_half_scan_span(void)
 {
 	assert(stv091x_blindscan_failed_frequency(
@@ -160,6 +182,8 @@ int main(void)
 	real_11597mhz_carrier_is_centered();
 	adjacent_carriers_with_narrow_guard_are_both_detected();
 	scan_constants_restore_wide_search_policy();
+	candidate_acquisition_uses_configured_max_symbol_rate();
+	implausibly_short_candidate_list_uses_fallback();
 	first_failed_probe_advances_half_scan_span();
 	later_failed_probe_advances_full_scan_span();
 	lock_moves_next_window_past_carrier();

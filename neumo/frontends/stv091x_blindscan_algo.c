@@ -112,6 +112,37 @@ int stv091x_blindscan_detect_valleys(const s32 *samples, int num_samples,
 	return count;
 }
 
+u32 stv091x_blindscan_candidate_symbol_rate(u32 max_symbol_rate)
+{
+	if (max_symbol_rate < STV091X_BLINDSCAN_INIT_SR ||
+	    max_symbol_rate > STV091X_BLINDSCAN_DEFAULT_MAX_SR)
+		return STV091X_BLINDSCAN_DEFAULT_MAX_SR;
+	return max_symbol_rate;
+}
+
+int stv091x_blindscan_candidate_list_usable(int candidate_count,
+					     s32 start_frequency_khz,
+					     s32 end_frequency_khz)
+{
+	s32 span_khz = end_frequency_khz - start_frequency_khz;
+	int minimum_candidates;
+
+	if (candidate_count <= 0 || span_khz <= 0)
+		return 0;
+
+	minimum_candidates = span_khz / 100000;
+	if (minimum_candidates < 1)
+		minimum_candidates = 1;
+
+	return candidate_count >= minimum_candidates;
+}
+
+int stv091x_blindscan_candidates_need_fallback(int candidate_count,
+						int lock_count)
+{
+	return candidate_count > 0 && lock_count == 0;
+}
+
 s32 stv091x_blindscan_after_lock_frequency(s32 frequency_khz,
 					    u32 symbol_rate,
 					    u32 scan_span_hz)

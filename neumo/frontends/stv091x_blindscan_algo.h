@@ -18,6 +18,7 @@ typedef uint32_t u32;
 #define STV091X_BLINDSCAN_SPECTRUM_STEP_KHZ	2000
 #define STV091X_BLINDSCAN_SPECTRUM_BW_KHZ	4000
 #define STV091X_BLINDSCAN_CANDIDATE_RANGE_HZ	10000000
+#define STV091X_BLINDSCAN_DEFAULT_MAX_SR		45000000
 
 enum stv091x_blindscan_modulation {
 	STV091X_BLINDSCAN_MOD_UNKNOWN,
@@ -35,6 +36,12 @@ int stv091x_blindscan_detect_valleys(const s32 *samples, int num_samples,
 				      s32 depth_threshold, int min_width,
 				      int max_width, int *indices,
 				      int max_indices);
+u32 stv091x_blindscan_candidate_symbol_rate(u32 max_symbol_rate);
+int stv091x_blindscan_candidate_list_usable(int candidate_count,
+					     s32 start_frequency_khz,
+					     s32 end_frequency_khz);
+int stv091x_blindscan_candidates_need_fallback(int candidate_count,
+						int lock_count);
 
 s32 stv091x_blindscan_after_lock_frequency(s32 frequency_khz,
 					    u32 symbol_rate,
