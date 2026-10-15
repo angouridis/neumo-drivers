@@ -39,6 +39,11 @@ typedef uint64_t u64;
  */
 #define STV091X_BLINDSCAN_VENDOR_SMALL_JUMP_KHZ	500
 #define STV091X_BLINDSCAN_VENDOR_CRAWL_ESCAPE_KHZ	2000
+/*
+ * tbs6903.sys 0x1C00D: treat prior locks within 1000 kHz as the same TP.
+ * Also keep the SR/2000 rule for wide carriers.
+ */
+#define STV091X_BLINDSCAN_VENDOR_DUP_FLOOR_KHZ	1000
 /* tbs6903.sys probe mode: 1 = run edge, 2 = skip edge and acquire */
 #define STV091X_BLINDSCAN_VENDOR_PROBE_EDGE	1
 #define STV091X_BLINDSCAN_VENDOR_PROBE_ACQUIRE	2

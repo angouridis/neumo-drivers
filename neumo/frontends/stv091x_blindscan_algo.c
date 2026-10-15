@@ -228,6 +228,7 @@ int stv091x_blindscan_lock_is_duplicate(
 	for (i = 0; i < num_candidate_locks; i++) {
 		u32 smaller_symbol_rate = symbol_rate;
 		u32 distance_khz;
+		u32 sr_window_khz;
 
 		if (candidate_locks[i].symbol_rate < smaller_symbol_rate)
 			smaller_symbol_rate = candidate_locks[i].symbol_rate;
@@ -235,7 +236,15 @@ int stv091x_blindscan_lock_is_duplicate(
 			candidate_locks[i].frequency_khz - frequency_khz :
 			frequency_khz - candidate_locks[i].frequency_khz;
 
-		if ((u64)distance_khz * 2000 <= smaller_symbol_rate)
+		/*
+		 * Wide carriers: within half symbol-rate spacing.
+		 * Low-SR: tbs6903.sys also uses a fixed 1000 kHz floor so
+		 * re-locks like 10957.7 / 10958.3 @1Msps collapse.
+		 */
+		sr_window_khz = smaller_symbol_rate / 2000;
+		if (sr_window_khz < STV091X_BLINDSCAN_VENDOR_DUP_FLOOR_KHZ)
+			sr_window_khz = STV091X_BLINDSCAN_VENDOR_DUP_FLOOR_KHZ;
+		if (distance_khz <= sr_window_khz)
 			return 1;
 	}
 

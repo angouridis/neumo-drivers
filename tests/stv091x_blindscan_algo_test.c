@@ -200,12 +200,13 @@ static void duplicate_suppression_preserves_nearby_one_msps_carriers(void)
 		.symbol_rate = 1000000,
 	};
 
+	/* 1000 kHz Windows floor (not SR/2000=500) */
 	assert(stv091x_blindscan_lock_is_duplicate(&candidate_lock, 1,
-						  1100499, 1000000));
+						  1100599, 1000000));
 	assert(stv091x_blindscan_lock_is_duplicate(&candidate_lock, 1,
-						  1100500, 1000000));
+						  1101000, 1000000));
 	assert(!stv091x_blindscan_lock_is_duplicate(&candidate_lock, 1,
-						   1100501, 1000000));
+						   1101001, 1000000));
 }
 
 static void duplicate_suppression_checks_all_candidate_locks(void)
@@ -233,7 +234,7 @@ static void duplicate_vendor_results_are_recorded_only_once(void)
 		       locks, &num_locks, 3, 1100100, 2000000) == 0);
 	assert(num_locks == 1);
 	assert(stv091x_blindscan_add_unique_lock(
-		       locks, &num_locks, 3, 1100601, 1000000) == 1);
+		       locks, &num_locks, 3, 1101001, 1000000) == 1);
 	assert(num_locks == 2);
 }
 
