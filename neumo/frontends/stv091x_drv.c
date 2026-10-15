@@ -1567,6 +1567,96 @@ static int stv091x_get_standard(struct neumo_dvb_frontend *fe)
 }
 
 /*
+ * Caller must hold state->base->status_lock.
+ */
+static void stv091x_update_detected_properties_locked(
+	struct stv *state, struct neumo_dtv_frontend_properties *p)
+{
+	static const enum fe_code_rate modcod2fec[0x20] = {
+		FEC_NONE, FEC_1_4, FEC_1_3, FEC_2_5,
+		FEC_1_2, FEC_3_5, FEC_2_3, FEC_3_4,
+		FEC_4_5, FEC_5_6, FEC_8_9, FEC_9_10,
+		FEC_3_5, FEC_2_3, FEC_3_4, FEC_5_6,
+		FEC_8_9, FEC_9_10, FEC_2_3, FEC_3_4,
+		FEC_4_5, FEC_5_6, FEC_8_9, FEC_9_10,
+		FEC_3_4, FEC_4_5, FEC_5_6, FEC_8_9,
+		FEC_9_10, FEC_AUTO, FEC_AUTO, FEC_AUTO
+	};
+	u8 tmp;
+
+	if (p->delivery_system == SYS_DVBS2) {
+		u32 modcod;
+
+		tmp = read_reg(state, RSTV0910_P2_DMDMODCOD + state->regoff);
+		modcod = ((tmp & 0x7c) >> 2);
+		p->pilot = (tmp & 0x01) ? PILOT_ON : PILOT_OFF;
+
+		switch (stv091x_blindscan_modulation_from_modcod(modcod)) {
+		case STV091X_BLINDSCAN_MOD_QPSK:
+			p->modulation = QPSK;
+			break;
+		case STV091X_BLINDSCAN_MOD_8PSK:
+			p->modulation = PSK_8;
+			break;
+		case STV091X_BLINDSCAN_MOD_16APSK:
+			p->modulation = APSK_16;
+			break;
+		case STV091X_BLINDSCAN_MOD_32APSK:
+			p->modulation = APSK_32;
+			break;
+		default:
+			p->modulation = QAM_AUTO;
+			break;
+		}
+
+		if (modcod < ARRAY_SIZE(modcod2fec))
+			p->fec_inner = modcod2fec[modcod];
+		else
+			p->fec_inner = FEC_AUTO;
+
+		switch ((read_reg(state, RSTV0910_P2_TMGOBS + state->regoff) >> 6) & 0x3) {
+		case 0x03:
+			p->rolloff = ROLLOFF_15;
+			break;
+		case 0x02:
+			p->rolloff = ROLLOFF_20;
+			break;
+		case 0x01:
+			p->rolloff = ROLLOFF_25;
+			break;
+		case 0x00:
+		default:
+			p->rolloff = ROLLOFF_35;
+			break;
+		}
+	} else if (p->delivery_system == SYS_DVBS) {
+		p->modulation = QPSK;
+		tmp = read_reg(state, RSTV0910_P2_VITCURPUN + state->regoff);
+		switch (tmp & 0x1F) {
+		case 0x0d:
+			p->fec_inner = FEC_1_2;
+			break;
+		case 0x12:
+			p->fec_inner = FEC_2_3;
+			break;
+		case 0x15:
+			p->fec_inner = FEC_3_4;
+			break;
+		case 0x18:
+			p->fec_inner = FEC_5_6;
+			break;
+		case 0x1a:
+			p->fec_inner = FEC_7_8;
+			break;
+		default:
+			p->fec_inner = FEC_AUTO;
+			break;
+		}
+		p->rolloff = ROLLOFF_35;
+	}
+}
+
+/*
 	retrieve information about modulation, frequency, symbol_rate
 	but not CNR, BER (different from stid135)
 
@@ -1580,7 +1670,7 @@ static bool stv091x_get_signal_info(struct neumo_dvb_frontend *fe)
 	u8 regs[2];
 	u32 bandwidth_hz;
 	s32 carrier_frequency_offset;
-	u8 rolloff_status, rolloff;
+	u32 occupied_bw_factor;
 
 	read_regs(state, RSTV0910_P2_CFR2 + state->regoff, regs, 2);
 	carrier_frequency_offset = (s16)((regs[0]<<8) | regs[1]);
@@ -1599,24 +1689,7 @@ static bool stv091x_get_signal_info(struct neumo_dvb_frontend *fe)
 	stv091x_get_standard(fe);
 
 	p->delivery_system = state->signal_info.standard;
-
-	regs[0] = read_reg(state, RSTV0910_P2_TMGOBS  + state->regoff);
-	rolloff_status = (regs[0]>>6);
-	switch(rolloff_status) {
-		case 0x03:
-			rolloff = 115;
-			break;
-		case 0x02:
-			rolloff = 120;
-			break;
-		case 0x01:
-			rolloff = 125;
-			break;
-		case 0x00:
-		default:
-			rolloff = 135;
-			break;
-		}
+	stv091x_update_detected_properties_locked(state, p);
 	dprintk("mis_mode=%d isi=%d pls_mode=%d pls_code=%d\n",
 					state->mis_mode, state->signal_info.isi, state->signal_info.pls_mode,
 					state->signal_info.pls_code);
@@ -1625,7 +1698,20 @@ static bool stv091x_get_signal_info(struct neumo_dvb_frontend *fe)
 									((state->signal_info.pls_code &0x3FFFF)<<8)
 									);
 
-		bandwidth_hz = (state->symbol_rate * rolloff) / 100;
+	switch (p->rolloff) {
+	case ROLLOFF_20:
+		occupied_bw_factor = 120;
+		break;
+	case ROLLOFF_25:
+		occupied_bw_factor = 125;
+		break;
+	case ROLLOFF_35:
+	default:
+		occupied_bw_factor = 135;
+		break;
+	}
+
+		bandwidth_hz = (state->symbol_rate * occupied_bw_factor) / 100;
 
 		if (state->tuner_bw > bandwidth_hz || state->tuner_bw < (bandwidth_hz*8)/10)
 			need_retune = true; // ask tuner to change its bandwidth, except duting blind scan
@@ -1733,64 +1819,10 @@ static int pls_search_range(struct neumo_dvb_frontend *fe)
 static int get_frontend(struct neumo_dvb_frontend *fe, struct neumo_dtv_frontend_properties *p)
 {
 	struct stv *state = fe->demodulator_priv;
-	u8 tmp;
 	mutex_lock(&state->base->status_lock);
-
-	if (state->ReceiveMode == Mode_DVBS2) {
-		u32 mc;
-		enum fe_modulation modcod2mod[0x20] = {
-			QPSK, QPSK, QPSK, QPSK,
-			QPSK, QPSK, QPSK, QPSK,
-			QPSK, QPSK, QPSK, QPSK,
-			PSK_8, PSK_8, PSK_8, PSK_8,
-			PSK_8, PSK_8, APSK_16, APSK_16,
-			APSK_16, APSK_16, APSK_16, APSK_16,
-			APSK_32, APSK_32, APSK_32, APSK_32,
-			APSK_32,
-		};
-		enum fe_code_rate modcod2fec[0x20] = {
-			FEC_NONE, FEC_1_4, FEC_1_3, FEC_2_5,
-			FEC_1_2, FEC_3_5, FEC_2_3, FEC_3_4,
-			FEC_4_5, FEC_5_6, FEC_8_9, FEC_9_10,
-			FEC_3_5, FEC_2_3, FEC_3_4, FEC_5_6,
-			FEC_8_9, FEC_9_10, FEC_2_3, FEC_3_4,
-			FEC_4_5, FEC_5_6, FEC_8_9, FEC_9_10,
-			FEC_3_4, FEC_4_5, FEC_5_6, FEC_8_9,
-			FEC_9_10
-		};
-		//dprintk("receive mode = DVBS2\n");
-		tmp = read_reg(state, RSTV0910_P2_DMDMODCOD + state->regoff);
-		mc = ((tmp & 0x7c) >> 2);
-		p->pilot = (tmp & 0x01) ? PILOT_ON : PILOT_OFF;
-		p->modulation = modcod2mod[mc];
-		p->fec_inner = modcod2fec[mc];
-	} else if (state->ReceiveMode == Mode_DVBS) {
-		//dprintk("receive mode = DVBS\n");
-		tmp = read_reg(state, RSTV0910_P2_VITCURPUN + state->regoff);
-		switch( tmp & 0x1F ) {
- case 0x0d:
-			p->fec_inner = FEC_1_2;
-			break;
- case 0x12:
-			p->fec_inner = FEC_2_3;
-			break;
- case 0x15:
-			p->fec_inner = FEC_3_4;
-			break;
- case 0x18:
-			p->fec_inner = FEC_5_6;
-			break;
- case 0x1a:
-			p->fec_inner = FEC_7_8;
-			break;
-		default:
-			p->fec_inner = FEC_NONE;
-			break;
-		}
-		p->rolloff = ROLLOFF_35;
-	} else {
-		//dprintk("receive mode = %d\n",state->ReceiveMode);
-	}
+	stv091x_get_standard(fe);
+	p->delivery_system = state->signal_info.standard;
+	stv091x_update_detected_properties_locked(state, p);
 	mutex_unlock(&state->base->status_lock);
 	return 0;
 }
