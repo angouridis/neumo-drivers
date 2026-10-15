@@ -2088,7 +2088,8 @@ typedef enum
 		*/
 	} stv091x_SIGNALTYPE_t;
 
-#define STV0910_BLIND_SEARCH_AGC2BANDWIDTH 40
+/* Lower than ST's 40: wide TPs on dual-tuner cards often produce smaller AGC2 ratios. */
+#define STV0910_BLIND_SEARCH_AGC2BANDWIDTH 20
 
 //check if we are on a leading or falling edge of a potential signal
 //returns 0 if nothing found, 1 on rising edge and 2 on falling edge
@@ -2117,6 +2118,11 @@ static int stv091x_carrier_check(struct stv* state, s32 *FinalFreq, s32* frequen
 	tmp4= read_reg(state, RSTV0910_P2_CARFREQ + state->regoff);
 	write_reg(state, RSTV0910_P2_CARFREQ + state->regoff, 0x00); //stop coarse carrrier corr
 
+	/*
+	 * Stop() leaves AGC2O=0x5B ("blind optim" / stopped). Edge search needs AGC2
+	 * active or AGC2 integrator stays flat and every step reports "Rien dans la bande".
+	 */
+	write_reg(state, RSTV0910_P2_AGC2O + state->regoff, 0x03);
 	write_reg(state, RSTV0910_P2_AGC2REF + state->regoff, 0x38);
 
 	tmp1= read_reg(state, RSTV0910_P2_DMDCFGMD + state->regoff);
@@ -2131,21 +2137,23 @@ static int stv091x_carrier_check(struct stv* state, s32 *FinalFreq, s32* frequen
 	nbSteps=(state->tuner_bw/3000000)*div;
 	if(nbSteps<=0)
 		nbSteps=1;
+	/* Scan both sides of the tuner LO; positive-only misses many TPs. */
+	nbSteps *= 2;
 
 	freq_step=((1000000<<8)/(state->base->mclk>>8))/div; /* AGC2 step is 1/div MHz */
 
-	init_freq=0;
+	init_freq = -((s32)(nbSteps / 2)) * (s32)freq_step;
 	j=0;	/* index after a rising edge is found */
 
 	for(i=0;i<nbSteps;i++)
 	{
-		/* Scan on the positive part of the tuner Bw */
+		/* Scan across the full tuner Bw (negative then positive offsets) */
 		//dprintk("freq=%d\n", init_freq);
 		write_reg(state, RSTV0910_P2_DMDISTATE  + state->regoff, 0x1C);
 		write_reg(state, RSTV0910_P2_CFRINIT1 + state->regoff, (init_freq >>8) & 0xff);
 		write_reg(state, RSTV0910_P2_CFRINIT0 + state->regoff, init_freq & 0xff);
 		write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x18); //zero offset start
-		msleep(5);
+		msleep(10);
 
 		agc2level=0;
 		agc2level = (read_reg_field(state, FSTV0910_P2_AGC2_INTEGRATOR1  + state->regoff) <<8) |
@@ -2181,6 +2189,8 @@ static int stv091x_carrier_check(struct stv* state, s32 *FinalFreq, s32* frequen
 			}
 
 			midagc2level= acculevel/(5*div);
+			if (midagc2level == 0)
+				midagc2level = 1;
 
 			if (waitforfall==0) {
 				agc2ratio = (maxagc2level - minagc2level)*128/midagc2level;
@@ -2236,14 +2246,23 @@ static int stv091x_carrier_check(struct stv* state, s32 *FinalFreq, s32* frequen
 	write_reg(state, RSTV0910_P2_CARCFG + state->regoff, tmp2);
 	write_reg(state, RSTV0910_P2_BCLC + state->regoff, tmp3);
 	write_reg(state, RSTV0910_P2_CARFREQ + state->regoff, tmp4);
+	write_reg(state, RSTV0910_P2_AGC2O + state->regoff, 0x5B);
 	write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x1C);
 	write_reg(state, RSTV0910_P2_CFRINIT1 + state->regoff, 0);
 	write_reg(state, RSTV0910_P2_CFRINIT0 + state->regoff, 0);
 
 	if (asperity ==1) { /* rising edge followed by a constant level or a falling edge */
-		*frequency_jump = (1000/div)*(i-(j+2)/2);
+		/* i counted from negative LO offset; convert to kHz offset from tuner center */
+		*frequency_jump = (1000/div)*((i - (s32)(nbSteps / 2)) - (j+2)/2);
+	} else if (asperity == 2) {
+		*frequency_jump = (1000/div)*(i - (s32)(nbSteps / 2));
 	} else {
-		*frequency_jump = (1000/div)*i; /* falling edge */
+		/* No edge: advance by about half the tuner BW for overlap */
+		*frequency_jump = state->tuner_bw / 2000;
+		if (*frequency_jump < 1000)
+			*frequency_jump = 1000;
+		dprintk("carrier_check: no edge min=%u max=%u mid=%u steps=%d\n",
+						minagc2level, maxagc2level, midagc2level, nbSteps);
 	}
 
 	return asperity;
@@ -2254,12 +2273,16 @@ static int stv091x_carrier_search(struct stv *state,  s32* frequency_jump)
 {
 	//	bool signal_found = false;
 	s32 agc_power_gain;
-	s32 iq_power;
+	s32 iq_power = 0;
 	s32 FinalFreq;
 	u32 asperity=0;
 	//stv091x_SIGNALTYPE_t signalType=FE_SAT_NOCARRIER;
 
-	msleep(10);
+	/* Demod must be measuring (warm) before AGC1/IQ are meaningful. */
+	write_reg(state, RSTV0910_P2_AGC2O + state->regoff, 0x03);
+	write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x1C);
+	write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x18);
+	msleep(15);
 	agc_power_gain = stv091x_agc1_power_gain(state);
 	if(agc_power_gain==0) {
 			/*if AGC1 integrator value is 0 then read POWERI, POWERQ registers*/
@@ -2268,12 +2291,17 @@ static int stv091x_carrier_search(struct stv *state,  s32* frequency_jump)
 	}
 
 	FinalFreq = 0;
+	*frequency_jump = state->tuner_bw / 2000;
+	if (*frequency_jump < 1000)
+		*frequency_jump = 1000;
 
 	if ( (agc_power_gain == 0) && (iq_power < 30)){
 		/*no signal */
 		/* Jump of distance of the bandwith tuner */
 		//signalType = FE_SAT_TUNER_NOSIGNAL;
 		asperity = 0;
+		dprintk("carrier_search: no RF agc1=%d iq=%d jump=%d\n",
+						agc_power_gain, iq_power, *frequency_jump);
 	} else {
 
 		/* Perform edge detection */
@@ -2285,18 +2313,33 @@ static int stv091x_carrier_search(struct stv *state,  s32* frequency_jump)
 
 			//TODO: falling edge detected or direct blind to be done:
 			//dprintk("unimplemented?\n");
-			dprintk("Rien dans la bande, saut de BW/2;  asperity=%d jump=%d\n", asperity, *frequency_jump);
+			dprintk("Rien dans la bande, saut de BW/2;  asperity=%d jump=%d agc1=%d iq=%d\n",
+							asperity, *frequency_jump, agc_power_gain, iq_power);
 		} else { // asperity==1; rising edge detected, perform blind search at next step */
 			//signalType = FE_SAT_TUNER_JUMP;
 			dprintk("Saut 4 or more steps; asperity=%d jump=%d\n", asperity, *frequency_jump);
 
 		}
 	}
-	state->scan_next_frequency += *frequency_jump;
-	state->search_range_hz = 24000000 + *frequency_jump *1000;
+	{
+		s32 center = state->scan_next_frequency;
+		s32 half_bw_khz = state->tuner_bw / 2000;
+		if (half_bw_khz < 1000)
+			half_bw_khz = 1000;
+		if (asperity == 0) {
+			state->scan_next_frequency = center + half_bw_khz;
+		} else {
+			/* Advance past the edge; never walk the search backwards. */
+			state->scan_next_frequency = center + *frequency_jump + 2000;
+			if (state->scan_next_frequency <= center)
+				state->scan_next_frequency = center + half_bw_khz;
+		}
+	}
+	state->search_range_hz = 24000000 + abs(*frequency_jump) *1000;
 	if (state->search_range_hz >40000000)
 		state->search_range_hz = 40000000;
 
+	write_reg(state, RSTV0910_P2_AGC2O + state->regoff, 0x5B);
 	write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x5C); /* Demod Stop*/
 
 	return asperity;
