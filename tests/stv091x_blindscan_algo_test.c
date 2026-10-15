@@ -29,7 +29,7 @@ static void after_lock_skips_carrier_and_aligns_to_grid(void)
 		       STV091X_BLINDSCAN_SEARCH_RANGE_HZ) == 1226000);
 	assert(stv091x_blindscan_after_lock_frequency(
 		       11230417, 41994000, 10700000,
-		       STV091X_BLINDSCAN_SEARCH_RANGE_HZ) == 11262000);
+		       STV091X_BLINDSCAN_SEARCH_RANGE_HZ) == 11260000);
 }
 
 int main(void)

@@ -48,8 +48,6 @@ s32 stv091x_blindscan_after_lock_frequency(s32 frequency_khz,
 	acquisition_radius_khz = search_range_hz / 2000;
 	minimum_next_khz = frequency_khz + (s32)occupied_half_width_khz +
 			   (s32)acquisition_radius_khz;
-	if (occupied_half_width_khz >= STV091X_BLINDSCAN_STEP_KHZ)
-		minimum_next_khz += (s32)acquisition_radius_khz;
 
 	return stv091x_blindscan_grid_align_at_or_after(minimum_next_khz,
 							 grid_start_khz);
