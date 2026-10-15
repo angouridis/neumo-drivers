@@ -228,11 +228,14 @@ static void vendor_lock_advances_by_half_occupied_bandwidth(void)
 	/* 27.5 Msps: 135 * floor(27500000/200000) = 135*137 */
 	assert(stv091x_blindscan_vendor_after_lock_frequency(
 		       1100000, 27500000) == 1100000 + 135 * 137);
-	/* Near-prior duplicate path: += SR_kHz (floored at 1000) */
+	/* Near-prior duplicate path: scan_center += SR_kHz (floored at 1000) */
 	assert(stv091x_blindscan_vendor_duplicate_frequency(
 		       1100000, 1000000) == 1101000);
 	assert(stv091x_blindscan_vendor_duplicate_frequency(
 		       1100000, 25000000) == 1125000);
+	/* Accumulates from scan center, not lock freq — avoids F+1000 spin */
+	assert(stv091x_blindscan_vendor_duplicate_frequency(
+		       1100675, 1000000) == 1101675);
 }
 
 static void duplicate_suppression_preserves_nearby_one_msps_carriers(void)

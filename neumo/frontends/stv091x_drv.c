@@ -2966,6 +2966,8 @@ static int stv091x_sat_scan(struct neumo_dvb_frontend *fe, bool init,
 	       STV091X_BLINDSCAN_VENDOR &&
 	       state->blindscan_traversal.vendor_frequency_khz <
 		       state->scan_end_frequency) {
+		s32 probe_center_khz;
+
 		*status = 0;
 		if (kthread_should_stop() ||
 		    neumo_dvb_frontend_task_should_stop(fe)) {
@@ -2973,6 +2975,15 @@ static int stv091x_sat_scan(struct neumo_dvb_frontend *fe, bool init,
 			mutex_unlock(&state->base->status_lock);
 			return 0;
 		}
+		/*
+		 * Save scan center before probe. apply_result() overwrites
+		 * vendor_frequency on lock; duplicate advance must start
+		 * from this center (tbs6903.sys 0x1C025 adds SR/1000 to
+		 * r8 scan freq), not from the locked frequency — otherwise
+		 * we reset to lock+1000 forever and spin on one TP.
+		 */
+		probe_center_khz =
+			state->blindscan_traversal.vendor_frequency_khz;
 		ret = stv091x_vendor_probe(fe, &locked);
 		if (ret < 0) {
 			dprintk("vendor traversal failed (%d), using fallback\n",
@@ -2986,13 +2997,10 @@ static int stv091x_sat_scan(struct neumo_dvb_frontend *fe, bool init,
 				state->blindscan_lock_capacity,
 				p->frequency, state->symbol_rate);
 			if (ret == 0) {
-				/*
-				 * tbs6903.sys 0x1C025: near a prior lock,
-				 * advance by SR_kHz instead of half occupied BW.
-				 */
 				state->blindscan_traversal.vendor_frequency_khz =
 					stv091x_blindscan_vendor_duplicate_frequency(
-						p->frequency, state->symbol_rate);
+						probe_center_khz,
+						state->symbol_rate);
 				dprintk("suppressing duplicate vendor lock freq=%dkHz sr=%d next=%dkHz\n",
 					p->frequency, state->symbol_rate,
 					state->blindscan_traversal.vendor_frequency_khz);
