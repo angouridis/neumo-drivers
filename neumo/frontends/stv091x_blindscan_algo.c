@@ -65,8 +65,11 @@ s32 stv091x_blindscan_vendor_edge_steps(u32 tuner_bw_hz)
 
 s32 stv091x_blindscan_vendor_miss_jump_khz(u32 tuner_bw_hz)
 {
-	s32 jump_khz = stv091x_blindscan_vendor_edge_steps(tuner_bw_hz) *
-		(STV091X_BLINDSCAN_VENDOR_CFR_STEP_HZ / 1000);
+	/*
+	 * tbs6903.sys range loop status 0x11: freq += tuner_bw/3000 - 1000.
+	 * For 72 MHz that is 23000 kHz (not the raw 48*500 walk span).
+	 */
+	s32 jump_khz = (s32)(tuner_bw_hz / 3000) - STV091X_BLINDSCAN_STEP_KHZ;
 
 	if (jump_khz < STV091X_BLINDSCAN_STEP_KHZ)
 		jump_khz = STV091X_BLINDSCAN_STEP_KHZ;
@@ -83,6 +86,37 @@ s32 stv091x_blindscan_vendor_edge_jump_khz(s32 step_index, int asperity,
 	if (steps < 0)
 		steps = 0;
 	return steps * (STV091X_BLINDSCAN_VENDOR_CFR_STEP_HZ / 1000);
+}
+
+s32 stv091x_blindscan_vendor_next_frequency(s32 center_khz, int asperity,
+					     s32 frequency_jump_khz,
+					     u32 tuner_bw_hz, int locked,
+					     s32 locked_frequency_khz,
+					     u32 symbol_rate)
+{
+	s32 next;
+
+	/*
+	 * tbs6903.sys 0x1BE9F aftermath:
+	 *  asperity 0 / empty (status 0x11): += bw/3000 - 1000
+	 *  asperity 1 (status 0x12): no acquire, += full edge jump
+	 *  asperity 2 lock fail: += edge jump / 2
+	 *  asperity 2 lock ok: past half occupied BW from lock freq
+	 */
+	if (asperity <= 0)
+		next = center_khz +
+			stv091x_blindscan_vendor_miss_jump_khz(tuner_bw_hz);
+	else if (asperity == 1)
+		next = center_khz + frequency_jump_khz;
+	else if (locked)
+		next = stv091x_blindscan_vendor_after_lock_frequency(
+			locked_frequency_khz, symbol_rate);
+	else
+		next = center_khz + frequency_jump_khz / 2;
+
+	if (next <= center_khz)
+		next = center_khz + STV091X_BLINDSCAN_STEP_KHZ;
+	return next;
 }
 
 void stv091x_blindscan_traversal_init(

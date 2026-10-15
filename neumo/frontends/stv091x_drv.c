@@ -2502,17 +2502,27 @@ static int stv091x_vendor_probe(struct neumo_dvb_frontend *fe,
 	edge = stv091x_carrier_search(state, &frequency_jump);
 	if (edge < 0)
 		return edge;
-	if (!edge) {
-		state->blindscan_traversal.vendor_frequency_khz =
-			center + frequency_jump;
+	/*
+	 * tbs6903.sys: asperity 0 and 1 never blind-acquire. Asperity 1
+	 * (zigzag / filter-edge) only advances by the CFR jump.
+	 */
+	if (edge != 2) {
+		next = stv091x_blindscan_vendor_next_frequency(
+			center, edge, frequency_jump, state->tuner_bw,
+			0, center, 0);
+		state->blindscan_traversal.vendor_frequency_khz = next;
+		dprintk("vendor skip-acquire edge=%d jump=%dkHz next=%dkHz\n",
+			edge, frequency_jump, next);
 		return 0;
 	}
 
 	candidate_frequency = center + frequency_jump;
 	if (candidate_frequency < (s32)p->scan_start_frequency ||
 	    candidate_frequency >= (s32)p->scan_end_frequency) {
-		state->blindscan_traversal.vendor_frequency_khz =
-			stv091x_blindscan_vendor_failed_frequency(center);
+		next = stv091x_blindscan_vendor_next_frequency(
+			center, edge, frequency_jump, state->tuner_bw,
+			0, center, 0);
+		state->blindscan_traversal.vendor_frequency_khz = next;
 		return 0;
 	}
 	p->frequency = candidate_frequency;
@@ -2541,13 +2551,9 @@ static int stv091x_vendor_probe(struct neumo_dvb_frontend *fe,
 	}
 
 	*locked_ret = !state->signal_info.has_timedout;
-	if (*locked_ret)
-		next = stv091x_blindscan_vendor_after_lock_frequency(
-			p->frequency, state->symbol_rate);
-	else
-		next = stv091x_blindscan_vendor_failed_frequency(center);
-	if (next <= center)
-		next = stv091x_blindscan_vendor_failed_frequency(center);
+	next = stv091x_blindscan_vendor_next_frequency(
+		center, edge, frequency_jump, state->tuner_bw,
+		*locked_ret, p->frequency, state->symbol_rate);
 	state->blindscan_traversal.vendor_frequency_khz = next;
 	dprintk("vendor acquisition edge=%d freq=%dkHz locked=%d sr=%d next=%dkHz\n",
 		edge, p->frequency, *locked_ret, state->symbol_rate, next);

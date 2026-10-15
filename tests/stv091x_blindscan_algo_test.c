@@ -81,11 +81,28 @@ static void vendor_edge_steps_match_windows_half_span(void)
 {
 	assert(stv091x_blindscan_vendor_edge_steps(72000000) == 48);
 	assert(stv091x_blindscan_vendor_edge_steps(36000000) == 24);
-	assert(stv091x_blindscan_vendor_miss_jump_khz(72000000) == 24000);
+	assert(stv091x_blindscan_vendor_miss_jump_khz(72000000) == 23000);
 	assert(stv091x_blindscan_vendor_edge_jump_khz(20, 2, 0) == 10000);
 	assert(stv091x_blindscan_vendor_edge_jump_khz(20, 1, 4) == 8500);
 	assert(STV091X_BLINDSCAN_VENDOR_AGC2_RATIO == 40);
 	assert(STV091X_BLINDSCAN_VENDOR_TUNER_BW_HZ == 72000000);
+}
+
+static void vendor_next_frequency_matches_windows_status_codes(void)
+{
+	/* asperity 0: bw/3000 - 1000 */
+	assert(stv091x_blindscan_vendor_next_frequency(
+		       950000, 0, 24000, 72000000, 0, 950000, 0) == 973000);
+	/* asperity 1: skip acquire, full edge jump */
+	assert(stv091x_blindscan_vendor_next_frequency(
+		       950000, 1, 21500, 72000000, 0, 950000, 0) == 971500);
+	/* asperity 2 lock fail: half edge jump */
+	assert(stv091x_blindscan_vendor_next_frequency(
+		       950000, 2, 20000, 72000000, 0, 970000, 0) == 960000);
+	/* asperity 2 lock ok: past half occupied BW from lock */
+	assert(stv091x_blindscan_vendor_next_frequency(
+		       950000, 2, 2000, 72000000, 1, 1296234,
+		       1000833) == 1296909);
 }
 
 static void vendor_lock_advances_by_half_occupied_bandwidth(void)
@@ -150,6 +167,7 @@ int main(void)
 	vendor_phase_transitions_to_fallback_at_range_start();
 	vendor_miss_advances_by_acquisition_span();
 	vendor_edge_steps_match_windows_half_span();
+	vendor_next_frequency_matches_windows_status_codes();
 	vendor_lock_advances_by_half_occupied_bandwidth();
 	duplicate_suppression_preserves_nearby_one_msps_carriers();
 	duplicate_suppression_checks_all_candidate_locks();

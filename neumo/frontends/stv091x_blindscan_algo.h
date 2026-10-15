@@ -63,6 +63,11 @@ s32 stv091x_blindscan_vendor_edge_steps(u32 tuner_bw_hz);
 s32 stv091x_blindscan_vendor_miss_jump_khz(u32 tuner_bw_hz);
 s32 stv091x_blindscan_vendor_edge_jump_khz(s32 step_index, int asperity,
 					    s32 edge_samples);
+s32 stv091x_blindscan_vendor_next_frequency(s32 center_khz, int asperity,
+					     s32 frequency_jump_khz,
+					     u32 tuner_bw_hz, int locked,
+					     s32 locked_frequency_khz,
+					     u32 symbol_rate);
 void stv091x_blindscan_traversal_init(
 	struct stv091x_blindscan_traversal *traversal,
 	s32 start_frequency_khz);
