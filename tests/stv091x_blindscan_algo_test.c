@@ -100,10 +100,10 @@ static void vendor_next_frequency_matches_windows_status_codes(void)
 	/* asperity 2 lock fail phase 0: half edge jump */
 	assert(stv091x_blindscan_vendor_next_frequency(
 		       950000, 2, 20000, 72000000, 0, 970000, 0) == 960000);
-	/* asperity 2 lock ok: past dup-floor for ~1Msps lock */
+	/* asperity 2 lock ok: past half occupied BW from lock */
 	assert(stv091x_blindscan_vendor_next_frequency(
 		       950000, 2, 2000, 72000000, 1, 1296234,
-		       1000833) == 1297734);
+		       1000833) == 1296909);
 }
 
 static void vendor_fail_zigzag_skips_edge_and_preserves_jump(void)
@@ -218,9 +218,13 @@ static void vendor_lock_advances_by_half_occupied_bandwidth(void)
 {
 	assert(stv091x_blindscan_vendor_after_lock_frequency(
 		       1220376, 4798000) == 1223614);
-	/* 1Msps: floor past dup window (1500), not raw half-BW 675 */
 	assert(stv091x_blindscan_vendor_after_lock_frequency(
-		       1100000, 1000000) == 1101500);
+		       1100000, 1000000) == 1100675);
+	/* Near-prior duplicate path: += SR_kHz (floored at 1000) */
+	assert(stv091x_blindscan_vendor_duplicate_frequency(
+		       1100000, 1000000) == 1101000);
+	assert(stv091x_blindscan_vendor_duplicate_frequency(
+		       1100000, 25000000) == 1125000);
 }
 
 static void duplicate_suppression_preserves_nearby_one_msps_carriers(void)

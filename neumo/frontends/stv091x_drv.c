@@ -2946,8 +2946,16 @@ static int stv091x_sat_scan(struct neumo_dvb_frontend *fe, bool init,
 				state->blindscan_lock_capacity,
 				p->frequency, state->symbol_rate);
 			if (ret == 0) {
-				dprintk("suppressing duplicate vendor lock freq=%dkHz sr=%d\n",
-					p->frequency, state->symbol_rate);
+				/*
+				 * tbs6903.sys 0x1C025: near a prior lock,
+				 * advance by SR_kHz instead of half occupied BW.
+				 */
+				state->blindscan_traversal.vendor_frequency_khz =
+					stv091x_blindscan_vendor_duplicate_frequency(
+						p->frequency, state->symbol_rate);
+				dprintk("suppressing duplicate vendor lock freq=%dkHz sr=%d next=%dkHz\n",
+					p->frequency, state->symbol_rate,
+					state->blindscan_traversal.vendor_frequency_khz);
 				continue;
 			}
 			if (ret < 0) {

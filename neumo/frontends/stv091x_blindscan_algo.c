@@ -45,17 +45,18 @@ s32 stv091x_blindscan_failed_frequency(s32 frequency_khz, u32 scan_span_hz,
 s32 stv091x_blindscan_vendor_after_lock_frequency(s32 frequency_khz,
 						   u32 symbol_rate)
 {
-	s32 advance_khz = (s32)(((u64)symbol_rate * 675) / 1000000);
+	/* tbs6903.sys 0x1C03D: freq += (SR_Hz/1000) * 135 / 200 */
+	return frequency_khz + (s32)(((u64)symbol_rate * 675) / 1000000);
+}
 
-	/*
-	 * Half occupied BW can be < dup floor for 1Msps (~675 kHz), which
-	 * re-locks the same carrier on the next probe. Step at least past
-	 * the duplicate window.
-	 */
-	if (advance_khz < STV091X_BLINDSCAN_VENDOR_DUP_FLOOR_KHZ +
-			    STV091X_BLINDSCAN_STEP_KHZ / 2)
-		advance_khz = STV091X_BLINDSCAN_VENDOR_DUP_FLOOR_KHZ +
-			STV091X_BLINDSCAN_STEP_KHZ / 2;
+s32 stv091x_blindscan_vendor_duplicate_frequency(s32 frequency_khz,
+						  u32 symbol_rate)
+{
+	/* tbs6903.sys 0x1C025: near prior lock → freq += SR_Hz/1000 */
+	s32 advance_khz = (s32)(symbol_rate / 1000);
+
+	if (advance_khz < STV091X_BLINDSCAN_VENDOR_DUP_FLOOR_KHZ)
+		advance_khz = STV091X_BLINDSCAN_VENDOR_DUP_FLOOR_KHZ;
 	return frequency_khz + advance_khz;
 }
 

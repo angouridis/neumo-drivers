@@ -95,6 +95,8 @@ s32 stv091x_blindscan_failed_frequency(s32 frequency_khz, u32 scan_span_hz,
 					int half_step);
 s32 stv091x_blindscan_vendor_after_lock_frequency(s32 frequency_khz,
 						   u32 symbol_rate);
+s32 stv091x_blindscan_vendor_duplicate_frequency(s32 frequency_khz,
+						  u32 symbol_rate);
 s32 stv091x_blindscan_vendor_failed_frequency(s32 center_khz);
 s32 stv091x_blindscan_vendor_edge_steps(u32 tuner_bw_hz);
 s32 stv091x_blindscan_vendor_miss_jump_khz(u32 tuner_bw_hz);
