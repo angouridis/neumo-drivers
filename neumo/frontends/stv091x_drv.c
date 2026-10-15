@@ -36,6 +36,7 @@
 
 #include <media/neumo-dvb-frontend.h>
 #include "stv091x.h"
+#include "stv091x_peak_detector.h"
 #include "stv091x_regs.h"
 
 #define dprintk(fmt, arg...)																					\
@@ -2619,11 +2620,12 @@ static int stv091x_acquire_spectrum_locked(struct neumo_dvb_frontend *fe)
 static int stv091x_build_blind_peaks(struct stv *state)
 {
 	struct stv_spectrum_scan_state *ss = &state->scan_state;
-	const s32 thresh = 2000; /* 2.0 dB in 0.001 dB */
-	const s32 min_sep = 4000; /* kHz between peaks */
-	int i, n, count = 0;
+	const s32 edge_thresh = 500; /* 0.5 dB across lag */
+	const s32 depth_thresh = 1000; /* 1 dB valley depth */
+	int i, n, count, lag, min_width, max_width;
+	s32 resolution;
 	s32 *tmp;
-	s32 best_prom = 0;
+	int *indices;
 
 	if (state->blind_peaks) {
 		kfree(state->blind_peaks);
@@ -2636,53 +2638,41 @@ static int stv091x_build_blind_peaks(struct stv *state)
 		return -EINVAL;
 
 	n = ss->spectrum_len;
+	resolution = ss->freq[1] - ss->freq[0];
+	if (resolution <= 0)
+		return -EINVAL;
+	lag = max_t(int, 1, 8000 / resolution);
+	min_width = max_t(int, 1, 4000 / resolution);
+	max_width = max_t(int, min_width + 1, 100000 / resolution);
 	tmp = kzalloc(n * sizeof(tmp[0]), GFP_KERNEL);
 	if (!tmp)
 		return -ENOMEM;
-
-	for (i = 1; i < n - 1; i++) {
-		s32 left = ss->spectrum[i - 1];
-		s32 mid = ss->spectrum[i];
-		s32 right = ss->spectrum[i + 1];
-		s32 floor_l, floor_r, prom;
-		int j;
-
-		if (!(mid >= left && mid > right) && !(mid > left && mid >= right))
-			continue;
-
-		floor_l = left;
-		for (j = i - 1; j >= 0 && j >= i - 4; j--)
-			if (ss->spectrum[j] < floor_l)
-				floor_l = ss->spectrum[j];
-		floor_r = right;
-		for (j = i + 1; j < n && j <= i + 4; j++)
-			if (ss->spectrum[j] < floor_r)
-				floor_r = ss->spectrum[j];
-		prom = mid - ((floor_l > floor_r) ? floor_l : floor_r);
-		if (prom > best_prom)
-			best_prom = prom;
-		if (prom < thresh)
-			continue;
-
-		if (count > 0 && (ss->freq[i] - tmp[count - 1]) < min_sep) {
-			/* Keep stronger of two close peaks */
-			int prev_idx = count - 1;
-			/* find spectrum index of previous peak */
-			int k;
-			for (k = i - 1; k > 0; k--)
-				if (ss->freq[k] == tmp[prev_idx])
-					break;
-			if (k > 0 && mid > ss->spectrum[k])
-				tmp[prev_idx] = ss->freq[i];
-			continue;
-		}
-		tmp[count++] = ss->freq[i];
+	indices = kzalloc(n * sizeof(indices[0]), GFP_KERNEL);
+	if (!indices) {
+		kfree(tmp);
+		return -ENOMEM;
 	}
+
+	/*
+	 * On STV0910 the narrow-band AGC2 measurement forms valleys: entering
+	 * a carrier gives a falling edge and leaving it gives a rising edge.
+	 * Pair those edges and blind-tune their midpoint. Local maxima reject
+	 * wide carriers because their centers are broad, nearly flat plateaus.
+	 */
+	count = stv091x_detect_valleys(ss->spectrum, n, lag,
+				       edge_thresh, depth_thresh,
+				       min_width, max_width, indices, n);
+	for (i = 0; i < count; i++) {
+		tmp[i] = ss->freq[indices[i]];
+		dprintk("blind valley %d: idx=%d freq=%dkHz\n",
+				i + 1, indices[i], tmp[i]);
+	}
+	kfree(indices);
 
 	if (count == 0) {
 		kfree(tmp);
-		dprintk("blind peaks: none (len=%d best_prom=%d thresh=%d)\n",
-						n, best_prom, thresh);
+		dprintk("blind valleys: none (len=%d edge=%d depth=%d)\n",
+				n, edge_thresh, depth_thresh);
 		return 0;
 	}
 
@@ -2692,7 +2682,7 @@ static int stv091x_build_blind_peaks(struct stv *state)
 	}
 	state->blind_num_peaks = count;
 	state->blind_peak_idx = 0;
-	dprintk("blind peaks: %d candidates\n", count);
+	dprintk("blind valleys: %d candidates\n", count);
 	return 0;
 }
 
