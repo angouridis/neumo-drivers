@@ -2745,7 +2745,8 @@ static int stv091x_sat_scan(struct neumo_dvb_frontend *fe, bool init,
 		if (iq_power < STV091X_BLINDSCAN_IQ_THRESHOLD) {
 			state->scan_next_frequency =
 				stv091x_blindscan_failed_frequency(
-					probe_frequency, state->tuner_bw,
+					probe_frequency,
+					state->search_range_hz,
 					half_step);
 			half_step = false;
 			continue;
@@ -2774,7 +2775,8 @@ static int stv091x_sat_scan(struct neumo_dvb_frontend *fe, bool init,
 
 		state->scan_next_frequency =
 			stv091x_blindscan_failed_frequency(
-				probe_frequency, state->tuner_bw, half_step);
+				probe_frequency, state->search_range_hz,
+				half_step);
 		half_step = false;
 	}
 

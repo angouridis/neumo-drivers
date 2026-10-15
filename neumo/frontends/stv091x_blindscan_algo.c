@@ -12,10 +12,10 @@ s32 stv091x_blindscan_next_frequency(s32 frequency_khz, int locked,
 	return frequency_khz + step;
 }
 
-s32 stv091x_blindscan_failed_frequency(s32 frequency_khz, u32 tuner_bw_hz,
+s32 stv091x_blindscan_failed_frequency(s32 frequency_khz, u32 scan_span_hz,
 					int half_step)
 {
-	u32 step_khz = tuner_bw_hz / 1000;
+	u32 step_khz = scan_span_hz / 1000;
 
 	if (half_step)
 		step_khz /= 2;
