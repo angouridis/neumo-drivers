@@ -2698,7 +2698,6 @@ static int stv091x_sat_scan(struct neumo_dvb_frontend *fe, bool init,
 	s32 probe_frequency;
 	u32 agc1;
 	u16 iq_power;
-	bool half_step = true;
 
 	if (init) {
 		stv091x_stop_task(fe);
@@ -2744,11 +2743,8 @@ static int stv091x_sat_scan(struct neumo_dvb_frontend *fe, bool init,
 		write_reg(state, RSTV0910_P2_AGC2O + state->regoff, 0x5b);
 		if (iq_power < STV091X_BLINDSCAN_IQ_THRESHOLD) {
 			state->scan_next_frequency =
-				stv091x_blindscan_failed_frequency(
-					probe_frequency,
-					state->search_range_hz,
-					half_step);
-			half_step = false;
+				stv091x_blindscan_next_grid_frequency(
+					probe_frequency, p->scan_start_frequency);
 			continue;
 		}
 
@@ -2765,6 +2761,7 @@ static int stv091x_sat_scan(struct neumo_dvb_frontend *fe, bool init,
 			state->scan_next_frequency =
 				stv091x_blindscan_after_lock_frequency(
 					p->frequency, state->symbol_rate,
+					p->scan_start_frequency,
 					state->search_range_hz);
 			state->tune_time = jiffies;
 			*status = FE_HAS_SIGNAL | FE_HAS_CARRIER | FE_HAS_VITERBI |
@@ -2775,10 +2772,8 @@ static int stv091x_sat_scan(struct neumo_dvb_frontend *fe, bool init,
 		}
 
 		state->scan_next_frequency =
-			stv091x_blindscan_failed_frequency(
-				probe_frequency, state->search_range_hz,
-				half_step);
-		half_step = false;
+			stv091x_blindscan_next_grid_frequency(
+				probe_frequency, p->scan_start_frequency);
 	}
 
 	dprintk("Signaling DONE (band exhausted)\n");
