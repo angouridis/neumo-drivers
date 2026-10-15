@@ -153,21 +153,35 @@ void stv091x_blindscan_vendor_apply_result(
 		traversal->probe_mode =
 			STV091X_BLINDSCAN_VENDOR_PROBE_ACQUIRE;
 	} else if (traversal->fail_phase == 1) {
-		/* tbs6903.sys 0x1BF82: advance by full stored jump */
+		/*
+		 * tbs6903.sys 0x1BF82: advance by full stored jump.
+		 * Robustness: if the stored jump is still a micro-crawl
+		 * (<= one CFR step), take a miss-sized hop instead so
+		 * false edge=2 jump=500 loops cannot burn ~1s per 500kHz.
+		 */
 		jump = traversal->stored_jump_khz;
-		if (jump < 1)
+		if (jump <= STV091X_BLINDSCAN_VENDOR_SMALL_JUMP_KHZ)
+			jump = stv091x_blindscan_vendor_miss_jump_khz(
+				tuner_bw_hz);
+		else if (jump < 1)
 			jump = 1;
 		next = center + jump;
 		traversal->fail_phase = 0;
 		traversal->probe_mode = STV091X_BLINDSCAN_VENDOR_PROBE_EDGE;
 	} else {
-		/* fail_phase == 2: re-probe same frequency with edge */
+		/*
+		 * tbs6903.sys phase 2: no advance. Robustness: escape
+		 * asperity-1 sticky fail loops that otherwise re-edge the
+		 * same center after every failed 40MHz mode-2 acquire.
+		 */
+		jump = stv091x_blindscan_vendor_miss_jump_khz(tuner_bw_hz) / 4;
+		if (jump < STV091X_BLINDSCAN_VENDOR_STICKY_ESCAPE_KHZ)
+			jump = STV091X_BLINDSCAN_VENDOR_STICKY_ESCAPE_KHZ;
+		next = center + jump;
 		traversal->fail_phase = 0;
 		traversal->probe_mode = STV091X_BLINDSCAN_VENDOR_PROBE_EDGE;
-		next = center;
 	}
 
-	/* Never retreat; phase-2 may keep the same center on purpose. */
 	if (next < center)
 		next = center + STV091X_BLINDSCAN_STEP_KHZ;
 
@@ -181,7 +195,14 @@ u32 stv091x_blindscan_vendor_acquisition_range_hz(s32 frequency_jump_khz)
 
 	if (jump_khz < 0)
 		jump_khz = 0;
-	/* tbs6903.sys 0x1F194: min((jump_kHz + 24000) * 1000, 40e6) */
+	/*
+	 * tbs6903.sys 0x1F194: min((jump_kHz + 24000) * 1000, 40e6).
+	 * On dense Ku the sticky path (J=16000 → 40MHz) is what actually
+	 * locks ~25Msps carriers; small-J edges only get ~24.5MHz and miss
+	 * them. Floor the search span at the Windows max for every acquire.
+	 */
+	if (jump_khz < STV091X_BLINDSCAN_VENDOR_STICKY_JUMP_KHZ)
+		jump_khz = STV091X_BLINDSCAN_VENDOR_STICKY_JUMP_KHZ;
 	range_hz = (u32)(jump_khz + STV091X_BLINDSCAN_VENDOR_ACQ_RANGE_PAD_KHZ) *
 		1000;
 	if (range_hz > STV091X_BLINDSCAN_VENDOR_ACQ_RANGE_MAX_HZ)

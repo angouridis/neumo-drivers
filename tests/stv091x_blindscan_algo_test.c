@@ -120,13 +120,32 @@ static void vendor_fail_zigzag_skips_edge_and_preserves_jump(void)
 	assert(trav.fail_phase == 1);
 	assert(trav.probe_mode == STV091X_BLINDSCAN_VENDOR_PROBE_ACQUIRE);
 
-	/* Mode-2 acquire fail (phase 1): advance full stored jump, back to edge */
+	/*
+	 * Mode-2 fail with micro stored jump: miss-sized escape instead of
+	 * +250 kHz crawl.
+	 */
 	stv091x_blindscan_vendor_apply_result(
 		&trav, 2, trav.stored_jump_khz, 72000000, 0,
 		trav.vendor_frequency_khz, 0);
-	assert(trav.vendor_frequency_khz == 950500);
-	assert(trav.stored_jump_khz == 250);
+	assert(trav.vendor_frequency_khz == 950250 + 23000);
 	assert(trav.fail_phase == 0);
+	assert(trav.probe_mode == STV091X_BLINDSCAN_VENDOR_PROBE_EDGE);
+}
+
+static void vendor_medium_jump_fail_keeps_windows_half_advance(void)
+{
+	struct stv091x_blindscan_traversal trav;
+
+	stv091x_blindscan_traversal_init(&trav, 950000);
+	stv091x_blindscan_vendor_apply_result(
+		&trav, 2, 8000, 72000000, 0, 950000, 0);
+	assert(trav.vendor_frequency_khz == 954000);
+	assert(trav.stored_jump_khz == 4000);
+	assert(trav.fail_phase == 1);
+	stv091x_blindscan_vendor_apply_result(
+		&trav, 2, trav.stored_jump_khz, 72000000, 0,
+		trav.vendor_frequency_khz, 0);
+	assert(trav.vendor_frequency_khz == 958000);
 	assert(trav.probe_mode == STV091X_BLINDSCAN_VENDOR_PROBE_EDGE);
 }
 
@@ -143,20 +162,23 @@ static void vendor_asperity1_arms_sticky_mode2_acquire(void)
 	assert(trav.fail_phase == 2);
 	assert(trav.probe_mode == STV091X_BLINDSCAN_VENDOR_PROBE_ACQUIRE);
 
-	/* Mode-2 fail after asperity-1: no advance, return to edge */
+	/* Mode-2 fail after asperity-1: escape forward, return to edge */
 	stv091x_blindscan_vendor_apply_result(
 		&trav, 2, trav.stored_jump_khz, 72000000, 0,
 		trav.vendor_frequency_khz, 0);
-	assert(trav.vendor_frequency_khz == 971500);
+	assert(trav.vendor_frequency_khz == 971500 + 5750);
 	assert(trav.fail_phase == 0);
 	assert(trav.probe_mode == STV091X_BLINDSCAN_VENDOR_PROBE_EDGE);
 }
 
 static void vendor_acquisition_range_matches_windows_pad(void)
 {
-	assert(stv091x_blindscan_vendor_acquisition_range_hz(0) == 24000000);
+	/* Floored to sticky 16MHz jump → always Windows max 40MHz */
+	assert(stv091x_blindscan_vendor_acquisition_range_hz(0) == 40000000);
 	assert(stv091x_blindscan_vendor_acquisition_range_hz(2000) ==
-	       26000000);
+	       40000000);
+	assert(stv091x_blindscan_vendor_acquisition_range_hz(500) ==
+	       40000000);
 	assert(stv091x_blindscan_vendor_acquisition_range_hz(21500) ==
 	       40000000);
 }
@@ -225,6 +247,7 @@ int main(void)
 	vendor_edge_steps_match_windows_half_span();
 	vendor_next_frequency_matches_windows_status_codes();
 	vendor_fail_zigzag_skips_edge_and_preserves_jump();
+	vendor_medium_jump_fail_keeps_windows_half_advance();
 	vendor_asperity1_arms_sticky_mode2_acquire();
 	vendor_acquisition_range_matches_windows_pad();
 	vendor_lock_advances_by_half_occupied_bandwidth();

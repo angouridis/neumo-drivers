@@ -28,6 +28,14 @@ typedef uint64_t u64;
 #define STV091X_BLINDSCAN_VENDOR_ACQ_RANGE_MAX_HZ	40000000
 /* tbs6903.sys 0x1BEF4: sticky jump after asperity-1 */
 #define STV091X_BLINDSCAN_VENDOR_STICKY_JUMP_KHZ	16000
+/*
+ * Robustness (not in tbs6903.sys): after a mode1+mode2 fail pair whose
+ * stored jump is still one CFR step or less, skip further micro-crawling
+ * and take a miss-sized advance. Same for escaping asperity-1 sticky
+ * fails that would otherwise re-probe the same center forever.
+ */
+#define STV091X_BLINDSCAN_VENDOR_SMALL_JUMP_KHZ	500
+#define STV091X_BLINDSCAN_VENDOR_STICKY_ESCAPE_KHZ	2000
 /* tbs6903.sys probe mode: 1 = run edge, 2 = skip edge and acquire */
 #define STV091X_BLINDSCAN_VENDOR_PROBE_EDGE	1
 #define STV091X_BLINDSCAN_VENDOR_PROBE_ACQUIRE	2
