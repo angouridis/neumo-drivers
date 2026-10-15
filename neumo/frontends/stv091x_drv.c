@@ -1457,6 +1457,9 @@ static int gate_ctrl(struct neumo_dvb_frontend *fe, int enable)
 static void release(struct neumo_dvb_frontend *fe)
 {
 	struct stv *state = fe->demodulator_priv;
+	kfree(state->blind_peaks);
+	kfree(state->scan_state.freq);
+	kfree(state->scan_state.spectrum);
 	mutex_lock(&state->base->status_lock);
 	if (state->base->set_lock_led)
 		state->base->set_lock_led(fe, 0);
@@ -2570,9 +2573,8 @@ static int stv091x_tune(struct neumo_dvb_frontend *fe, bool re_tune,
 	return 0;
 }
 
-#if 0
 /*
- * Fast spectrum fill (no per-bin sleep). Caller must hold status_lock.
+ * Narrow-band spectrum fill. Caller must hold status_lock.
  * Allocates state->scan_state.freq/spectrum.
  */
 static int stv091x_acquire_spectrum_locked(struct neumo_dvb_frontend *fe)
@@ -2582,8 +2584,7 @@ static int stv091x_acquire_spectrum_locked(struct neumo_dvb_frontend *fe)
 	struct stv_spectrum_scan_state *ss = &state->scan_state;
 	u32 start_frequency = p->scan_start_frequency;
 	u32 end_frequency = p->scan_end_frequency;
-	uint32_t resolution = (p->scan_resolution > 0) ? p->scan_resolution : 2000; /* kHz */
-	uint32_t bandwidth = 2 * resolution; /* kHz */
+	u32 resolution = STV091X_BLINDSCAN_SPECTRUM_STEP_KHZ;
 	u32 num_freq;
 	int i;
 	int val1 = 0, val2 = 0, val3 = 0;
@@ -2599,11 +2600,17 @@ static int stv091x_acquire_spectrum_locked(struct neumo_dvb_frontend *fe)
 		kfree(ss->freq);
 	if (ss->spectrum)
 		kfree(ss->spectrum);
-	ss->freq = kzalloc(num_freq * sizeof(ss->freq[0]), GFP_KERNEL);
-	ss->spectrum = kzalloc(num_freq * sizeof(ss->spectrum[0]), GFP_KERNEL);
+	ss->freq = kcalloc(num_freq, sizeof(ss->freq[0]), GFP_KERNEL);
+	ss->spectrum = kcalloc(num_freq, sizeof(ss->spectrum[0]), GFP_KERNEL);
 	ss->spectrum_len = num_freq;
-	if (!ss->freq || !ss->spectrum)
+	if (!ss->freq || !ss->spectrum) {
+		kfree(ss->freq);
+		kfree(ss->spectrum);
+		ss->freq = NULL;
+		ss->spectrum = NULL;
+		ss->spectrum_len = 0;
 		return -ENOMEM;
+	}
 
 	/*
 	 * Same narrow-band AGC2 probe as stv091x_carrier_check / spectrum_start.
@@ -2616,20 +2623,27 @@ static int stv091x_acquire_spectrum_locked(struct neumo_dvb_frontend *fe)
 	write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x5C);
 
 	dprintk("blind spectrum: [%d,%d]kHz n=%d res=%dkHz bw=%dkHz\n",
-					start_frequency, end_frequency, num_freq, resolution, bandwidth);
+					start_frequency, end_frequency, num_freq, resolution,
+					STV091X_BLINDSCAN_SPECTRUM_BW_KHZ);
 
 	for (i = 0; i < (int)num_freq; i++) {
 		uint32_t frequency;
 		s32 sample;
 
-		if ((i % 40 == 39) &&
-				(kthread_should_stop() || neumo_dvb_frontend_task_should_stop(fe)))
-			break;
+		if (kthread_should_stop() ||
+		    neumo_dvb_frontend_task_should_stop(fe)) {
+			write_reg(state,
+				RSTV0910_P2_AGC2O + state->regoff, 0x5B);
+			ss->spectrum_present = false;
+			return -EINTR;
+		}
 
 		ss->freq[i] = start_frequency + i * resolution;
 		frequency = ss->freq[i];
 		if (fe->ops.tuner_ops.set_frequency_and_bandwidth)
-			fe->ops.tuner_ops.set_frequency_and_bandwidth(fe, frequency, bandwidth);
+			fe->ops.tuner_ops.set_frequency_and_bandwidth(
+				fe, frequency,
+				STV091X_BLINDSCAN_SPECTRUM_BW_KHZ);
 
 		write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x1C);
 		write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x18);
@@ -2689,10 +2703,10 @@ static int stv091x_build_blind_peaks(struct stv *state)
 	lag = max_t(int, 1, 8000 / resolution);
 	min_width = max_t(int, 1, 4000 / resolution);
 	max_width = max_t(int, min_width + 1, 100000 / resolution);
-	tmp = kzalloc(n * sizeof(tmp[0]), GFP_KERNEL);
+	tmp = kcalloc(n, sizeof(tmp[0]), GFP_KERNEL);
 	if (!tmp)
 		return -ENOMEM;
-	indices = kzalloc(n * sizeof(indices[0]), GFP_KERNEL);
+	indices = kcalloc(n, sizeof(indices[0]), GFP_KERNEL);
 	if (!indices) {
 		kfree(tmp);
 		return -ENOMEM;
@@ -2704,9 +2718,9 @@ static int stv091x_build_blind_peaks(struct stv *state)
 	 * Pair those edges and blind-tune their midpoint. Local maxima reject
 	 * wide carriers because their centers are broad, nearly flat plateaus.
 	 */
-	count = stv091x_detect_valleys(ss->spectrum, n, lag,
-				       edge_thresh, depth_thresh,
-				       min_width, max_width, indices, n);
+	count = stv091x_blindscan_detect_valleys(
+		ss->spectrum, n, lag, edge_thresh, depth_thresh,
+		min_width, max_width, indices, n);
 	for (i = 0; i < count; i++)
 		tmp[i] = ss->freq[indices[i]];
 	kfree(indices);
@@ -2726,7 +2740,6 @@ static int stv091x_build_blind_peaks(struct stv *state)
 	dprintk("blind peaks: %d candidates\n", count);
 	return 0;
 }
-#endif
 
 /*
 	init = 1: start a direct tuner-span probe scan
@@ -2740,6 +2753,7 @@ static int stv091x_sat_scan(struct neumo_dvb_frontend *fe, bool init,
 	bool locked = false;
 	bool need_retune = false;
 	int old_algo;
+	int ret;
 	s32 probe_frequency;
 	u32 agc1;
 	u16 iq_power;
@@ -2758,8 +2772,63 @@ static int stv091x_sat_scan(struct neumo_dvb_frontend *fe, bool init,
 	if (init) {
 		state->scan_next_frequency = p->scan_start_frequency;
 		state->scan_end_frequency = p->scan_end_frequency;
+		state->blind_candidates_active = false;
+		state->blind_skip_before_frequency = p->scan_start_frequency;
+		ret = stv091x_acquire_spectrum_locked(fe);
+		if (!ret)
+			ret = stv091x_build_blind_peaks(state);
+		if (!ret && state->blind_num_peaks > 0) {
+			state->blind_candidates_active = true;
+			dprintk("2MHz gate sweep done: %d candidates\n",
+					state->blind_num_peaks);
+		} else {
+			dprintk("2MHz gate found no candidates; using wide fallback\n");
+		}
 	}
 
+	if (state->blind_candidates_active) {
+		while (state->blind_peak_idx < state->blind_num_peaks) {
+			if (kthread_should_stop() ||
+			    neumo_dvb_frontend_task_should_stop(fe)) {
+				*status = 0;
+				mutex_unlock(&state->base->status_lock);
+				return 0;
+			}
+
+			probe_frequency =
+				state->blind_peaks[state->blind_peak_idx++];
+			if (probe_frequency <
+			    state->blind_skip_before_frequency)
+				continue;
+			p->frequency = probe_frequency;
+			state->search_range_hz =
+				STV091X_BLINDSCAN_CANDIDATE_RANGE_HZ;
+			old_algo = p->algorithm;
+			p->algorithm = ALGORITHM_BLIND;
+			state->symbol_rate = STV091X_BLINDSCAN_INIT_SR;
+			state->Started = 0;
+			Stop(state);
+			stv091x_tune_once(fe, &need_retune);
+			p->algorithm = old_algo;
+			locked = !state->signal_info.has_timedout;
+
+			if (locked) {
+				state->blind_skip_before_frequency =
+					stv091x_blindscan_after_lock_frequency(
+						p->frequency, state->symbol_rate, 0);
+				state->tune_time = jiffies;
+				*status = FE_HAS_SIGNAL | FE_HAS_CARRIER |
+					FE_HAS_VITERBI | FE_HAS_SYNC | FE_HAS_LOCK;
+				*delay = HZ;
+				mutex_unlock(&state->base->status_lock);
+				return 0;
+			}
+		}
+		state->blind_candidates_active = false;
+		goto scan_done;
+	}
+
+	state->search_range_hz = STV091X_BLINDSCAN_SEARCH_RANGE_HZ;
 	while (state->scan_next_frequency < state->scan_end_frequency) {
 		*status = 0;
 		if (kthread_should_stop() || neumo_dvb_frontend_task_should_stop(fe)) {
@@ -2826,6 +2895,7 @@ static int stv091x_sat_scan(struct neumo_dvb_frontend *fe, bool init,
 		half_step = false;
 	}
 
+scan_done:
 	dprintk("Signaling DONE (band exhausted)\n");
 	state->satellite_scan = false;
 	state->signal_info.standard = SYS_UNDEFINED;
