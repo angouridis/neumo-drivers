@@ -18,5 +18,7 @@ typedef uint32_t u32;
 
 s32 stv091x_blindscan_next_frequency(s32 frequency_khz, int locked,
 				      u32 symbol_rate);
+s32 stv091x_blindscan_failed_frequency(s32 frequency_khz, u32 tuner_bw_hz,
+					int half_step);
 
 #endif

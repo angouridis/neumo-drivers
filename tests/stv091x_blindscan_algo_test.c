@@ -3,9 +3,16 @@
 
 #include "stv091x_blindscan_algo.h"
 
-static void empty_probe_advances_one_mhz(void)
+static void first_failed_probe_advances_half_tuner_span(void)
 {
-	assert(stv091x_blindscan_next_frequency(950000, 0, 0) == 951000);
+	assert(stv091x_blindscan_failed_frequency(950000, 72000000, 1) ==
+	       986000);
+}
+
+static void later_failed_probe_advances_full_tuner_span(void)
+{
+	assert(stv091x_blindscan_failed_frequency(986000, 72000000, 0) ==
+	       1058000);
 }
 
 static void lock_skips_half_occupied_bandwidth(void)
@@ -17,7 +24,8 @@ static void lock_skips_half_occupied_bandwidth(void)
 
 int main(void)
 {
-	empty_probe_advances_one_mhz();
+	first_failed_probe_advances_half_tuner_span();
+	later_failed_probe_advances_full_tuner_span();
 	lock_skips_half_occupied_bandwidth();
 	puts("stv091x direct blindscan policy tests passed");
 	return 0;

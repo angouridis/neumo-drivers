@@ -2684,7 +2684,7 @@ static int stv091x_build_blind_peaks(struct stv *state)
 #endif
 
 /*
-	init = 1: start a direct 1 MHz probe scan
+	init = 1: start a direct tuner-span probe scan
 	init = 0: continue after the previous lock
  */
 static int stv091x_sat_scan(struct neumo_dvb_frontend *fe, bool init,
@@ -2698,6 +2698,7 @@ static int stv091x_sat_scan(struct neumo_dvb_frontend *fe, bool init,
 	s32 probe_frequency;
 	u32 agc1;
 	u16 iq_power;
+	bool half_step = true;
 
 	if (init) {
 		stv091x_stop_task(fe);
@@ -2723,8 +2724,6 @@ static int stv091x_sat_scan(struct neumo_dvb_frontend *fe, bool init,
 		}
 
 		probe_frequency = state->scan_next_frequency;
-		state->scan_next_frequency =
-			stv091x_blindscan_next_frequency(probe_frequency, false, 0);
 		p->frequency = probe_frequency;
 
 		/*
@@ -2743,8 +2742,14 @@ static int stv091x_sat_scan(struct neumo_dvb_frontend *fe, bool init,
 			stv091x_iq_power(state);
 		write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x5c);
 		write_reg(state, RSTV0910_P2_AGC2O + state->regoff, 0x5b);
-		if (iq_power < STV091X_BLINDSCAN_IQ_THRESHOLD)
+		if (iq_power < STV091X_BLINDSCAN_IQ_THRESHOLD) {
+			state->scan_next_frequency =
+				stv091x_blindscan_failed_frequency(
+					probe_frequency, state->tuner_bw,
+					half_step);
+			half_step = false;
 			continue;
+		}
 
 		old_algo = p->algorithm;
 		p->algorithm = ALGORITHM_BLIND;
@@ -2766,6 +2771,11 @@ static int stv091x_sat_scan(struct neumo_dvb_frontend *fe, bool init,
 			mutex_unlock(&state->base->status_lock);
 			return 0;
 		}
+
+		state->scan_next_frequency =
+			stv091x_blindscan_failed_frequency(
+				probe_frequency, state->tuner_bw, half_step);
+		half_step = false;
 	}
 
 	dprintk("Signaling DONE (band exhausted)\n");
