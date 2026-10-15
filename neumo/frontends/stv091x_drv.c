@@ -2088,183 +2088,117 @@ typedef enum
 		*/
 	} stv091x_SIGNALTYPE_t;
 
-/* Lower than ST's 40: wide TPs on dual-tuner cards often produce smaller AGC2 ratios. */
-#define STV0910_BLIND_SEARCH_AGC2BANDWIDTH 20
+/* Power span in 0.001 dB units required to treat a hump as a real edge/peak. */
+#define STV0910_TUNER_EDGE_THRESH_MDB 3000
 
-//check if we are on a leading or falling edge of a potential signal
-//returns 0 if nothing found, 1 on rising edge and 2 on falling edge
+/*
+ * Edge/peak search by stepping the tuner and using the same narrow-band power
+ * path as spectrum_start. The classic ST CFRINIT/AGC2 integrator walk stays
+ * flat (min=max=128) on TBS6903 dual-tuner setups, so it never finds edges.
+ *
+ * Returns 0 if nothing found, 1 on a usable peak/rising edge, 2 on falling edge.
+ */
 static int stv091x_carrier_check(struct stv* state, s32 *FinalFreq, s32* frequency_jump)
 {
-	u32 minagc2level=0xffff,maxagc2level=0x0000,midagc2level,
-		agc2level,
-		agc2ratio;
-	s32	init_freq,freq_step;
-	u32	tmp1,tmp2,tmp3,tmp4;
-	u32 asperity=0;
-	u32 waitforfall=0;
-	u32 acculevel=0;
-	u32 div=2;
-	u32 agc2leveltab[20];
+	struct neumo_dvb_frontend *fe = &state->fe;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	s32 center = p->frequency; /* kHz */
+	s32 half_bw_khz = state->tuner_bw / 2000;
+	s32 step_khz = 2000;
+	s32 nbSteps;
+	s32 i;
+	s32 min_p = INT_MAX, max_p = INT_MIN;
+	s32 best_i = 0;
+	s32 prev = 0, prev2 = 0;
+	s32 asperity = 0;
+	s32 rise_i = -1, fall_i = -1;
+	u32 bandwidth_hz;
 
-	s32 i,j,k,l,nbSteps;
+	if (half_bw_khz < 2000)
+		half_bw_khz = 2000;
+	nbSteps = (2 * half_bw_khz) / step_khz;
+	if (nbSteps < 4)
+		nbSteps = 4;
+	if (nbSteps > 48) {
+		step_khz = (2 * half_bw_khz) / 48;
+		if (step_khz < 1000)
+			step_khz = 1000;
+		nbSteps = (2 * half_bw_khz) / step_khz;
+	}
+	bandwidth_hz = step_khz * 2000; /* Hz; match spectrum-style narrow probe */
 
-
-	write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff,0x1C);
-	tmp2= read_reg(state, RSTV0910_P2_CARCFG + state->regoff);
-	write_reg(state, RSTV0910_P2_CARCFG + state->regoff, 0x06);
-
-	tmp3= read_reg(state, RSTV0910_P2_BCLC + state->regoff);
-	write_reg(state, RSTV0910_P2_BCLC + state->regoff, 0x00);
-	tmp4= read_reg(state, RSTV0910_P2_CARFREQ + state->regoff);
-	write_reg(state, RSTV0910_P2_CARFREQ + state->regoff, 0x00); //stop coarse carrrier corr
-
-	/*
-	 * Stop() leaves AGC2O=0x5B ("blind optim" / stopped). Edge search needs AGC2
-	 * active or AGC2 integrator stays flat and every step reports "Rien dans la bande".
-	 */
 	write_reg(state, RSTV0910_P2_AGC2O + state->regoff, 0x03);
 	write_reg(state, RSTV0910_P2_AGC2REF + state->regoff, 0x38);
+	stv091x_set_symbol_rate(state, step_khz * 1000);
 
-	tmp1= read_reg(state, RSTV0910_P2_DMDCFGMD + state->regoff);
-	write_reg_fields(state, RSTV0910_P2_DMDCFGMD  + state->regoff,
-									 {FSTV0910_P2_DVBS1_ENABLE, 1},
-									 {FSTV0910_P2_DVBS2_ENABLE, 1},
-									 {FSTV0910_P2_SCAN_ENABLE, 0}, 		/*Enable the SR SCAN*/
-									 {FSTV0910_P2_CFR_AUTOSCAN, 0} /*activate the carrier frequency search loop*/
-									 );
-	stv091x_set_symbol_rate(state, 1000000/div); /*AGC2 bandwidth is 1/div MHz */
+	for (i = 0; i < nbSteps; i++) {
+		s32 freq = center - half_bw_khz + i * step_khz;
+		s32 power;
 
-	nbSteps=(state->tuner_bw/3000000)*div;
-	if(nbSteps<=0)
-		nbSteps=1;
-	/* Scan both sides of the tuner LO; positive-only misses many TPs. */
-	nbSteps *= 2;
+		if (kthread_should_stop() || neumo_dvb_frontend_task_should_stop(fe))
+			break;
 
-	freq_step=((1000000<<8)/(state->base->mclk>>8))/div; /* AGC2 step is 1/div MHz */
+		if (fe->ops.tuner_ops.set_frequency_and_bandwidth)
+			fe->ops.tuner_ops.set_frequency_and_bandwidth(fe, freq, bandwidth_hz);
 
-	init_freq = -((s32)(nbSteps / 2)) * (s32)freq_step;
-	j=0;	/* index after a rising edge is found */
+		write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x1C);
+		write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x18);
+		msleep(12);
 
-	for(i=0;i<nbSteps;i++)
-	{
-		/* Scan across the full tuner Bw (negative then positive offsets) */
-		//dprintk("freq=%d\n", init_freq);
-		write_reg(state, RSTV0910_P2_DMDISTATE  + state->regoff, 0x1C);
-		write_reg(state, RSTV0910_P2_CFRINIT1 + state->regoff, (init_freq >>8) & 0xff);
-		write_reg(state, RSTV0910_P2_CFRINIT0 + state->regoff, init_freq & 0xff);
-		write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x18); //zero offset start
-		msleep(10);
+		power = stv091x_narrow_band_signal_power_dbm(fe);
+		if (power < min_p)
+			min_p = power;
+		if (power > max_p) {
+			max_p = power;
+			best_i = i;
+		}
 
-		agc2level=0;
-		agc2level = (read_reg_field(state, FSTV0910_P2_AGC2_INTEGRATOR1  + state->regoff) <<8) |
-			read_reg_field(state, FSTV0910_P2_AGC2_INTEGRATOR0  + state->regoff);
-
-		if (i == 0) {
-			minagc2level= agc2level;
-			maxagc2level= agc2level;
-			midagc2level= agc2level;
-
-			for (k=0;k<5*div;k++) {
-				agc2leveltab[k]= agc2level;
-			}
-		} else {
-
-			k= i%(5*div);
-			agc2leveltab[k]= agc2level;
-
-			minagc2level=0xffff;
-			maxagc2level=0x0000;
-			acculevel=0;
-
-			for (l=0;l<5*div;l++) {
-				/* Min and max detection */
-
-				if( agc2leveltab[l]<minagc2level ) {
-					minagc2level=agc2leveltab[l];
-				} else if(agc2leveltab[l] >maxagc2level) {
-					maxagc2level=agc2leveltab[l];
-				}
-
-				acculevel=acculevel+agc2leveltab[l];
-			}
-
-			midagc2level= acculevel/(5*div);
-			if (midagc2level == 0)
-				midagc2level = 1;
-
-			if (waitforfall==0) {
-				agc2ratio = (maxagc2level - minagc2level)*128/midagc2level;
-			} else {
-				agc2ratio = (agc2level - minagc2level)*128/midagc2level;
-			}
-
-			if (agc2ratio > 0xffff)
-				agc2ratio = 0xffff;
-
-
-			if ((agc2ratio > STV0910_BLIND_SEARCH_AGC2BANDWIDTH) && (agc2level==minagc2level)) {	 /* rising edge */
-				asperity=1;		 /* The first edge is rising */
-				waitforfall=1;
-				for (l=0;l<5*div;l++) {
-					agc2leveltab[l]= agc2level;
-				}
-			} else if ((agc2ratio > STV0910_BLIND_SEARCH_AGC2BANDWIDTH)) {
-				/* Falling edge */
-				if (waitforfall==0) {
-					asperity=2; /* the first edge is falling */
-				} else {
-					asperity=1;
-				}
-
-				if (j==1) {
-					for (l=0;l<5*div;l++) {
-						agc2leveltab[l]= agc2level;
-					}
-
-					j=0;				 /* All reset */
-					waitforfall=0;
-					asperity=0;
-				} else {
-					break;
-				}
-			}
-
-			if ((waitforfall==1) && j==(5*div)) {
-				break;
-			}
-			if (waitforfall==1) {
-				j+=1;
-			}
-		} /* end of i!=0 */
-
-		init_freq = init_freq + freq_step;
-
-	} /* End of for (i=0;i<nbSteps) */
-
-	//restore registers
-	write_reg(state, RSTV0910_P2_DMDCFGMD + state->regoff, tmp1);
-	write_reg(state, RSTV0910_P2_CARCFG + state->regoff, tmp2);
-	write_reg(state, RSTV0910_P2_BCLC + state->regoff, tmp3);
-	write_reg(state, RSTV0910_P2_CARFREQ + state->regoff, tmp4);
-	write_reg(state, RSTV0910_P2_AGC2O + state->regoff, 0x5B);
-	write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x1C);
-	write_reg(state, RSTV0910_P2_CFRINIT1 + state->regoff, 0);
-	write_reg(state, RSTV0910_P2_CFRINIT0 + state->regoff, 0);
-
-	if (asperity ==1) { /* rising edge followed by a constant level or a falling edge */
-		/* i counted from negative LO offset; convert to kHz offset from tuner center */
-		*frequency_jump = (1000/div)*((i - (s32)(nbSteps / 2)) - (j+2)/2);
-	} else if (asperity == 2) {
-		*frequency_jump = (1000/div)*(i - (s32)(nbSteps / 2));
-	} else {
-		/* No edge: advance by about half the tuner BW for overlap */
-		*frequency_jump = state->tuner_bw / 2000;
-		if (*frequency_jump < 1000)
-			*frequency_jump = 1000;
-		dprintk("carrier_check: no edge min=%u max=%u mid=%u steps=%d\n",
-						minagc2level, maxagc2level, midagc2level, nbSteps);
+		if (i >= 2) {
+			s32 up = prev - prev2;
+			s32 down = prev - power;
+			if (rise_i < 0 && up > STV0910_TUNER_EDGE_THRESH_MDB / 2 &&
+					power > prev2 + STV0910_TUNER_EDGE_THRESH_MDB / 3)
+				rise_i = i - 1;
+			if (rise_i >= 0 && fall_i < 0 && down > STV0910_TUNER_EDGE_THRESH_MDB / 2)
+				fall_i = i - 1;
+		}
+		prev2 = prev;
+		prev = power;
 	}
 
+	/* Restore wide tuner BW at the original center before caller retunes. */
+	if (fe->ops.tuner_ops.set_frequency_and_bandwidth)
+		fe->ops.tuner_ops.set_frequency_and_bandwidth(fe, center, state->tuner_bw);
+	write_reg(state, RSTV0910_P2_AGC2O + state->regoff, 0x5B);
+	write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x1C);
+
+	if (max_p == INT_MIN || (max_p - min_p) < STV0910_TUNER_EDGE_THRESH_MDB) {
+		*frequency_jump = half_bw_khz;
+		dprintk("carrier_check: no edge min=%d max=%d span=%d steps=%d\n",
+						min_p, max_p, max_p - min_p, nbSteps);
+		return 0;
+	}
+
+	if (rise_i >= 0 && fall_i > rise_i) {
+		/* Peak between rising and falling edge */
+		i = (rise_i + fall_i) / 2;
+		asperity = 1;
+	} else if (rise_i >= 0) {
+		i = rise_i;
+		asperity = 1;
+	} else if (fall_i >= 0) {
+		i = fall_i;
+		asperity = 2;
+	} else {
+		/* Clear power hump but no sharp edge: use strongest bin */
+		i = best_i;
+		asperity = 1;
+	}
+
+	*frequency_jump = (center - half_bw_khz + i * step_khz) - center;
+	*FinalFreq = center + *frequency_jump;
+	dprintk("carrier_check: edge asperity=%d jump=%d min=%d max=%d best=%d\n",
+					asperity, *frequency_jump, min_p, max_p, best_i);
 	return asperity;
 }
 
