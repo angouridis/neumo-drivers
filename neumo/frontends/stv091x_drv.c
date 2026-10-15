@@ -364,19 +364,26 @@ static int stv091x_symbol_rate(struct stv *state, u32 *p_symbol_rate, bool coars
 	if (!state->Started)
 		return status;
 	read_regs(state, RSTV0910_P2_SFR3 + state->regoff, &regvals[0], 4);
-	symbol_rate = ((u32) regvals[0] << 24) | ((u32) regvals[1] << 16) |
-		((u32) regvals[1] << 8) | (u32) regvals[0];
+	/*
+	 * SFR3..SFR0. The previous assembly reused bytes 0/1 for the low
+	 * half (ABBA), so recovered SR was garbage and often looked like
+	 * the 1Msps blind seed in userspace.
+	 */
+	symbol_rate = ((u32)regvals[0] << 24) | ((u32)regvals[1] << 16) |
+		((u32)regvals[2] << 8) | (u32)regvals[3];
 
-	symbol_rate = (u32) (((u64) symbol_rate * state->base->mclk) >> 32);
-	if(!coarse) {
-	read_regs(state, RSTV0910_P2_TMGREG2 + state->regoff, &regvals[0], 3);
-	timing_offset = ((u32) regvals[0] << 16) | ((u32) regvals[1] << 8) |
-			(u32) regvals[2];
-	if ((timing_offset & (1<<23)) != 0)
-		timing_offset |= 0xFF000000; /* Sign extend */
-	timing_offset = (s32) (((s64) symbol_rate * (s64) timing_offset) >> 29);
-
-	*p_symbol_rate = symbol_rate + timing_offset;
+	symbol_rate = (u32)(((u64)symbol_rate * state->base->mclk) >> 32);
+	*p_symbol_rate = symbol_rate;
+	if (!coarse) {
+		read_regs(state, RSTV0910_P2_TMGREG2 + state->regoff,
+			  &regvals[0], 3);
+		timing_offset = ((u32)regvals[0] << 16) |
+			((u32)regvals[1] << 8) | (u32)regvals[2];
+		if ((timing_offset & (1 << 23)) != 0)
+			timing_offset |= 0xFF000000; /* Sign extend */
+		timing_offset = (s32)(((s64)symbol_rate *
+				       (s64)timing_offset) >> 29);
+		*p_symbol_rate = symbol_rate + timing_offset;
 	}
 	return 0;
 }
