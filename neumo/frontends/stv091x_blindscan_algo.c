@@ -1,6 +1,21 @@
 // SPDX-License-Identifier: GPL-2.0
 #include "stv091x_blindscan_algo.h"
 
+enum stv091x_blindscan_modulation
+stv091x_blindscan_modulation_from_modcod(u32 modcod)
+{
+	if (modcod >= 1 && modcod <= 11)
+		return STV091X_BLINDSCAN_MOD_QPSK;
+	if (modcod >= 12 && modcod <= 17)
+		return STV091X_BLINDSCAN_MOD_8PSK;
+	if (modcod >= 18 && modcod <= 23)
+		return STV091X_BLINDSCAN_MOD_16APSK;
+	if (modcod >= 24 && modcod <= 28)
+		return STV091X_BLINDSCAN_MOD_32APSK;
+
+	return STV091X_BLINDSCAN_MOD_UNKNOWN;
+}
+
 static s32 stv091x_blindscan_grid_align_at_or_after(s32 frequency_khz,
 						     s32 grid_start_khz)
 {

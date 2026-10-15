@@ -32,11 +32,36 @@ static void after_lock_skips_carrier_and_aligns_to_grid(void)
 		       STV091X_BLINDSCAN_SEARCH_RANGE_HZ) == 11260000);
 }
 
+static void modcod_classifies_dvb_s2_modulation_family(void)
+{
+	assert(stv091x_blindscan_modulation_from_modcod(1) ==
+	       STV091X_BLINDSCAN_MOD_QPSK);
+	assert(stv091x_blindscan_modulation_from_modcod(11) ==
+	       STV091X_BLINDSCAN_MOD_QPSK);
+	assert(stv091x_blindscan_modulation_from_modcod(12) ==
+	       STV091X_BLINDSCAN_MOD_8PSK);
+	assert(stv091x_blindscan_modulation_from_modcod(17) ==
+	       STV091X_BLINDSCAN_MOD_8PSK);
+	assert(stv091x_blindscan_modulation_from_modcod(18) ==
+	       STV091X_BLINDSCAN_MOD_16APSK);
+	assert(stv091x_blindscan_modulation_from_modcod(23) ==
+	       STV091X_BLINDSCAN_MOD_16APSK);
+	assert(stv091x_blindscan_modulation_from_modcod(24) ==
+	       STV091X_BLINDSCAN_MOD_32APSK);
+	assert(stv091x_blindscan_modulation_from_modcod(28) ==
+	       STV091X_BLINDSCAN_MOD_32APSK);
+	assert(stv091x_blindscan_modulation_from_modcod(0) ==
+	       STV091X_BLINDSCAN_MOD_UNKNOWN);
+	assert(stv091x_blindscan_modulation_from_modcod(29) ==
+	       STV091X_BLINDSCAN_MOD_UNKNOWN);
+}
+
 int main(void)
 {
 	grid_constants_match_blscan2_policy();
 	next_grid_frequency_advances_on_band_anchor();
 	after_lock_skips_carrier_and_aligns_to_grid();
+	modcod_classifies_dvb_s2_modulation_family();
 	puts("stv091x BLScan2 grid policy tests passed");
 	return 0;
 }

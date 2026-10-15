@@ -16,6 +16,17 @@ typedef uint32_t u32;
 #define STV091X_BLINDSCAN_LOCK_TIMEOUT_MS	500
 #define STV091X_BLINDSCAN_IQ_THRESHOLD		30
 
+enum stv091x_blindscan_modulation {
+	STV091X_BLINDSCAN_MOD_UNKNOWN,
+	STV091X_BLINDSCAN_MOD_QPSK,
+	STV091X_BLINDSCAN_MOD_8PSK,
+	STV091X_BLINDSCAN_MOD_16APSK,
+	STV091X_BLINDSCAN_MOD_32APSK,
+};
+
+enum stv091x_blindscan_modulation
+stv091x_blindscan_modulation_from_modcod(u32 modcod);
+
 s32 stv091x_blindscan_next_grid_frequency(s32 frequency_khz,
 					   s32 grid_start_khz);
 s32 stv091x_blindscan_after_lock_frequency(s32 frequency_khz,
