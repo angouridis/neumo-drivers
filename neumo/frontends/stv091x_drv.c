@@ -2476,7 +2476,6 @@ static int stv091x_vendor_probe(struct neumo_dvb_frontend *fe,
 	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	s32 center = state->blindscan_traversal.vendor_frequency_khz;
 	s32 frequency_jump = 0;
-	s32 candidate_frequency;
 	s32 next;
 	bool need_retune = false;
 	int old_algo;
@@ -2516,18 +2515,13 @@ static int stv091x_vendor_probe(struct neumo_dvb_frontend *fe,
 		return 0;
 	}
 
-	candidate_frequency = center + frequency_jump;
-	if (candidate_frequency < (s32)p->scan_start_frequency ||
-	    candidate_frequency >= (s32)p->scan_end_frequency) {
-		next = stv091x_blindscan_vendor_next_frequency(
-			center, edge, frequency_jump, state->tuner_bw,
-			0, center, 0);
-		state->blindscan_traversal.vendor_frequency_khz = next;
-		return 0;
-	}
-	p->frequency = candidate_frequency;
+	/*
+	 * tbs6903.sys: asperity-2 acquires at the tuner center, not
+	 * center+jump. Search span is min((jump+24000)*1kHz, 40MHz).
+	 */
+	p->frequency = center;
 	state->search_range_hz =
-		STV091X_BLINDSCAN_VENDOR_ACQUISITION_RANGE_HZ;
+		stv091x_blindscan_vendor_acquisition_range_hz(frequency_jump);
 	state->symbol_rate = STV091X_BLINDSCAN_INIT_SR;
 	if (kthread_should_stop() ||
 	    neumo_dvb_frontend_task_should_stop(fe)) {

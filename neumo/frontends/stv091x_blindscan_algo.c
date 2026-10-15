@@ -119,6 +119,23 @@ s32 stv091x_blindscan_vendor_next_frequency(s32 center_khz, int asperity,
 	return next;
 }
 
+u32 stv091x_blindscan_vendor_acquisition_range_hz(s32 frequency_jump_khz)
+{
+	s32 jump_khz = frequency_jump_khz;
+	u32 range_hz;
+
+	if (jump_khz < 0)
+		jump_khz = 0;
+	/* tbs6903.sys 0x1F194: min((jump_kHz + 24000) * 1000, 40e6) */
+	range_hz = (u32)(jump_khz + STV091X_BLINDSCAN_VENDOR_ACQ_RANGE_PAD_KHZ) *
+		1000;
+	if (range_hz > STV091X_BLINDSCAN_VENDOR_ACQ_RANGE_MAX_HZ)
+		range_hz = STV091X_BLINDSCAN_VENDOR_ACQ_RANGE_MAX_HZ;
+	if (range_hz < STV091X_BLINDSCAN_VENDOR_ACQUISITION_RANGE_HZ)
+		range_hz = STV091X_BLINDSCAN_VENDOR_ACQUISITION_RANGE_HZ;
+	return range_hz;
+}
+
 void stv091x_blindscan_traversal_init(
 	struct stv091x_blindscan_traversal *traversal,
 	s32 start_frequency_khz)

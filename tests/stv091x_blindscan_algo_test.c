@@ -105,6 +105,15 @@ static void vendor_next_frequency_matches_windows_status_codes(void)
 		       1000833) == 1296909);
 }
 
+static void vendor_acquisition_range_matches_windows_pad(void)
+{
+	assert(stv091x_blindscan_vendor_acquisition_range_hz(0) == 24000000);
+	assert(stv091x_blindscan_vendor_acquisition_range_hz(2000) ==
+	       26000000);
+	assert(stv091x_blindscan_vendor_acquisition_range_hz(21500) ==
+	       40000000);
+}
+
 static void vendor_lock_advances_by_half_occupied_bandwidth(void)
 {
 	assert(stv091x_blindscan_vendor_after_lock_frequency(
@@ -168,6 +177,7 @@ int main(void)
 	vendor_miss_advances_by_acquisition_span();
 	vendor_edge_steps_match_windows_half_span();
 	vendor_next_frequency_matches_windows_status_codes();
+	vendor_acquisition_range_matches_windows_pad();
 	vendor_lock_advances_by_half_occupied_bandwidth();
 	duplicate_suppression_preserves_nearby_one_msps_carriers();
 	duplicate_suppression_checks_all_candidate_locks();
