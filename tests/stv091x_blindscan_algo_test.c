@@ -7,6 +7,10 @@ static void scan_constants_restore_wide_search_policy(void)
 {
 	assert(STV091X_BLINDSCAN_STEP_KHZ == 1000);
 	assert(STV091X_BLINDSCAN_SEARCH_RANGE_HZ == 60000000);
+	assert(STV091X_BLINDSCAN_VENDOR_CFR_STEP_HZ == 500000);
+	assert(STV091X_BLINDSCAN_VENDOR_EDGE_SEARCH_RANGE_HZ == 500000);
+	assert(STV091X_BLINDSCAN_VENDOR_SETTLE_MS == 10);
+	assert(STV091X_BLINDSCAN_VENDOR_ACQUISITION_RANGE_HZ == 16000000);
 }
 
 static void first_failed_probe_advances_half_scan_span(void)
@@ -55,6 +59,71 @@ static void modcod_classifies_dvb_s2_modulation_family(void)
 	       STV091X_BLINDSCAN_MOD_UNKNOWN);
 }
 
+static void vendor_phase_transitions_to_fallback_at_range_start(void)
+{
+	struct stv091x_blindscan_traversal traversal;
+
+	stv091x_blindscan_traversal_init(&traversal, 950000);
+	assert(traversal.phase == STV091X_BLINDSCAN_VENDOR);
+	assert(traversal.vendor_frequency_khz == 950000);
+	assert(stv091x_blindscan_transition_to_fallback(&traversal) ==
+	       950000);
+	assert(traversal.phase == STV091X_BLINDSCAN_FALLBACK);
+	assert(traversal.fallback_frequency_khz == 950000);
+}
+
+static void vendor_lock_advances_by_half_occupied_bandwidth(void)
+{
+	assert(stv091x_blindscan_vendor_after_lock_frequency(
+		       1220376, 4798000) == 1223614);
+	assert(stv091x_blindscan_vendor_after_lock_frequency(
+		       1100000, 1000000) == 1100675);
+}
+
+static void duplicate_suppression_preserves_nearby_one_msps_carriers(void)
+{
+	struct stv091x_blindscan_lock candidate_lock = {
+		.frequency_khz = 1100000,
+		.symbol_rate = 1000000,
+	};
+
+	assert(stv091x_blindscan_lock_is_duplicate(&candidate_lock, 1,
+						  1100499, 1000000));
+	assert(stv091x_blindscan_lock_is_duplicate(&candidate_lock, 1,
+						  1100500, 1000000));
+	assert(!stv091x_blindscan_lock_is_duplicate(&candidate_lock, 1,
+						   1100501, 1000000));
+}
+
+static void duplicate_suppression_checks_all_candidate_locks(void)
+{
+	struct stv091x_blindscan_lock candidate_locks[] = {
+		{ .frequency_khz = 1000000, .symbol_rate = 1000000 },
+		{ .frequency_khz = 1200000, .symbol_rate = 4000000 },
+	};
+
+	assert(stv091x_blindscan_lock_is_duplicate(candidate_locks, 2,
+						  1201500, 3000000));
+	assert(!stv091x_blindscan_lock_is_duplicate(candidate_locks, 2,
+						   1202001, 5000000));
+}
+
+static void duplicate_vendor_results_are_recorded_only_once(void)
+{
+	struct stv091x_blindscan_lock locks[3];
+	u32 num_locks = 0;
+
+	assert(stv091x_blindscan_add_unique_lock(
+		       locks, &num_locks, 3, 1100000, 2000000) == 1);
+	assert(num_locks == 1);
+	assert(stv091x_blindscan_add_unique_lock(
+		       locks, &num_locks, 3, 1100100, 2000000) == 0);
+	assert(num_locks == 1);
+	assert(stv091x_blindscan_add_unique_lock(
+		       locks, &num_locks, 3, 1100601, 1000000) == 1);
+	assert(num_locks == 2);
+}
+
 int main(void)
 {
 	scan_constants_restore_wide_search_policy();
@@ -62,6 +131,11 @@ int main(void)
 	later_failed_probe_advances_full_scan_span();
 	lock_moves_next_window_past_carrier();
 	modcod_classifies_dvb_s2_modulation_family();
-	puts("stv091x restored blindscan policy tests passed");
+	vendor_phase_transitions_to_fallback_at_range_start();
+	vendor_lock_advances_by_half_occupied_bandwidth();
+	duplicate_suppression_preserves_nearby_one_msps_carriers();
+	duplicate_suppression_checks_all_candidate_locks();
+	duplicate_vendor_results_are_recorded_only_once();
+	puts("stv091x vendor blindscan policy tests passed");
 	return 0;
 }

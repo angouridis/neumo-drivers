@@ -41,3 +41,68 @@ s32 stv091x_blindscan_failed_frequency(s32 frequency_khz, u32 scan_span_hz,
 
 	return frequency_khz + step_khz;
 }
+
+s32 stv091x_blindscan_vendor_after_lock_frequency(s32 frequency_khz,
+						   u32 symbol_rate)
+{
+	return frequency_khz + (s32)(((u64)symbol_rate * 675) / 1000000);
+}
+
+void stv091x_blindscan_traversal_init(
+	struct stv091x_blindscan_traversal *traversal,
+	s32 start_frequency_khz)
+{
+	traversal->phase = STV091X_BLINDSCAN_VENDOR;
+	traversal->vendor_frequency_khz = start_frequency_khz;
+	traversal->fallback_frequency_khz = start_frequency_khz;
+}
+
+s32 stv091x_blindscan_transition_to_fallback(
+	struct stv091x_blindscan_traversal *traversal)
+{
+	traversal->phase = STV091X_BLINDSCAN_FALLBACK;
+	return traversal->fallback_frequency_khz;
+}
+
+int stv091x_blindscan_lock_is_duplicate(
+	const struct stv091x_blindscan_lock *candidate_locks,
+	u32 num_candidate_locks, s32 frequency_khz, u32 symbol_rate)
+{
+	u32 i;
+
+	for (i = 0; i < num_candidate_locks; i++) {
+		u32 smaller_symbol_rate = symbol_rate;
+		u32 distance_khz;
+
+		if (candidate_locks[i].symbol_rate < smaller_symbol_rate)
+			smaller_symbol_rate = candidate_locks[i].symbol_rate;
+		distance_khz = candidate_locks[i].frequency_khz > frequency_khz ?
+			candidate_locks[i].frequency_khz - frequency_khz :
+			frequency_khz - candidate_locks[i].frequency_khz;
+
+		if ((u64)distance_khz * 2000 <= smaller_symbol_rate)
+			return 1;
+	}
+
+	return 0;
+}
+
+int stv091x_blindscan_add_unique_lock(
+	struct stv091x_blindscan_lock *candidate_locks,
+	u32 *num_candidate_locks, u32 capacity,
+	s32 frequency_khz, u32 symbol_rate)
+{
+	struct stv091x_blindscan_lock *lock;
+
+	if (stv091x_blindscan_lock_is_duplicate(
+		    candidate_locks, *num_candidate_locks,
+		    frequency_khz, symbol_rate))
+		return 0;
+	if (*num_candidate_locks >= capacity)
+		return -1;
+
+	lock = &candidate_locks[(*num_candidate_locks)++];
+	lock->frequency_khz = frequency_khz;
+	lock->symbol_rate = symbol_rate;
+	return 1;
+}

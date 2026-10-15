@@ -29,6 +29,7 @@
 #include <linux/types.h>
 #include <linux/i2c.h>
 #include <media/neumo-dvb-frontend.h>
+#include "stv091x_blindscan_algo.h"
 
 struct stv091x_cfg {
 	u32 clk;
@@ -198,6 +199,11 @@ struct stv {
 	bool satellite_scan;
 	s32 scan_next_frequency;
 	s32 scan_end_frequency;
+	struct stv091x_blindscan_traversal blindscan_traversal;
+	struct stv091x_blindscan_lock *blindscan_locks;
+	u32 blindscan_num_locks;
+	u32 blindscan_lock_capacity;
+	u32 blindscan_fallback_symbol_rate;
 	int mis_mode;
 	struct stv_spectrum_scan_state scan_state;
 	struct stv_constellation_scan_state constellation_scan_state;
