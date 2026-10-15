@@ -265,8 +265,8 @@ static int wait_for_call_done(struct stv *state, u8 mask)
 
 		if ((Status & mask) == 0)
 			break;
-		/* tbs6903.sys polls CAL up to 10 times with ~1 ms waits */
-		usleep_range(1000, 2000);
+		/* tbs6903.sys 0x224B4: ~2 ms relative delay per CAL poll */
+		usleep_range(2000, 2500);
 		LockRetryCount -= 1;
 
 		status = -1;
@@ -386,8 +386,8 @@ static int set_lof(struct stv *state, u32 LocalFrequency, u32 CutOffFrequency)
 	dprintk("F = %u, CutOff = %u => %uMhz cf_index=%d\n", Frequency, CutOffFrequency,
 					cutoff_from_index(cf_index),  cf_index);
 #endif
-	/* tbs6903.sys 0x229D8: <=325→÷16, <=650→÷8, <1150→÷4, else ÷2 */
-	if (Frequency >= 1150000) {
+	/* tbs6903.sys 0x229D8: <=325→÷16, <=650→÷8, <1151→÷4, else ÷2 */
+	if (Frequency >= 1151000) {
 		PDIV = 0;
 		P    = 2;
 	} else if (Frequency > 650000) {
@@ -443,18 +443,25 @@ static int set_lof(struct stv *state, u32 LocalFrequency, u32 CutOffFrequency)
 	//addr 0x2+4 = CTRL7
 
 	{
-		u8 newval = state->reg[REG_CF_PDIV];
-		newval &= 0x9f;
-		newval |= ((PDIV << 5) | cf_index);
-		if(newval != 	state->reg[REG_CF_PDIV]) {
-			state->reg[REG_CF_PDIV] = newval;
-			/* Start cal vco,CF */
-			//addr 0x2+6 =  STAT1
-			state->reg[REG_CAL] &= 0xf8;
-			state->reg[REG_CAL] |= 0x06;//bit[1] starts calibration
+		u8 old = state->reg[REG_CF_PDIV];
+		u8 newval = (old & 0x9f) | ((PDIV << 5) | cf_index);
+		u8 cal_mask = 0;
 
+		/*
+		 * tbs6903.sys: freq/PDIV cal uses bit2 (0x04); BW/CF-only
+		 * path at 0x22EC0 uses bit1 (0x02).
+		 */
+		if ((newval & 0x60) != (old & 0x60))
+			cal_mask |= 0x04;
+		if ((newval & 0x1f) != (old & 0x1f))
+			cal_mask |= 0x02;
+
+		state->reg[REG_CF_PDIV] = newval;
+		if (cal_mask) {
+			state->reg[REG_CAL] &= 0xf8;
+			state->reg[REG_CAL] |= cal_mask;
 			write_tuner_regs(state);
-			wait_for_call_done(state, 0x06);
+			wait_for_call_done(state, cal_mask);
 		} else {
 			write_tuner_regs(state);
 			wait_for_call_done(state, 0x06);

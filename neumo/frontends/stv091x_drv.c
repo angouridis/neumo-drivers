@@ -2496,6 +2496,8 @@ static int stv091x_vendor_probe(struct neumo_dvb_frontend *fe,
 	ret = stv091x_set_frequency_symbol_rate_bandwidth(state);
 	if (ret)
 		return ret;
+	/* tbs6903.sys 0x1F445: 10 ms settle after tuner BW before edge walk */
+	msleep(STV091X_BLINDSCAN_VENDOR_SETTLE_MS);
 
 	edge = stv091x_carrier_search(state, &frequency_jump);
 	if (edge < 0)
