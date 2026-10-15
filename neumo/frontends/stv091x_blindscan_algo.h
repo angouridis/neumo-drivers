@@ -16,10 +16,14 @@ typedef uint64_t u64;
 #define STV091X_BLINDSCAN_INIT_SR		1000000
 #define STV091X_BLINDSCAN_SEARCH_RANGE_HZ	60000000
 /*
- * Fallback when DemodTimeout/FecTimeout were not computed. Windows blind
- * @1Msps seed uses 2000+500; keep the sum as the satellite-scan floor.
+ * tbs6903.sys 0x2F341 blind step hardcodes DemodTimeout=500, FecTimeout=50
+ * (not the STAPI 2000+500 table). False mode2 acquires must die in ~500 ms.
  */
-#define STV091X_BLINDSCAN_LOCK_TIMEOUT_MS	2500
+#define STV091X_BLINDSCAN_VENDOR_DEMOD_TIMEOUT_MS	500
+#define STV091X_BLINDSCAN_VENDOR_FEC_TIMEOUT_MS		50
+#define STV091X_BLINDSCAN_LOCK_TIMEOUT_MS		\
+	(STV091X_BLINDSCAN_VENDOR_DEMOD_TIMEOUT_MS + \
+	 STV091X_BLINDSCAN_VENDOR_FEC_TIMEOUT_MS)
 #define STV091X_BLINDSCAN_IQ_THRESHOLD		30
 #define STV091X_BLINDSCAN_VENDOR_CFR_STEP_HZ	500000
 #define STV091X_BLINDSCAN_VENDOR_EDGE_SEARCH_RANGE_HZ	500000
@@ -28,8 +32,12 @@ typedef uint64_t u64;
 /* tbs6903.sys edge walk: ratio > 0x28, steps = 2*(tuner_bw/3e6), CFR from 0 up */
 #define STV091X_BLINDSCAN_VENDOR_AGC2_RATIO	40
 #define STV091X_BLINDSCAN_VENDOR_TUNER_BW_HZ	72000000
+/* tbs6903.sys 0x2714C: post-lock retune uses (tuner_bw * 10) / 15 → 48 MHz */
+#define STV091X_BLINDSCAN_VENDOR_POST_LOCK_TUNER_BW_HZ	48000000
 #define STV091X_BLINDSCAN_VENDOR_ACQ_RANGE_PAD_KHZ	24000
 #define STV091X_BLINDSCAN_VENDOR_ACQ_RANGE_MAX_HZ	40000000
+/* tbs6903.sys 0x1C03D: advance = 135 * floor(SR_Hz / 200000) kHz */
+#define STV091X_BLINDSCAN_VENDOR_AFTER_LOCK_SR_QUANT_HZ	200000
 /* tbs6903.sys 0x1BEF4: sticky jump after asperity-1 */
 #define STV091X_BLINDSCAN_VENDOR_STICKY_JUMP_KHZ	16000
 /*

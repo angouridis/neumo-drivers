@@ -798,11 +798,10 @@ static int wait_for_dmdlock(struct neumo_dvb_frontend *fe, bool require_data)
 		timeout = 200;
 #else
 	/*
-	 * tbs6903.sys 0x2507C / StreamReader blind @ <=1.5Msps seed:
-	 * DemodTimeout=2000, FecTimeout=500. Keep the full budget when
-	 * demod locks, but stop at DemodTimeout if LOCK_DEFINITIF never
-	 * appears — otherwise every false edge burns Demod+Fec (~2.5s)
-	 * and asperity-1 storms look "stuck".
+	 * tbs6903.sys 0x2F341 / 0x2D4C8: vendor blind waits DemodTimeout
+	 * (500 ms) and only spends FecTimeout after LOCK_DEFINITIF.
+	 * Abort at DemodTimeout when demod never locks so asperity-1
+	 * mode2 fails stay ~0.5s instead of multi-second burns.
 	 */
 	if (state->satellite_scan) {
 		timeout = state->DemodTimeout + state->FecTimeout;
@@ -889,7 +888,11 @@ static int wait_for_dmdlock(struct neumo_dvb_frontend *fe, bool require_data)
 		default:
 			break;
 		}
-		if(lock && require_data) {
+		/*
+		 * tbs6903.sys blind lock accepts FEC without TSFIFO_LINEOK.
+		 * Requiring TS drops real locks during vendor scan.
+		 */
+		if (lock && require_data && !state->satellite_scan) {
 			tsstatus = read_reg(state, RSTV0910_P2_TSSTATUS + state->regoff);
 			lock= ((tsstatus&0x80) /*TSFIFO_LINEOK*/!=0);
 			//dprintk("tsstatus=%d\n", tsstatus);
@@ -1277,10 +1280,19 @@ static int stv091x_set_search_standard(struct stv *state, struct neumo_dtv_front
 	u8 regDMDCFGMD;
 
 
-	if(p->algorithm == ALGORITHM_WARM)
-		state->DEMOD |= 0x80; //manual mode for rolloff
-	else
-		state->DEMOD &= ~0x80; //automatic mode for rolloff
+	if (p->algorithm == ALGORITHM_BLIND ||
+	    p->algorithm == ALGORITHM_BLIND_BEST_GUESS ||
+	    state->satellite_scan) {
+		/*
+		 * tbs6903.sys 0x26FCE: clear DEMOD[5:4], write 0x01;
+		 * CARFREQ=0x79 with CARHDR=0x1C.
+		 */
+		state->DEMOD = 0x01;
+	} else if (p->algorithm == ALGORITHM_WARM) {
+		state->DEMOD |= 0x80; /* manual mode for rolloff */
+	} else {
+		state->DEMOD &= ~0x80; /* automatic mode for rolloff */
+	}
 	write_reg(state, RSTV0910_P2_DEMOD + state->regoff, state->DEMOD);
 
 	regDMDCFGMD = read_reg(state, RSTV0910_P2_DMDCFGMD + state->regoff);
@@ -1301,6 +1313,10 @@ static int stv091x_set_search_standard(struct stv *state, struct neumo_dtv_front
 	write_reg(state, RSTV0910_P2_BCLC2S2Q + state->regoff, 0x84);
 	write_reg(state, RSTV0910_P2_BCLC2S28 + state->regoff, 0x84);
 	write_reg(state, RSTV0910_P2_CARHDR + state->regoff, 0x1C);
+	if (p->algorithm == ALGORITHM_BLIND ||
+	    p->algorithm == ALGORITHM_BLIND_BEST_GUESS ||
+	    state->satellite_scan)
+		write_reg(state, RSTV0910_P2_CARFREQ + state->regoff, 0x79);
 	//	write_reg(state, RSTV0910_P2_CARCFG + state->regoff, 0x46);
 
 	/* Reset demod */
@@ -2542,6 +2558,22 @@ static int stv091x_vendor_blind_acquire(struct neumo_dvb_frontend *fe,
 		Stop(state);
 		return ret;
 	}
+	/*
+	 * tbs6903.sys 0x2714C: after lock, retune STV6120 to 2/3 of the
+	 * blind BW (72→48 MHz) before reading signal parameters.
+	 */
+	if (!state->signal_info.has_timedout &&
+	    state->fe.ops.tuner_ops.set_frequency_and_bandwidth) {
+		state->tuner_bw =
+			STV091X_BLINDSCAN_VENDOR_POST_LOCK_TUNER_BW_HZ;
+		ret = state->fe.ops.tuner_ops.set_frequency_and_bandwidth(
+			&state->fe, state->tuner_frequency,
+			state->tuner_bw / 1000);
+		if (ret) {
+			Stop(state);
+			return ret;
+		}
+	}
 	if (kthread_should_stop() ||
 	    neumo_dvb_frontend_task_should_stop(fe)) {
 		Stop(state);
@@ -2673,6 +2705,13 @@ static int stv091x_tune_once(struct neumo_dvb_frontend *fe, bool* need_retune)
 	Stop(state);
 
 	stv091x_compute_timeouts(&state->DemodTimeout, &state->FecTimeout, state->symbol_rate, p->algorithm);
+	if (state->satellite_scan) {
+		/* tbs6903.sys 0x2F341: hardcoded 500/50 for BLScan2 step */
+		state->DemodTimeout =
+			STV091X_BLINDSCAN_VENDOR_DEMOD_TIMEOUT_MS;
+		state->FecTimeout =
+			STV091X_BLINDSCAN_VENDOR_FEC_TIMEOUT_MS;
+	}
 
 	dprintk("now symbol_rate=%d\n", state->symbol_rate);
 	ret = stv091x_set_frequency_symbol_rate_bandwidth(state);
@@ -2708,9 +2747,10 @@ static int stv091x_tune_once(struct neumo_dvb_frontend *fe, bool* need_retune)
 	locked = wait_for_dmdlock(fe, 1 /*require_data*/);
 
 	dprintk("lock=%d timedout=%d\n", locked, state->signal_info.has_timedout);
-	if (!locked && p->algorithm != ALGORITHM_WARM &&
-	    p->algorithm != ALGORITHM_COLD &&
-	    (!state->satellite_scan || state->signal_info.demod_locked)) {
+	/* tbs6903.sys vendor blind path does not run PLS search. */
+	if (!locked && !state->satellite_scan &&
+	    p->algorithm != ALGORITHM_WARM &&
+	    p->algorithm != ALGORITHM_COLD) {
 		locked = pls_search_list(fe);
 		if (!locked)
 			locked = pls_search_range(fe);

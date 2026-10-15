@@ -45,8 +45,9 @@ s32 stv091x_blindscan_failed_frequency(s32 frequency_khz, u32 scan_span_hz,
 s32 stv091x_blindscan_vendor_after_lock_frequency(s32 frequency_khz,
 						   u32 symbol_rate)
 {
-	/* tbs6903.sys 0x1C03D: freq += (SR_Hz/1000) * 135 / 200 */
-	return frequency_khz + (s32)(((u64)symbol_rate * 675) / 1000000);
+	/* tbs6903.sys 0x1C03D: freq += 135 * floor(SR_Hz / 200000) */
+	return frequency_khz + (s32)(135 *
+		(symbol_rate / STV091X_BLINDSCAN_VENDOR_AFTER_LOCK_SR_QUANT_HZ));
 }
 
 s32 stv091x_blindscan_vendor_duplicate_frequency(s32 frequency_khz,

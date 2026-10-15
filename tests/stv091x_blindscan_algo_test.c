@@ -7,7 +7,9 @@ static void scan_constants_restore_wide_search_policy(void)
 {
 	assert(STV091X_BLINDSCAN_STEP_KHZ == 1000);
 	assert(STV091X_BLINDSCAN_SEARCH_RANGE_HZ == 60000000);
-	assert(STV091X_BLINDSCAN_LOCK_TIMEOUT_MS == 2500);
+	assert(STV091X_BLINDSCAN_VENDOR_DEMOD_TIMEOUT_MS == 500);
+	assert(STV091X_BLINDSCAN_VENDOR_FEC_TIMEOUT_MS == 50);
+	assert(STV091X_BLINDSCAN_LOCK_TIMEOUT_MS == 550);
 	assert(STV091X_BLINDSCAN_VENDOR_CFR_STEP_HZ == 500000);
 	assert(STV091X_BLINDSCAN_VENDOR_EDGE_SEARCH_RANGE_HZ == 500000);
 	assert(STV091X_BLINDSCAN_VENDOR_SETTLE_MS == 10);
@@ -87,6 +89,8 @@ static void vendor_edge_steps_match_windows_half_span(void)
 	assert(stv091x_blindscan_vendor_edge_jump_khz(20, 1, 4) == 8500);
 	assert(STV091X_BLINDSCAN_VENDOR_AGC2_RATIO == 40);
 	assert(STV091X_BLINDSCAN_VENDOR_TUNER_BW_HZ == 72000000);
+	assert(STV091X_BLINDSCAN_VENDOR_POST_LOCK_TUNER_BW_HZ == 48000000);
+	assert(STV091X_BLINDSCAN_VENDOR_AFTER_LOCK_SR_QUANT_HZ == 200000);
 }
 
 static void vendor_next_frequency_matches_windows_status_codes(void)
@@ -216,10 +220,14 @@ static void vendor_acquisition_range_matches_windows_pad(void)
 
 static void vendor_lock_advances_by_half_occupied_bandwidth(void)
 {
+	/* 135 * floor(4798000/200000) = 135*23 = 3105 */
 	assert(stv091x_blindscan_vendor_after_lock_frequency(
-		       1220376, 4798000) == 1223614);
+		       1220376, 4798000) == 1223481);
 	assert(stv091x_blindscan_vendor_after_lock_frequency(
 		       1100000, 1000000) == 1100675);
+	/* 27.5 Msps: 135 * floor(27500000/200000) = 135*137 */
+	assert(stv091x_blindscan_vendor_after_lock_frequency(
+		       1100000, 27500000) == 1100000 + 135 * 137);
 	/* Near-prior duplicate path: += SR_kHz (floored at 1000) */
 	assert(stv091x_blindscan_vendor_duplicate_frequency(
 		       1100000, 1000000) == 1101000);

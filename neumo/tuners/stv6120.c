@@ -445,27 +445,22 @@ static int set_lof(struct stv *state, u32 LocalFrequency, u32 CutOffFrequency)
 	{
 		u8 old = state->reg[REG_CF_PDIV];
 		u8 newval = (old & 0x9f) | ((PDIV << 5) | cf_index);
-		u8 cal_mask = 0;
+		u8 cal_mask;
 
 		/*
-		 * tbs6903.sys: freq/PDIV cal uses bit2 (0x04); BW/CF-only
-		 * path at 0x22EC0 uses bit1 (0x02).
+		 * tbs6903.sys 0x229D8: every LO program pulses CAL bit2
+		 * (0x04) and polls up to 10×~2 ms. BW/CF-only path at
+		 * 0x22EC0 uses bit1 (0x02); combine when CF also changes.
 		 */
-		if ((newval & 0x60) != (old & 0x60))
-			cal_mask |= 0x04;
+		cal_mask = 0x04;
 		if ((newval & 0x1f) != (old & 0x1f))
 			cal_mask |= 0x02;
 
 		state->reg[REG_CF_PDIV] = newval;
-		if (cal_mask) {
-			state->reg[REG_CAL] &= 0xf8;
-			state->reg[REG_CAL] |= cal_mask;
-			write_tuner_regs(state);
-			wait_for_call_done(state, cal_mask);
-		} else {
-			write_tuner_regs(state);
-			wait_for_call_done(state, 0x06);
-		}
+		state->reg[REG_CAL] &= 0xf8;
+		state->reg[REG_CAL] |= cal_mask;
+		write_tuner_regs(state);
+		wait_for_call_done(state, cal_mask);
 	}
 
 #if 0
