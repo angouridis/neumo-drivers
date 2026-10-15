@@ -1819,10 +1819,14 @@ static int pls_search_range(struct neumo_dvb_frontend *fe)
 static int get_frontend(struct neumo_dvb_frontend *fe, struct neumo_dtv_frontend_properties *p)
 {
 	struct stv *state = fe->demodulator_priv;
+	enum fe_delivery_system standard;
 	mutex_lock(&state->base->status_lock);
 	stv091x_get_standard(fe);
-	p->delivery_system = state->signal_info.standard;
-	stv091x_update_detected_properties_locked(state, p);
+	standard = state->signal_info.standard;
+	if (standard == SYS_DVBS || standard == SYS_DVBS2) {
+		p->delivery_system = standard;
+		stv091x_update_detected_properties_locked(state, p);
+	}
 	mutex_unlock(&state->base->status_lock);
 	return 0;
 }
