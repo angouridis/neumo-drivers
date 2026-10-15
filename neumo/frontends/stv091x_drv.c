@@ -2662,17 +2662,13 @@ static int stv091x_build_blind_peaks(struct stv *state)
 	count = stv091x_detect_valleys(ss->spectrum, n, lag,
 				       edge_thresh, depth_thresh,
 				       min_width, max_width, indices, n);
-	for (i = 0; i < count; i++) {
+	for (i = 0; i < count; i++)
 		tmp[i] = ss->freq[indices[i]];
-		dprintk("blind valley %d: idx=%d freq=%dkHz\n",
-				i + 1, indices[i], tmp[i]);
-	}
 	kfree(indices);
 
 	if (count == 0) {
 		kfree(tmp);
-		dprintk("blind valleys: none (len=%d edge=%d depth=%d)\n",
-				n, edge_thresh, depth_thresh);
+		dprintk("blind peaks: none (len=%d)\n", n);
 		return 0;
 	}
 
@@ -2682,7 +2678,7 @@ static int stv091x_build_blind_peaks(struct stv *state)
 	}
 	state->blind_num_peaks = count;
 	state->blind_peak_idx = 0;
-	dprintk("blind valleys: %d candidates\n", count);
+	dprintk("blind peaks: %d candidates\n", count);
 	return 0;
 }
 
