@@ -798,12 +798,12 @@ static int wait_for_dmdlock(struct neumo_dvb_frontend *fe, bool require_data)
 		timeout = 200;
 #else
 	/*
-	 * tbs6903.sys 0x2507C / 0x1D4C8: vendor blind waits DemodTimeout
-	 * (2000 ms at INIT 1Msps) and only spends FecTimeout after
-	 * LOCK_DEFINITIF. Abort at DemodTimeout when demod never locks.
+	 * tbs6903.sys 0x1D4C8 (tail of 0x1F194): vendor blind waits only
+	 * DemodTimeout (adaptive from SFR3:SFR2), returning on
+	 * HEADER_MODE∈{2,3} + LOCK_DEFINITIF. No FecTimeout / VIT / PDEL.
 	 */
 	if (state->satellite_scan) {
-		timeout = state->DemodTimeout + state->FecTimeout;
+		timeout = state->DemodTimeout;
 		if (!timeout)
 			timeout = STV091X_BLINDSCAN_LOCK_TIMEOUT_MS;
 	} else if(p->algorithm != ALGORITHM_WARM)
@@ -2804,7 +2804,13 @@ static int stv091x_tune_once(struct neumo_dvb_frontend *fe, bool* need_retune)
 #endif
 	state->Started = 1;
 
-	locked = wait_for_dmdlock(fe, 1 /*require_data*/);
+	/*
+	 * tbs6903.sys 0x1D4C8: vendor lock = HEADER_MODE 2/3 + LOCK_DEFINITIF.
+	 * Requiring VIT/PDEL (require_data) misses mid-SR S2 carriers that
+	 * reach demod lock but not packet delin within DemodTimeout (SW19
+	 * 11101H / 11580–11597 twins: full ~3.5s burns, locked=0).
+	 */
+	locked = wait_for_dmdlock(fe, !state->satellite_scan /*require_data*/);
 
 	dprintk("lock=%d timedout=%d\n", locked, state->signal_info.has_timedout);
 	/* tbs6903.sys vendor blind path does not run PLS search. */
