@@ -3079,7 +3079,11 @@ static int stv091x_sat_scan(struct neumo_dvb_frontend *fe, bool init,
 			state->tune_time = jiffies;
 			*status = FE_HAS_SIGNAL | FE_HAS_CARRIER |
 				FE_HAS_VITERBI | FE_HAS_SYNC | FE_HAS_LOCK;
-			*delay = HZ;
+			/*
+			 * Yield only long enough for userspace to read the lock.
+			 * HZ paused ~1 s per TP (~40 s/band); Windows does not.
+			 */
+			*delay = HZ / 5;
 			dprintk("vendor lock freq=%dkHz sr=%d next=%dkHz\n",
 				p->frequency, state->symbol_rate,
 				state->blindscan_traversal.vendor_frequency_khz);
@@ -3089,13 +3093,26 @@ static int stv091x_sat_scan(struct neumo_dvb_frontend *fe, bool init,
 	}
 
 	if (state->blindscan_traversal.phase == STV091X_BLINDSCAN_VENDOR) {
+		/*
+		 * Vendor walk finished the band. The 60 MHz fallback is a
+		 * second full pass Windows does not run; on SW19 it added
+		 * the ~3 min gap (8 min vs ~5) without new carriers. Keep
+		 * fallback only when the vendor walk cannot run or aborts
+		 * early (frequency still below the end).
+		 */
+		if (state->blindscan_traversal.vendor_frequency_khz >=
+		    state->scan_end_frequency) {
+			dprintk("vendor traversal complete at %dkHz, skipping 60MHz fallback\n",
+				state->blindscan_traversal.vendor_frequency_khz);
+			goto scan_done;
+		}
 		state->scan_next_frequency =
 			stv091x_blindscan_transition_to_fallback(
 				&state->blindscan_traversal);
 		state->search_range_hz = STV091X_BLINDSCAN_SEARCH_RANGE_HZ;
 		state->symbol_rate = STV091X_BLINDSCAN_INIT_SR;
 		p->symbol_rate = state->blindscan_fallback_symbol_rate;
-		dprintk("vendor traversal exhausted, starting 60MHz fallback at %dkHz\n",
+		dprintk("vendor traversal aborted, starting 60MHz fallback at %dkHz\n",
 			state->scan_next_frequency);
 	} else {
 		state->search_range_hz = STV091X_BLINDSCAN_SEARCH_RANGE_HZ;
@@ -3206,7 +3223,7 @@ static int stv091x_sat_scan(struct neumo_dvb_frontend *fe, bool init,
 			state->tune_time = jiffies;
 			*status = FE_HAS_SIGNAL | FE_HAS_CARRIER | FE_HAS_VITERBI |
 				FE_HAS_SYNC | FE_HAS_LOCK;
-			*delay = HZ;
+			*delay = HZ / 5;
 			mutex_unlock(&state->base->status_lock);
 			return 0;
 		}
@@ -3218,6 +3235,7 @@ static int stv091x_sat_scan(struct neumo_dvb_frontend *fe, bool init,
 		half_step = false;
 	}
 
+scan_done:
 	dprintk("Signaling DONE (band exhausted)\n");
 	stv091x_blindscan_stop_and_free(state);
 	state->signal_info.standard = SYS_UNDEFINED;
