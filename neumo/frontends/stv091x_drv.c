@@ -2847,6 +2847,18 @@ static int stv091x_tune_once(struct neumo_dvb_frontend *fe, bool* need_retune)
 		*/
 
 		*need_retune = stv091x_get_signal_info(fe);
+		/*
+		 * A LOCK_DEFINITIF with SFR still 0 is not a transponder.
+		 * Windows does not record it; publishing it stores an empty
+		 * symbol rate (11681 H, 12746 H, 12750 V).
+		 */
+		if (state->satellite_scan && state->symbol_rate == 0) {
+			locked = false;
+			state->signal_info.has_lock = false;
+			state->signal_info.has_timedout = true;
+			dprintk("ignoring lock with symbol rate 0 at %d kHz\n",
+				p->frequency);
+		}
 	}
 		vprintk("[%d] locked=%d vit=%d sync=%d timeout=%d\n",
 					state->adapterno, state->signal_info.has_lock,
