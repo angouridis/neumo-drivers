@@ -2664,17 +2664,13 @@ static int stv091x_vendor_probe(struct neumo_dvb_frontend *fe,
 	if (edge < 0)
 		return edge;
 	/*
-	 * tbs6903.sys 0x1F52C: asperity 0 → status 4 (miss), no acquire.
-	 * Asperity 2 → blind acquire.
-	 *
-	 * Wide 25Msps carriers often arm asperity-1 on the rising AGC min,
-	 * then time out on the plateau (waiting ratio≈0) — same hardware
-	 * path as a filter edge. Skipping acquire there left the H
-	 * 11229/11261/11325 hole after 11190. Attempt acquire on asperity-1
-	 * at the current center; on failure keep Windows status-5 aftermath
-	 * (advance + sticky 16 MHz mode-2).
+	 * tbs6903.sys 0x1F52C: asperity 0 → status 4 (miss), asperity 1 →
+	 * status 5 (skip acquire, sticky mode-2). Only asperity 2 acquires.
+	 * Trying acquire on asperity-1 (4d3f8a6) caused a large regression
+	 * (64→44 TPs): timeout storms on filter edges, false locks (SR=0),
+	 * and wiped most of the upper V band — do not repeat.
 	 */
-	if (edge == 0) {
+	if (edge != 2) {
 		stv091x_blindscan_vendor_apply_result(
 			trav, edge, frequency_jump, state->tuner_bw,
 			0, center, 0);
@@ -2689,18 +2685,8 @@ static int stv091x_vendor_probe(struct neumo_dvb_frontend *fe,
 		return ret;
 
 	*locked_ret = !state->signal_info.has_timedout;
-	if (edge == 1 && !*locked_ret) {
-		stv091x_blindscan_vendor_apply_result(
-			trav, 1, frequency_jump, state->tuner_bw,
-			0, center, 0);
-		dprintk("vendor asperity1 miss freq=%dkHz jump=%dkHz mode=%u next=%dkHz\n",
-			p->frequency, frequency_jump, trav->probe_mode,
-			trav->vendor_frequency_khz);
-		return 1;
-	}
-
 	stv091x_blindscan_vendor_apply_result(
-		trav, 2, frequency_jump, state->tuner_bw,
+		trav, edge, frequency_jump, state->tuner_bw,
 		*locked_ret, p->frequency, state->symbol_rate);
 	dprintk("vendor acquisition edge=%d freq=%dkHz locked=%d sr=%d phase=%u next=%dkHz\n",
 		edge, p->frequency, *locked_ret, state->symbol_rate,
