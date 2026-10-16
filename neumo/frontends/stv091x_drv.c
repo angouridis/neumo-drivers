@@ -1348,6 +1348,19 @@ static int stv091x_set_search_standard(struct stv *state, struct neumo_dtv_front
 		write_reg(state, RSTV0910_P2_CARFREQ + state->regoff, 0x79);
 	//	write_reg(state, RSTV0910_P2_CARCFG + state->regoff, 0x46);
 
+	/*
+	 * tbs6903.sys 0x1F194 acquire prep (before CFR/wait): set
+	 * VITSCALE.DIS_RSFLOCK and DMDCFG4.DIS_VITLOCK. Without these,
+	 * mid-SR carriers (SW19 8.2M twins / 6.3M) can sit in-range with
+	 * strong AGC2 yet never demod-lock through the full timeout.
+	 */
+	if (state->satellite_scan) {
+		write_reg_field(state,
+				FSTV0910_P2_DIS_RSFLOCK + state->regoff, 1);
+		write_reg_field(state,
+				FSTV0910_P2_DIS_VITLOCK + state->regoff, 1);
+	}
+
 	/* Reset demod */
 	write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x1F);
 
@@ -2743,6 +2756,13 @@ static int stv091x_tune_once(struct neumo_dvb_frontend *fe, bool* need_retune)
 	*need_retune = 0;
 
 	Stop(state);
+	/*
+	 * tbs6903.sys 0x1F194 always writes DMDISTATE=0x5C before programming
+	 * SR/CFR, even when the prior probe left Started=0 (edge walk). Stop()
+	 * alone is a no-op then and can leave the demod mid-edge.
+	 */
+	if (state->satellite_scan)
+		write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x5c);
 
 	/*
 	 * tbs6903.sys 0x2507C: for blind (algo 0) at INIT 1Msps this yields
