@@ -828,6 +828,7 @@ static int wait_for_dmdlock(struct neumo_dvb_frontend *fe, bool require_data)
 
 	{
 	bool saw_header_mode = false;
+	u32 adaptive_deadline_ms = state->DemodTimeout;
 
 	while (timer < timeout && !lock) {
 		enum ReceiveMode receive_mode = Mode_None;
@@ -901,28 +902,39 @@ static int wait_for_dmdlock(struct neumo_dvb_frontend *fe, bool require_data)
 			//dprintk("tsstatus=%d\n", tsstatus);
 			//lock will be set to 0 if we have errors in the stream
 		}
-		/*
-		 * No demod lock within DemodTimeout: abort. FEC budget is
-		 * only for finishing after LOCK_DEFINITIF.
-		 */
 		if (state->satellite_scan &&
-		    !state->signal_info.demod_locked &&
-		    state->DemodTimeout > 0 &&
-		    timer + 10 >= state->DemodTimeout)
-			break;
-		/*
-		 * Empty / false-edge acquires never raise HEADER_MODE.
-		 * tbs6903.sys 0x1D4C8 floors its adaptive wait at 550 ms;
-		 * bail on a similar horizon so jump=500 crawl storms do not
-		 * burn 2 s each. Real carriers that assert HEADER_MODE keep
-		 * the full Demod+Fec budget (low-SR safe).
-		 */
-		if (state->satellite_scan &&
-		    !saw_header_mode &&
-		    !state->signal_info.demod_locked &&
-		    timer + 10 >=
-			    STV091X_BLINDSCAN_VENDOR_NO_HEADER_ABORT_MS)
-			break;
+		    !state->signal_info.demod_locked) {
+			u8 sfr3 = read_reg(state,
+					   RSTV0910_P2_SFR3 + state->regoff);
+			u8 sfr2 = read_reg(state,
+					   RSTV0910_P2_SFR2 + state->regoff);
+			u32 sfr_hi16 = ((u32)sfr3 << 8) | sfr2;
+
+			/*
+			 * tbs6903.sys 0x1D4C8: recompute deadline each 10 ms
+			 * from SFR3:SFR2. High SFR → ~550 ms; init ~485 →
+			 * full DemodTimeout.
+			 */
+			if (state->DemodTimeout > 0)
+				adaptive_deadline_ms =
+					stv091x_blindscan_vendor_adaptive_wait_ms(
+						state->DemodTimeout, sfr_hi16);
+			if (state->DemodTimeout > 0 &&
+			    timer + 10 >= adaptive_deadline_ms)
+				break;
+			/*
+			 * EDGE-only no-HEADER abort: mode-2 sticky acquires
+			 * after asperity-1 must keep the adaptive/full budget
+			 * (SW19 11101H @1352→1365 and 11597 twin @1841 were
+			 * aborted at ~0.8 s while still in search range).
+			 */
+			if (!saw_header_mode &&
+			    state->blindscan_traversal.probe_mode ==
+				    STV091X_BLINDSCAN_VENDOR_PROBE_EDGE &&
+			    timer + 10 >=
+				    STV091X_BLINDSCAN_VENDOR_NO_HEADER_ABORT_MS)
+				break;
+		}
 		if (!lock)
 			msleep(10);
 		timer += 10;

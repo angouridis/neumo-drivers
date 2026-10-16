@@ -14,6 +14,9 @@ static void scan_constants_restore_wide_search_policy(void)
 	assert(STV091X_BLINDSCAN_VENDOR_NO_HEADER_ABORT_MS == 600);
 	assert(STV091X_BLINDSCAN_VENDOR_NO_HEADER_ABORT_MS <
 	       STV091X_BLINDSCAN_VENDOR_DEMOD_TIMEOUT_MS);
+	assert(STV091X_BLINDSCAN_VENDOR_ADAPTIVE_WAIT_FLOOR_MS == 550);
+	assert(STV091X_BLINDSCAN_VENDOR_ADAPTIVE_SFR_MIN == 485);
+	assert(STV091X_BLINDSCAN_VENDOR_ADAPTIVE_SFR_MAX == 2425);
 	assert(STV091X_BLINDSCAN_VENDOR_CFR_STEP_HZ == 500000);
 	assert(STV091X_BLINDSCAN_VENDOR_EDGE_SEARCH_RANGE_HZ == 500000);
 	assert(STV091X_BLINDSCAN_VENDOR_SETTLE_MS == 10);
@@ -324,6 +327,23 @@ static void vendor_edge_false_alarm_resets_when_samples_is_one(void)
 	assert(asperity == 1);
 }
 
+static void vendor_adaptive_wait_matches_windows_sfr_scale(void)
+{
+	/* DemodTimeout below floor → unchanged */
+	assert(stv091x_blindscan_vendor_adaptive_wait_ms(500, 485) == 500);
+	/* Init ~1Msps SFR high-word → full DemodTimeout */
+	assert(stv091x_blindscan_vendor_adaptive_wait_ms(2000, 485) == 2000);
+	assert(stv091x_blindscan_vendor_adaptive_wait_ms(2000, 700) == 2000);
+	/* Rising SFR shortens wait; clamp to [550, DemodTimeout] */
+	assert(stv091x_blindscan_vendor_adaptive_wait_ms(2000, 1000) == 1000);
+	assert(stv091x_blindscan_vendor_adaptive_wait_ms(2000, 1500) == 666);
+	assert(stv091x_blindscan_vendor_adaptive_wait_ms(2000, 2000) == 550);
+	assert(stv091x_blindscan_vendor_adaptive_wait_ms(2000, 2425) == 550);
+	/* Out-of-range SFR clamped before scale */
+	assert(stv091x_blindscan_vendor_adaptive_wait_ms(2000, 0) == 2000);
+	assert(stv091x_blindscan_vendor_adaptive_wait_ms(2000, 10000) == 550);
+}
+
 static void duplicate_vendor_results_are_recorded_only_once(void)
 {
 	struct stv091x_blindscan_lock locks[3];
@@ -361,6 +381,7 @@ int main(void)
 	duplicate_suppression_checks_all_candidate_locks();
 	duplicate_vendor_results_are_recorded_only_once();
 	vendor_edge_false_alarm_resets_when_samples_is_one();
+	vendor_adaptive_wait_matches_windows_sfr_scale();
 	puts("stv091x vendor blindscan policy tests passed");
 	return 0;
 }

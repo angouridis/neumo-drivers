@@ -253,6 +253,42 @@ u32 stv091x_blindscan_vendor_acquisition_range_hz(s32 frequency_jump_khz)
 	return range_hz;
 }
 
+u32 stv091x_blindscan_vendor_adaptive_wait_ms(u32 demod_timeout_ms,
+					       u32 sfr_hi16)
+{
+	u32 sfr = sfr_hi16;
+	u32 hi;
+	u32 scaled;
+	u32 wait_ms;
+	u32 floor_ms = STV091X_BLINDSCAN_VENDOR_ADAPTIVE_WAIT_FLOOR_MS;
+
+	/* tbs6903.sys 0x1D4C8: if DemodTimeout < 550, use it as-is */
+	if (demod_timeout_ms < floor_ms)
+		return demod_timeout_ms;
+
+	if (sfr < STV091X_BLINDSCAN_VENDOR_ADAPTIVE_SFR_MIN)
+		sfr = STV091X_BLINDSCAN_VENDOR_ADAPTIVE_SFR_MIN;
+	if (sfr > STV091X_BLINDSCAN_VENDOR_ADAPTIVE_SFR_MAX)
+		sfr = STV091X_BLINDSCAN_VENDOR_ADAPTIVE_SFR_MAX;
+
+	/*
+	 * MSVC unsigned div-style scale: ((sfr - hi)/2 + hi) >> 8 with
+	 * hi = (sfr * 0x0E406559) >> 32. Init 1Msps SFR≈485 → scaled 1 →
+	 * full DemodTimeout; high SFR → scaled 4..5 → floor 550 ms.
+	 */
+	hi = (u32)(((u64)sfr * STV091X_BLINDSCAN_VENDOR_ADAPTIVE_SFR_MAGIC) >>
+		   32);
+	scaled = ((sfr - hi) / 2 + hi) >> 8;
+	if (!scaled)
+		scaled = 1;
+	wait_ms = demod_timeout_ms / scaled;
+	if (wait_ms < floor_ms)
+		wait_ms = floor_ms;
+	if (wait_ms > demod_timeout_ms)
+		wait_ms = demod_timeout_ms;
+	return wait_ms;
+}
+
 void stv091x_blindscan_traversal_init(
 	struct stv091x_blindscan_traversal *traversal,
 	s32 start_frequency_khz)

@@ -27,11 +27,17 @@ typedef uint64_t u64;
 	(STV091X_BLINDSCAN_VENDOR_DEMOD_TIMEOUT_MS + \
 	 STV091X_BLINDSCAN_VENDOR_FEC_TIMEOUT_MS)
 /*
- * tbs6903.sys 0x1D4C8 adaptive wait floors at 0x226 (550 ms). Empty/false
- * edges never raise DMDSTATE HEADER_MODE; abort then instead of burning the
- * full DemodTimeout. Once HEADER_MODE is seen, keep the full 2000/500 budget
- * (needed for low-SR locks).
+ * tbs6903.sys 0x1D4C8: adaptive demod wait from SFR3:SFR2, floored at 0x226
+ * (550 ms) and capped at DemodTimeout. Empty EDGE acquires that never raise
+ * HEADER_MODE still abort at NO_HEADER_ABORT_MS so jump=500 crawls stay fast.
+ * Mode-2 (PROBE_ACQUIRE) must NOT use that abort — offset sticky acquires
+ * after asperity-1 often need the full budget before HEADER appears (SW19
+ * 11101H / 11597 twin were killed at ~0.8 s).
  */
+#define STV091X_BLINDSCAN_VENDOR_ADAPTIVE_WAIT_FLOOR_MS	550
+#define STV091X_BLINDSCAN_VENDOR_ADAPTIVE_SFR_MIN	485	/* 0x1e5 */
+#define STV091X_BLINDSCAN_VENDOR_ADAPTIVE_SFR_MAX	2425	/* 0x979 */
+#define STV091X_BLINDSCAN_VENDOR_ADAPTIVE_SFR_MAGIC	0x0e406559u
 #define STV091X_BLINDSCAN_VENDOR_NO_HEADER_ABORT_MS	600
 #define STV091X_BLINDSCAN_IQ_THRESHOLD		30
 #define STV091X_BLINDSCAN_VENDOR_CFR_STEP_HZ	500000
@@ -131,6 +137,12 @@ void stv091x_blindscan_vendor_apply_result(
 	s32 frequency_jump_khz, u32 tuner_bw_hz, int locked,
 	s32 locked_frequency_khz, u32 symbol_rate);
 u32 stv091x_blindscan_vendor_acquisition_range_hz(s32 frequency_jump_khz);
+/*
+ * tbs6903.sys 0x1D4C8: per-iteration demod wait from SFR3<<8|SFR2.
+ * Returns milliseconds in [floor, demod_timeout] (or demod_timeout if small).
+ */
+u32 stv091x_blindscan_vendor_adaptive_wait_ms(u32 demod_timeout_ms,
+					       u32 sfr_hi16);
 void stv091x_blindscan_traversal_init(
 	struct stv091x_blindscan_traversal *traversal,
 	s32 start_frequency_khz);
