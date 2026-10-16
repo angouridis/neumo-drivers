@@ -798,10 +798,9 @@ static int wait_for_dmdlock(struct neumo_dvb_frontend *fe, bool require_data)
 		timeout = 200;
 #else
 	/*
-	 * tbs6903.sys 0x2F341 / 0x2D4C8: vendor blind waits DemodTimeout
-	 * (500 ms) and only spends FecTimeout after LOCK_DEFINITIF.
-	 * Abort at DemodTimeout when demod never locks so asperity-1
-	 * mode2 fails stay ~0.5s instead of multi-second burns.
+	 * tbs6903.sys 0x3507C / 0x2D4C8: vendor blind waits DemodTimeout
+	 * (2000 ms at INIT 1Msps) and only spends FecTimeout after
+	 * LOCK_DEFINITIF. Abort at DemodTimeout when demod never locks.
 	 */
 	if (state->satellite_scan) {
 		timeout = state->DemodTimeout + state->FecTimeout;
@@ -2719,14 +2718,14 @@ static int stv091x_tune_once(struct neumo_dvb_frontend *fe, bool* need_retune)
 
 	Stop(state);
 
-	stv091x_compute_timeouts(&state->DemodTimeout, &state->FecTimeout, state->symbol_rate, p->algorithm);
-	if (state->satellite_scan) {
-		/* tbs6903.sys 0x2F341: hardcoded 500/50 for BLScan2 step */
-		state->DemodTimeout =
-			STV091X_BLINDSCAN_VENDOR_DEMOD_TIMEOUT_MS;
-		state->FecTimeout =
-			STV091X_BLINDSCAN_VENDOR_FEC_TIMEOUT_MS;
-	}
+	/*
+	 * tbs6903.sys 0x3507C: for blind (algo 0) at INIT 1Msps this yields
+	 * DemodTimeout=2000, FecTimeout=500. Do not force 500/50 — that was
+	 * only the 0x2F341 seed before 0x3507C overwrites it, and it drops
+	 * low-SR locks (591k/4.7M V cluster).
+	 */
+	stv091x_compute_timeouts(&state->DemodTimeout, &state->FecTimeout,
+				 state->symbol_rate, p->algorithm);
 
 	dprintk("now symbol_rate=%d\n", state->symbol_rate);
 	ret = stv091x_set_frequency_symbol_rate_bandwidth(state);

@@ -16,11 +16,12 @@ typedef uint64_t u64;
 #define STV091X_BLINDSCAN_INIT_SR		1000000
 #define STV091X_BLINDSCAN_SEARCH_RANGE_HZ	60000000
 /*
- * tbs6903.sys 0x2F341 blind step hardcodes DemodTimeout=500, FecTimeout=50
- * (not the STAPI 2000+500 table). False mode2 acquires must die in ~500 ms.
+ * tbs6903.sys 0x2F341 seeds 500/50 then 0x3507C overwrites from the blind SR
+ * table (algo==0). With INIT_SR=1Msps that is Demod=2000, Fec=500 — same as
+ * STAPI ALGORITHM_BLIND for SR<=1.5Msps. Low-SR TPs need the full 2s budget.
  */
-#define STV091X_BLINDSCAN_VENDOR_DEMOD_TIMEOUT_MS	500
-#define STV091X_BLINDSCAN_VENDOR_FEC_TIMEOUT_MS		50
+#define STV091X_BLINDSCAN_VENDOR_DEMOD_TIMEOUT_MS	2000
+#define STV091X_BLINDSCAN_VENDOR_FEC_TIMEOUT_MS		500
 #define STV091X_BLINDSCAN_LOCK_TIMEOUT_MS		\
 	(STV091X_BLINDSCAN_VENDOR_DEMOD_TIMEOUT_MS + \
 	 STV091X_BLINDSCAN_VENDOR_FEC_TIMEOUT_MS)
