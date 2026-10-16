@@ -123,14 +123,6 @@ void stv091x_blindscan_vendor_apply_result(
 	s32 frequency_jump_khz, u32 tuner_bw_hz, int locked,
 	s32 locked_frequency_khz, u32 symbol_rate);
 u32 stv091x_blindscan_vendor_acquisition_range_hz(s32 frequency_jump_khz);
-/*
- * Edge walk only sweeps +CFR from the tuner LO. Blind CFRUP/LOW is
- * ±search_range/2 with search_range capped at 40 MHz, so a late asperity-2
- * (jump > 20 MHz) sits outside the acquisition window if we stay at center.
- * Shift the LO forward so the detected edge lands at CFRUP.
- */
-s32 stv091x_blindscan_vendor_acquire_frequency_khz(s32 center_khz,
-						    s32 frequency_jump_khz);
 void stv091x_blindscan_traversal_init(
 	struct stv091x_blindscan_traversal *traversal,
 	s32 start_frequency_khz);

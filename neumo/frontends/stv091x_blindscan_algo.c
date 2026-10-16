@@ -253,22 +253,6 @@ u32 stv091x_blindscan_vendor_acquisition_range_hz(s32 frequency_jump_khz)
 	return range_hz;
 }
 
-s32 stv091x_blindscan_vendor_acquire_frequency_khz(s32 center_khz,
-						    s32 frequency_jump_khz)
-{
-	u32 range_hz =
-		stv091x_blindscan_vendor_acquisition_range_hz(
-			frequency_jump_khz);
-	s32 half_khz = (s32)(range_hz / 2000);
-	s32 jump_khz = frequency_jump_khz;
-
-	if (jump_khz < 0)
-		jump_khz = 0;
-	if (jump_khz > half_khz)
-		return center_khz + (jump_khz - half_khz);
-	return center_khz;
-}
-
 void stv091x_blindscan_traversal_init(
 	struct stv091x_blindscan_traversal *traversal,
 	s32 start_frequency_khz)

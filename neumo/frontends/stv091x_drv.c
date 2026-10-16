@@ -2539,23 +2539,16 @@ static int stv091x_vendor_blind_acquire(struct neumo_dvb_frontend *fe,
 	int ret;
 
 	/*
-	 * tbs6903.sys: search_range = min((jump+24000)*1kHz, 40MHz).
-	 * Edge walk is +CFR only; if jump exceeds ±range/2, park the LO so
-	 * the detected edge still falls inside CFRUP (else late asperity-2
-	 * never locks — e.g. H 11228/11261/11325 cluster).
+	 * tbs6903.sys 0x1F194: search_range = min((jump+24000)*1kHz, 40MHz).
+	 * Blind acquire always keeps the tuner LO on the scan center
+	 * (CFRUP/LOW = ±range/2). Experimental LO-forward shift when
+	 * jump > half-range regressed low-SR H/V TPs and did not recover
+	 * the mid-H 25Msps cluster.
 	 */
 	state->search_range_hz =
 		stv091x_blindscan_vendor_acquisition_range_hz(
 			frequency_jump_khz);
-	p->frequency = stv091x_blindscan_vendor_acquire_frequency_khz(
-		state->blindscan_traversal.vendor_frequency_khz,
-		frequency_jump_khz);
-	if (p->frequency !=
-	    state->blindscan_traversal.vendor_frequency_khz)
-		dprintk("vendor acquire LO shift center=%dkHz jump=%dkHz tune=%dkHz range=%dkHz\n",
-			state->blindscan_traversal.vendor_frequency_khz,
-			frequency_jump_khz, p->frequency,
-			state->search_range_hz / 1000);
+	p->frequency = state->blindscan_traversal.vendor_frequency_khz;
 	state->symbol_rate = STV091X_BLINDSCAN_INIT_SR;
 	if (kthread_should_stop() ||
 	    neumo_dvb_frontend_task_should_stop(fe)) {
@@ -2671,10 +2664,17 @@ static int stv091x_vendor_probe(struct neumo_dvb_frontend *fe,
 	if (edge < 0)
 		return edge;
 	/*
-	 * tbs6903.sys: asperity 0 and 1 never blind-acquire in this probe.
-	 * Asperity 1 arms sticky 16 MHz mode-2 acquire on the next probe.
+	 * tbs6903.sys 0x1F52C: asperity 0 → status 4 (miss), no acquire.
+	 * Asperity 2 → blind acquire.
+	 *
+	 * Wide 25Msps carriers often arm asperity-1 on the rising AGC min,
+	 * then time out on the plateau (waiting ratio≈0) — same hardware
+	 * path as a filter edge. Skipping acquire there left the H
+	 * 11229/11261/11325 hole after 11190. Attempt acquire on asperity-1
+	 * at the current center; on failure keep Windows status-5 aftermath
+	 * (advance + sticky 16 MHz mode-2).
 	 */
-	if (edge != 2) {
+	if (edge == 0) {
 		stv091x_blindscan_vendor_apply_result(
 			trav, edge, frequency_jump, state->tuner_bw,
 			0, center, 0);
@@ -2689,8 +2689,18 @@ static int stv091x_vendor_probe(struct neumo_dvb_frontend *fe,
 		return ret;
 
 	*locked_ret = !state->signal_info.has_timedout;
+	if (edge == 1 && !*locked_ret) {
+		stv091x_blindscan_vendor_apply_result(
+			trav, 1, frequency_jump, state->tuner_bw,
+			0, center, 0);
+		dprintk("vendor asperity1 miss freq=%dkHz jump=%dkHz mode=%u next=%dkHz\n",
+			p->frequency, frequency_jump, trav->probe_mode,
+			trav->vendor_frequency_khz);
+		return 1;
+	}
+
 	stv091x_blindscan_vendor_apply_result(
-		trav, edge, frequency_jump, state->tuner_bw,
+		trav, 2, frequency_jump, state->tuner_bw,
 		*locked_ret, p->frequency, state->symbol_rate);
 	dprintk("vendor acquisition edge=%d freq=%dkHz locked=%d sr=%d phase=%u next=%dkHz\n",
 		edge, p->frequency, *locked_ret, state->symbol_rate,
