@@ -101,6 +101,52 @@ s32 stv091x_blindscan_vendor_edge_jump_khz(s32 step_index, int asperity,
 	return steps * (STV091X_BLINDSCAN_VENDOR_CFR_STEP_HZ / 1000);
 }
 
+int stv091x_blindscan_vendor_edge_on_ratio(u32 ratio, int level_is_min,
+					    int *asperity,
+					    int *waiting_for_fall,
+					    s32 *edge_samples,
+					    int *refill_window)
+{
+	*refill_window = 0;
+
+	if (ratio > STV091X_BLINDSCAN_VENDOR_AGC2_RATIO && level_is_min) {
+		/*
+		 * tbs6903.sys 0x2EC48: arm asperity-1, refill window, then
+		 * fall into the waiting-sample increment (0x2EC8F).
+		 */
+		*asperity = 1;
+		*waiting_for_fall = 1;
+		*edge_samples = 0;
+		*refill_window = 1;
+		if (++(*edge_samples) >= STV091X_BLINDSCAN_VENDOR_EDGE_WINDOW)
+			return 1;
+		return 0;
+	}
+
+	if (ratio > STV091X_BLINDSCAN_VENDOR_AGC2_RATIO) {
+		/*
+		 * tbs6903.sys 0x2EC60: asperity = waiting ? 1 : 2.
+		 * If edge_samples == 1, treat as false alarm: clear state,
+		 * refill window, and keep walking (0x2EC6A).
+		 */
+		*asperity = *waiting_for_fall ? 1 : 2;
+		if (*edge_samples == 1) {
+			*asperity = 0;
+			*waiting_for_fall = 0;
+			*edge_samples = 0;
+			*refill_window = 1;
+			return 0;
+		}
+		return 1;
+	}
+
+	if (*waiting_for_fall &&
+	    ++(*edge_samples) >= STV091X_BLINDSCAN_VENDOR_EDGE_WINDOW)
+		return 1;
+
+	return 0;
+}
+
 s32 stv091x_blindscan_vendor_next_frequency(s32 center_khz, int asperity,
 					     s32 frequency_jump_khz,
 					     u32 tuner_bw_hz, int locked,
@@ -255,26 +301,21 @@ int stv091x_blindscan_lock_is_duplicate(
 {
 	u32 i;
 
-	for (i = 0; i < num_candidate_locks; i++) {
-		u32 smaller_symbol_rate = symbol_rate;
-		u32 distance_khz;
-		u32 sr_window_khz;
+	(void)symbol_rate;
 
-		if (candidate_locks[i].symbol_rate < smaller_symbol_rate)
-			smaller_symbol_rate = candidate_locks[i].symbol_rate;
+	for (i = 0; i < num_candidate_locks; i++) {
+		u32 distance_khz;
+
 		distance_khz = candidate_locks[i].frequency_khz > frequency_khz ?
 			candidate_locks[i].frequency_khz - frequency_khz :
 			frequency_khz - candidate_locks[i].frequency_khz;
 
 		/*
-		 * Wide carriers: within half symbol-rate spacing.
-		 * Low-SR: tbs6903.sys also uses a fixed 1000 kHz floor so
-		 * re-locks like 10957.7 / 10958.3 @1Msps collapse.
+		 * tbs6903.sys 0x1C00D: cmp |Δf|, 1000; cmovl → duplicate only
+		 * when strictly below 1000 kHz. Wide-SR SR/2000 windows were
+		 * suppressing real neighbours a few MHz off a strong carrier.
 		 */
-		sr_window_khz = smaller_symbol_rate / 2000;
-		if (sr_window_khz < STV091X_BLINDSCAN_VENDOR_DUP_FLOOR_KHZ)
-			sr_window_khz = STV091X_BLINDSCAN_VENDOR_DUP_FLOOR_KHZ;
-		if (distance_khz <= sr_window_khz)
+		if (distance_khz < STV091X_BLINDSCAN_VENDOR_DUP_FLOOR_KHZ)
 			return 1;
 	}
 

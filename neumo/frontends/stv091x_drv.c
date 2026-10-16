@@ -2188,7 +2188,8 @@ typedef enum
 	} stv091x_SIGNALTYPE_t;
 
 #define STV0910_BLIND_SEARCH_AGC2BANDWIDTH	STV091X_BLINDSCAN_VENDOR_AGC2_RATIO
-#define STV0910_VENDOR_EDGE_WINDOW		10
+#define STV0910_VENDOR_EDGE_WINDOW		\
+	STV091X_BLINDSCAN_VENDOR_EDGE_WINDOW
 #define STV0910_VENDOR_MAX_EDGE_STEPS		128
 #define STV0910_VENDOR_MAX_LOCKS			8192
 #define STV0910_VENDOR_DMDCFGMD_ENABLE_STANDARDS	0xc0
@@ -2409,20 +2410,24 @@ static int stv091x_carrier_check(struct stv *state, s32 *frequency_jump,
 				i, num_steps, cfr_init, level, min_level,
 				max_level, mean_level, ratio);
 
-		if (ratio > STV0910_BLIND_SEARCH_AGC2BANDWIDTH &&
-		    level == min_level) {
-			asperity = 1;
-			waiting_for_fall = 1;
-			edge_samples = 0;
-			for (j = 0; j < STV0910_VENDOR_EDGE_WINDOW; j++)
-				levels[j] = level;
-		} else if (ratio > STV0910_BLIND_SEARCH_AGC2BANDWIDTH) {
-			asperity = waiting_for_fall ? 1 : 2;
-			break;
+		{
+			int refill_window = 0;
+
+			if (stv091x_blindscan_vendor_edge_on_ratio(
+				    ratio, level == min_level, &asperity,
+				    &waiting_for_fall, &edge_samples,
+				    &refill_window))
+				break;
+			if (refill_window) {
+				for (j = 0; j < STV0910_VENDOR_EDGE_WINDOW;
+				     j++)
+					levels[j] = level;
+				/* asperity cleared ⇒ Windows 0x2EC6A reset */
+				if (!asperity)
+					dprintk("vendor edge false-alarm reset step=%d ratio=%u\n",
+						i, ratio);
+			}
 		}
-		if (waiting_for_fall &&
-		    ++edge_samples >= STV0910_VENDOR_EDGE_WINDOW)
-			break;
 	}
 
 	if (asperity)

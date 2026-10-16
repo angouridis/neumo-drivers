@@ -53,10 +53,12 @@ typedef uint64_t u64;
  */
 #define STV091X_BLINDSCAN_VENDOR_STICKY_FAIL_MAX	3
 /*
- * tbs6903.sys 0x1C00D: treat prior locks within 1000 kHz as the same TP.
- * Also keep the SR/2000 rule for wide carriers.
+ * tbs6903.sys 0x1C00D: prior locks with |Δf| < 1000 kHz are the same TP.
+ * Absolute 1 MHz only — not SR/2000 (that skipped neighbours of wide carriers).
  */
 #define STV091X_BLINDSCAN_VENDOR_DUP_FLOOR_KHZ	1000
+/* tbs6903.sys 0x2EAF4: rolling AGC2 window length */
+#define STV091X_BLINDSCAN_VENDOR_EDGE_WINDOW	10
 /* tbs6903.sys probe mode: 1 = run edge, 2 = skip edge and acquire */
 #define STV091X_BLINDSCAN_VENDOR_PROBE_EDGE	1
 #define STV091X_BLINDSCAN_VENDOR_PROBE_ACQUIRE	2
@@ -110,6 +112,16 @@ s32 stv091x_blindscan_vendor_edge_steps(u32 tuner_bw_hz);
 s32 stv091x_blindscan_vendor_miss_jump_khz(u32 tuner_bw_hz);
 s32 stv091x_blindscan_vendor_edge_jump_khz(s32 step_index, int asperity,
 					    s32 edge_samples);
+/*
+ * tbs6903.sys 0x2EC39 edge-decision step. Returns 1 when the walk should stop.
+ * *refill_window is set when the rolling AGC buffer must be filled with the
+ * current level (min-spike arm or edge_samples==1 false-alarm reset).
+ */
+int stv091x_blindscan_vendor_edge_on_ratio(u32 ratio, int level_is_min,
+					    int *asperity,
+					    int *waiting_for_fall,
+					    s32 *edge_samples,
+					    int *refill_window);
 s32 stv091x_blindscan_vendor_next_frequency(s32 center_khz, int asperity,
 					     s32 frequency_jump_khz,
 					     u32 tuner_bw_hz, int locked,

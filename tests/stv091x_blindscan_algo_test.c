@@ -245,13 +245,13 @@ static void duplicate_suppression_preserves_nearby_one_msps_carriers(void)
 		.symbol_rate = 1000000,
 	};
 
-	/* 1000 kHz Windows floor (not SR/2000=500) */
+	/* tbs6903.sys: duplicate only when |Δf| < 1000 (strict) */
 	assert(stv091x_blindscan_lock_is_duplicate(&candidate_lock, 1,
 						  1100599, 1000000));
 	assert(stv091x_blindscan_lock_is_duplicate(&candidate_lock, 1,
-						  1101000, 1000000));
+						  1100999, 1000000));
 	assert(!stv091x_blindscan_lock_is_duplicate(&candidate_lock, 1,
-						   1101001, 1000000));
+						   1101000, 1000000));
 }
 
 static void duplicate_suppression_checks_all_candidate_locks(void)
@@ -260,11 +260,71 @@ static void duplicate_suppression_checks_all_candidate_locks(void)
 		{ .frequency_khz = 1000000, .symbol_rate = 1000000 },
 		{ .frequency_khz = 1200000, .symbol_rate = 4000000 },
 	};
+	struct stv091x_blindscan_lock wide_lock = {
+		.frequency_khz = 1200000,
+		.symbol_rate = 30000000,
+	};
 
 	assert(stv091x_blindscan_lock_is_duplicate(candidate_locks, 2,
-						  1201500, 3000000));
+						  1200500, 3000000));
 	assert(!stv091x_blindscan_lock_is_duplicate(candidate_locks, 2,
-						   1202001, 5000000));
+						   1201000, 5000000));
+	/*
+	 * Must not use SR/2000: a 5 MHz neighbour of a 30 Msps carrier is a
+	 * distinct TP (Windows absolute 1 MHz window).
+	 */
+	assert(!stv091x_blindscan_lock_is_duplicate(&wide_lock, 1,
+						   1205000, 5000000));
+}
+
+static void vendor_edge_false_alarm_resets_when_samples_is_one(void)
+{
+	int asperity = 0;
+	int waiting = 0;
+	s32 edge_samples = 0;
+	int refill = 0;
+
+	/* Arm asperity-1 at min; same step bumps edge_samples to 1 */
+	assert(!stv091x_blindscan_vendor_edge_on_ratio(
+		50, 1, &asperity, &waiting, &edge_samples, &refill));
+	assert(asperity == 1);
+	assert(waiting == 1);
+	assert(edge_samples == 1);
+	assert(refill == 1);
+
+	/* Next high ratio off-min with samples==1: Windows false-alarm reset */
+	refill = 0;
+	assert(!stv091x_blindscan_vendor_edge_on_ratio(
+		50, 0, &asperity, &waiting, &edge_samples, &refill));
+	assert(asperity == 0);
+	assert(waiting == 0);
+	assert(edge_samples == 0);
+	assert(refill == 1);
+
+	/* Real asperity-2: high ratio, not waiting, samples==0 → stop */
+	refill = 0;
+	assert(stv091x_blindscan_vendor_edge_on_ratio(
+		50, 0, &asperity, &waiting, &edge_samples, &refill));
+	assert(asperity == 2);
+	assert(refill == 0);
+
+	/* Real asperity-1 after waiting past samples==1 */
+	asperity = 0;
+	waiting = 0;
+	edge_samples = 0;
+	refill = 0;
+	assert(!stv091x_blindscan_vendor_edge_on_ratio(
+		50, 1, &asperity, &waiting, &edge_samples, &refill));
+	assert(edge_samples == 1);
+	/* Quiet step while waiting: samples → 2 */
+	assert(!stv091x_blindscan_vendor_edge_on_ratio(
+		10, 0, &asperity, &waiting, &edge_samples, &refill));
+	assert(edge_samples == 2);
+	assert(waiting == 1);
+	/* High ratio off-min with samples!=1 → stop asperity 1 */
+	assert(stv091x_blindscan_vendor_edge_on_ratio(
+		50, 0, &asperity, &waiting, &edge_samples, &refill));
+	assert(asperity == 1);
 }
 
 static void duplicate_vendor_results_are_recorded_only_once(void)
@@ -279,7 +339,7 @@ static void duplicate_vendor_results_are_recorded_only_once(void)
 		       locks, &num_locks, 3, 1100100, 2000000) == 0);
 	assert(num_locks == 1);
 	assert(stv091x_blindscan_add_unique_lock(
-		       locks, &num_locks, 3, 1101001, 1000000) == 1);
+		       locks, &num_locks, 3, 1101000, 1000000) == 1);
 	assert(num_locks == 2);
 }
 
@@ -303,6 +363,7 @@ int main(void)
 	duplicate_suppression_preserves_nearby_one_msps_carriers();
 	duplicate_suppression_checks_all_candidate_locks();
 	duplicate_vendor_results_are_recorded_only_once();
+	vendor_edge_false_alarm_resets_when_samples_is_one();
 	puts("stv091x vendor blindscan policy tests passed");
 	return 0;
 }
