@@ -36,6 +36,7 @@
 
 #include <media/neumo-dvb-frontend.h>
 #include "stv091x.h"
+#include "stv091x_blindscan_algo.h"
 #include "stv091x_regs.h"
 
 #define dprintk(fmt, arg...)																					\
@@ -342,6 +343,7 @@ static u8 get_optim_cloop(struct stv *state,
 }
 
 static int stv091x_stop_task(struct neumo_dvb_frontend *fe);
+static void stv091x_blindscan_free(struct stv *state);
 
 static int stv091x_symbol_rate(struct stv *state, u32 *p_symbol_rate, bool coarse)
 {
@@ -362,19 +364,26 @@ static int stv091x_symbol_rate(struct stv *state, u32 *p_symbol_rate, bool coars
 	if (!state->Started)
 		return status;
 	read_regs(state, RSTV0910_P2_SFR3 + state->regoff, &regvals[0], 4);
-	symbol_rate = ((u32) regvals[0] << 24) | ((u32) regvals[1] << 16) |
-		((u32) regvals[1] << 8) | (u32) regvals[0];
+	/*
+	 * SFR3..SFR0. The previous assembly reused bytes 0/1 for the low
+	 * half (ABBA), so recovered SR was garbage and often looked like
+	 * the 1Msps blind seed in userspace.
+	 */
+	symbol_rate = ((u32)regvals[0] << 24) | ((u32)regvals[1] << 16) |
+		((u32)regvals[2] << 8) | (u32)regvals[3];
 
-	symbol_rate = (u32) (((u64) symbol_rate * state->base->mclk) >> 32);
-	if(!coarse) {
-	read_regs(state, RSTV0910_P2_TMGREG2 + state->regoff, &regvals[0], 3);
-	timing_offset = ((u32) regvals[0] << 16) | ((u32) regvals[1] << 8) |
-			(u32) regvals[2];
-	if ((timing_offset & (1<<23)) != 0)
-		timing_offset |= 0xFF000000; /* Sign extend */
-	timing_offset = (s32) (((s64) symbol_rate * (s64) timing_offset) >> 29);
-
-	*p_symbol_rate = symbol_rate + timing_offset;
+	symbol_rate = (u32)(((u64)symbol_rate * state->base->mclk) >> 32);
+	*p_symbol_rate = symbol_rate;
+	if (!coarse) {
+		read_regs(state, RSTV0910_P2_TMGREG2 + state->regoff,
+			  &regvals[0], 3);
+		timing_offset = ((u32)regvals[0] << 16) |
+			((u32)regvals[1] << 8) | (u32)regvals[2];
+		if ((timing_offset & (1 << 23)) != 0)
+			timing_offset |= 0xFF000000; /* Sign extend */
+		timing_offset = (s32)(((s64)symbol_rate *
+				       (s64)timing_offset) >> 29);
+		*p_symbol_rate = symbol_rate + timing_offset;
 	}
 	return 0;
 }
@@ -788,7 +797,16 @@ static int wait_for_dmdlock(struct neumo_dvb_frontend *fe, bool require_data)
 	else
 		timeout = 200;
 #else
-	if(p->algorithm != ALGORITHM_WARM)
+	/*
+	 * tbs6903.sys 0x1D4C8 (tail of 0x1F194): vendor blind waits only
+	 * DemodTimeout (adaptive from SFR3:SFR2), returning on
+	 * HEADER_MODE∈{2,3} + LOCK_DEFINITIF. No FecTimeout / VIT / PDEL.
+	 */
+	if (state->satellite_scan) {
+		timeout = state->DemodTimeout;
+		if (!timeout)
+			timeout = STV091X_BLINDSCAN_LOCK_TIMEOUT_MS;
+	} else if(p->algorithm != ALGORITHM_WARM)
 		timeout = 8000;
 	else if (state->symbol_rate <= 1000000) {         /*          SR <=  1Msps */
 		timeout = 16000;
@@ -805,13 +823,19 @@ static int wait_for_dmdlock(struct neumo_dvb_frontend *fe, bool require_data)
 	}
 
 #endif
-	dprintk("timeout=%d\n", timeout);
+	dprintk("timeout=%d demod=%d fec=%d\n", timeout,
+		state->DemodTimeout, state->FecTimeout);
+
+	{
+	bool saw_header_mode = false;
+	u32 adaptive_deadline_ms = state->DemodTimeout;
 
 	while (timer < timeout && !lock) {
 		enum ReceiveMode receive_mode = Mode_None;
 		dmdstate = read_reg(state, RSTV0910_P2_DMDSTATE + state->regoff);
 		dstatus = read_reg(state, RSTV0910_P2_DSTATUS + state->regoff);
-		if (dmdstate & 0x40) { //DVBS1 or DVBS2 found
+		if (dmdstate & 0x40) { //DVBS1 or DVBS2 found (HEADER_MODE)
+			saw_header_mode = true;
 			if (dstatus & 0x08)
 				receive_mode = (dmdstate & 0x20) ?
 					Mode_DVBS : Mode_DVBS2;
@@ -868,15 +892,53 @@ static int wait_for_dmdlock(struct neumo_dvb_frontend *fe, bool require_data)
 		default:
 			break;
 		}
-		if(lock && require_data) {
+		/*
+		 * tbs6903.sys blind lock accepts FEC without TSFIFO_LINEOK.
+		 * Requiring TS drops real locks during vendor scan.
+		 */
+		if (lock && require_data && !state->satellite_scan) {
 			tsstatus = read_reg(state, RSTV0910_P2_TSSTATUS + state->regoff);
 			lock= ((tsstatus&0x80) /*TSFIFO_LINEOK*/!=0);
 			//dprintk("tsstatus=%d\n", tsstatus);
 			//lock will be set to 0 if we have errors in the stream
 		}
+		if (state->satellite_scan &&
+		    !state->signal_info.demod_locked) {
+			u8 sfr3 = read_reg(state,
+					   RSTV0910_P2_SFR3 + state->regoff);
+			u8 sfr2 = read_reg(state,
+					   RSTV0910_P2_SFR2 + state->regoff);
+			u32 sfr_hi16 = ((u32)sfr3 << 8) | sfr2;
+
+			/*
+			 * tbs6903.sys 0x1D4C8: recompute deadline each 10 ms
+			 * from SFR3:SFR2. High SFR → ~550 ms; init ~485 →
+			 * full DemodTimeout.
+			 */
+			if (state->DemodTimeout > 0)
+				adaptive_deadline_ms =
+					stv091x_blindscan_vendor_adaptive_wait_ms(
+						state->DemodTimeout, sfr_hi16);
+			if (state->DemodTimeout > 0 &&
+			    timer + 10 >= adaptive_deadline_ms)
+				break;
+			/*
+			 * EDGE-only no-HEADER abort: mode-2 sticky acquires
+			 * after asperity-1 must keep the adaptive/full budget
+			 * (SW19 11101H @1352→1365 and 11597 twin @1841 were
+			 * aborted at ~0.8 s while still in search range).
+			 */
+			if (!saw_header_mode &&
+			    state->blindscan_traversal.probe_mode ==
+				    STV091X_BLINDSCAN_VENDOR_PROBE_EDGE &&
+			    timer + 10 >=
+				    STV091X_BLINDSCAN_VENDOR_NO_HEADER_ABORT_MS)
+				break;
+		}
 		if (!lock)
 			msleep(10);
 		timer += 10;
+	}
 	}
 
 	dprintk("initial lock: %s dstatus=0x%x dmdstate=0x%x vit=0x%x tsstatus=0x%x require_data=%d timing: %d/%d\n",
@@ -1072,13 +1134,22 @@ static u32 stv091x_bandwidth(u32 rolloff, uint32_t symbol_rate)
 static int stv091x_set_frequency_symbol_rate_bandwidth(struct stv* state)
 {
 	struct neumo_dtv_frontend_properties *p = &state->fe.dtv_property_cache;
+	int ret = 0;
+
 	state-> tuner_frequency = p->frequency;
 	if(state->satellite_scan) {
-		state->tuner_bw = 2*36000000; 	/* Use maximal bandwidth */
+		/* tbs6903.sys blind path programs STV6120 with 72 MHz full BW */
+		state->tuner_bw = STV091X_BLINDSCAN_VENDOR_TUNER_BW_HZ;
 		/* If Blind search set the init symbol rate to 1Msps*/
 		dprintk("requesting stv6120 to set: freq=%dkHz bw=%dkHz\n", state->tuner_frequency, state->tuner_bw/1000);
-		if(state->fe.ops.tuner_ops.set_frequency_and_bandwidth)
-			state->fe.ops.tuner_ops.set_frequency_and_bandwidth(&state->fe, state->tuner_frequency, state->tuner_bw);
+		if(state->fe.ops.tuner_ops.set_frequency_and_bandwidth) {
+			/* tuner API takes frequency and full BW in kHz */
+			ret = state->fe.ops.tuner_ops.set_frequency_and_bandwidth(
+				&state->fe, state->tuner_frequency,
+				state->tuner_bw / 1000);
+			if (ret)
+				return ret;
+		}
 		dprintk("set symbol_rate to %dkHz\n", state->symbol_rate/1000);
 		stv091x_set_symbol_rate(state, state->symbol_rate);
 	} else {
@@ -1094,8 +1165,13 @@ static int stv091x_set_frequency_symbol_rate_bandwidth(struct stv* state)
 
 		dprintk("symrate=%d bw=%d\n", state->symbol_rate, state->tuner_bw);
 		if(state->fe.ops.tuner_ops.set_frequency_and_bandwidth) {
-			dprintk("requesting stv6120 to set: freq=%d bw=%d\n", state->tuner_frequency, state->tuner_bw);
-			state->fe.ops.tuner_ops.set_frequency_and_bandwidth(&state->fe, state->tuner_frequency, state->tuner_bw);
+			dprintk("requesting stv6120 to set: freq=%d bw=%dkHz\n",
+				state->tuner_frequency, state->tuner_bw / 1000);
+			ret = state->fe.ops.tuner_ops.set_frequency_and_bandwidth(
+				&state->fe, state->tuner_frequency,
+				state->tuner_bw / 1000);
+			if (ret)
+				return ret;
 		}
 		stv091x_set_symbol_rate(state, state->symbol_rate);
 	}
@@ -1127,14 +1203,8 @@ static int stv091x_set_search_range(struct stv *state, struct neumo_dtv_frontend
 #endif
 						p->algorithm == ALGORITHM_BLIND_BEST_GUESS) {
 		if(state->satellite_scan) {
-			//set limits on how far we can search for a carrier
-			//default search_range=16 000 000; make it less for lower symbol rate
-			state->search_range_hz =
-				(p->max_symbol_rate==0) ? 60000000 : p->max_symbol_rate;
-			dprintk("search range p=%d => s=%d\n", p->max_symbol_rate, state->search_range_hz);
-
+			/* BLScan2-style direct probes use a narrow 500 kHz range. */
 			range = (state->search_range_hz / 2000);
-			//range = (range << 16) / (state->base->mclk / 1000);
 		} else {
 			range = state->search_range_hz / 2000; //for regular blindscan
 			dprintk("RANGE=%d\n", range);
@@ -1239,10 +1309,19 @@ static int stv091x_set_search_standard(struct stv *state, struct neumo_dtv_front
 	u8 regDMDCFGMD;
 
 
-	if(p->algorithm == ALGORITHM_WARM)
-		state->DEMOD |= 0x80; //manual mode for rolloff
-	else
-		state->DEMOD &= ~0x80; //automatic mode for rolloff
+	if (p->algorithm == ALGORITHM_BLIND ||
+	    p->algorithm == ALGORITHM_BLIND_BEST_GUESS ||
+	    state->satellite_scan) {
+		/*
+		 * tbs6903.sys 0x26FCE: clear DEMOD[5:4], write 0x01;
+		 * CARFREQ=0x79 with CARHDR=0x1C.
+		 */
+		state->DEMOD = 0x01;
+	} else if (p->algorithm == ALGORITHM_WARM) {
+		state->DEMOD |= 0x80; /* manual mode for rolloff */
+	} else {
+		state->DEMOD &= ~0x80; /* automatic mode for rolloff */
+	}
 	write_reg(state, RSTV0910_P2_DEMOD + state->regoff, state->DEMOD);
 
 	regDMDCFGMD = read_reg(state, RSTV0910_P2_DMDCFGMD + state->regoff);
@@ -1263,7 +1342,24 @@ static int stv091x_set_search_standard(struct stv *state, struct neumo_dtv_front
 	write_reg(state, RSTV0910_P2_BCLC2S2Q + state->regoff, 0x84);
 	write_reg(state, RSTV0910_P2_BCLC2S28 + state->regoff, 0x84);
 	write_reg(state, RSTV0910_P2_CARHDR + state->regoff, 0x1C);
+	if (p->algorithm == ALGORITHM_BLIND ||
+	    p->algorithm == ALGORITHM_BLIND_BEST_GUESS ||
+	    state->satellite_scan)
+		write_reg(state, RSTV0910_P2_CARFREQ + state->regoff, 0x79);
 	//	write_reg(state, RSTV0910_P2_CARCFG + state->regoff, 0x46);
+
+	/*
+	 * tbs6903.sys 0x1F194 acquire prep (before CFR/wait): set
+	 * VITSCALE.DIS_RSFLOCK and DMDCFG4.DIS_VITLOCK. Without these,
+	 * mid-SR carriers (SW19 8.2M twins / 6.3M) can sit in-range with
+	 * strong AGC2 yet never demod-lock through the full timeout.
+	 */
+	if (state->satellite_scan) {
+		write_reg_field(state,
+				FSTV0910_P2_DIS_RSFLOCK + state->regoff, 1);
+		write_reg_field(state,
+				FSTV0910_P2_DIS_VITLOCK + state->regoff, 1);
+	}
 
 	/* Reset demod */
 	write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x1F);
@@ -1460,6 +1556,7 @@ static int gate_ctrl(struct neumo_dvb_frontend *fe, int enable)
 static void release(struct neumo_dvb_frontend *fe)
 {
 	struct stv *state = fe->demodulator_priv;
+	stv091x_blindscan_free(state);
 	mutex_lock(&state->base->status_lock);
 	if (state->base->set_lock_led)
 		state->base->set_lock_led(fe, 0);
@@ -1570,6 +1667,102 @@ static int stv091x_get_standard(struct neumo_dvb_frontend *fe)
 }
 
 /*
+ * Caller must hold state->base->status_lock.
+ */
+static void stv091x_update_detected_properties_locked(
+	struct stv *state, struct neumo_dtv_frontend_properties *p)
+{
+	static const enum fe_code_rate modcod2fec[0x20] = {
+		FEC_NONE, FEC_1_4, FEC_1_3, FEC_2_5,
+		FEC_1_2, FEC_3_5, FEC_2_3, FEC_3_4,
+		FEC_4_5, FEC_5_6, FEC_8_9, FEC_9_10,
+		FEC_3_5, FEC_2_3, FEC_3_4, FEC_5_6,
+		FEC_8_9, FEC_9_10, FEC_2_3, FEC_3_4,
+		FEC_4_5, FEC_5_6, FEC_8_9, FEC_9_10,
+		FEC_3_4, FEC_4_5, FEC_5_6, FEC_8_9,
+		FEC_9_10, FEC_AUTO, FEC_AUTO, FEC_AUTO
+	};
+	u8 tmp;
+
+	if (p->delivery_system == SYS_DVBS2) {
+		u32 modcod;
+
+		tmp = read_reg(state, RSTV0910_P2_DMDMODCOD + state->regoff);
+		modcod = ((tmp & 0x7c) >> 2);
+		p->pilot = (tmp & 0x01) ? PILOT_ON : PILOT_OFF;
+
+		switch (stv091x_blindscan_modulation_from_modcod(modcod)) {
+		case STV091X_BLINDSCAN_MOD_QPSK:
+			p->modulation = QPSK;
+			break;
+		case STV091X_BLINDSCAN_MOD_8PSK:
+			p->modulation = PSK_8;
+			break;
+		case STV091X_BLINDSCAN_MOD_16APSK:
+			p->modulation = APSK_16;
+			break;
+		case STV091X_BLINDSCAN_MOD_32APSK:
+			p->modulation = APSK_32;
+			break;
+		default:
+			p->modulation = QAM_AUTO;
+			break;
+		}
+
+		if (modcod < ARRAY_SIZE(modcod2fec))
+			p->fec_inner = modcod2fec[modcod];
+		else
+			p->fec_inner = FEC_AUTO;
+
+		switch ((read_reg(state, RSTV0910_P2_TMGOBS + state->regoff) >> 6) & 0x3) {
+		case 0x03:
+			p->rolloff = ROLLOFF_15;
+			break;
+		case 0x02:
+			p->rolloff = ROLLOFF_20;
+			break;
+		case 0x01:
+			p->rolloff = ROLLOFF_25;
+			break;
+		case 0x00:
+		default:
+			p->rolloff = ROLLOFF_35;
+			break;
+		}
+	} else if (p->delivery_system == SYS_DVBS) {
+		p->modulation = QPSK;
+		p->pilot = PILOT_OFF;
+		tmp = read_reg(state, RSTV0910_P2_VITCURPUN + state->regoff);
+		switch (tmp & 0x1F) {
+		case 0x0d:
+			p->fec_inner = FEC_1_2;
+			break;
+		case 0x12:
+			p->fec_inner = FEC_2_3;
+			break;
+		case 0x15:
+			p->fec_inner = FEC_3_4;
+			break;
+		case 0x18:
+			p->fec_inner = FEC_5_6;
+			break;
+		case 0x1a:
+			p->fec_inner = FEC_7_8;
+			break;
+		default:
+			p->fec_inner = FEC_AUTO;
+			break;
+		}
+		p->rolloff = ROLLOFF_35;
+	} else {
+		p->modulation = QAM_AUTO;
+		p->fec_inner = FEC_AUTO;
+		p->pilot = PILOT_AUTO;
+		p->rolloff = ROLLOFF_AUTO;
+	}
+}
+
+/*
 	retrieve information about modulation, frequency, symbol_rate
 	but not CNR, BER (different from stid135)
 
@@ -1583,7 +1776,7 @@ static bool stv091x_get_signal_info(struct neumo_dvb_frontend *fe)
 	u8 regs[2];
 	u32 bandwidth_hz;
 	s32 carrier_frequency_offset;
-	u8 rolloff_status, rolloff;
+	u32 occupied_bw_factor;
 
 	read_regs(state, RSTV0910_P2_CFR2 + state->regoff, regs, 2);
 	carrier_frequency_offset = (s16)((regs[0]<<8) | regs[1]);
@@ -1602,24 +1795,7 @@ static bool stv091x_get_signal_info(struct neumo_dvb_frontend *fe)
 	stv091x_get_standard(fe);
 
 	p->delivery_system = state->signal_info.standard;
-
-	regs[0] = read_reg(state, RSTV0910_P2_TMGOBS  + state->regoff);
-	rolloff_status = (regs[0]>>6);
-	switch(rolloff_status) {
-		case 0x03:
-			rolloff = 115;
-			break;
-		case 0x02:
-			rolloff = 120;
-			break;
-		case 0x01:
-			rolloff = 125;
-			break;
-		case 0x00:
-		default:
-			rolloff = 135;
-			break;
-		}
+	stv091x_update_detected_properties_locked(state, p);
 	dprintk("mis_mode=%d isi=%d pls_mode=%d pls_code=%d\n",
 					state->mis_mode, state->signal_info.isi, state->signal_info.pls_mode,
 					state->signal_info.pls_code);
@@ -1628,7 +1804,23 @@ static bool stv091x_get_signal_info(struct neumo_dvb_frontend *fe)
 									((state->signal_info.pls_code &0x3FFFF)<<8)
 									);
 
-		bandwidth_hz = (state->symbol_rate * rolloff) / 100;
+	switch (p->rolloff) {
+	case ROLLOFF_15:
+		occupied_bw_factor = 115;
+		break;
+	case ROLLOFF_20:
+		occupied_bw_factor = 120;
+		break;
+	case ROLLOFF_25:
+		occupied_bw_factor = 125;
+		break;
+	case ROLLOFF_35:
+	default:
+		occupied_bw_factor = 135;
+		break;
+	}
+
+		bandwidth_hz = (state->symbol_rate * occupied_bw_factor) / 100;
 
 		if (state->tuner_bw > bandwidth_hz || state->tuner_bw < (bandwidth_hz*8)/10)
 			need_retune = true; // ask tuner to change its bandwidth, except duting blind scan
@@ -1736,63 +1928,13 @@ static int pls_search_range(struct neumo_dvb_frontend *fe)
 static int get_frontend(struct neumo_dvb_frontend *fe, struct neumo_dtv_frontend_properties *p)
 {
 	struct stv *state = fe->demodulator_priv;
-	u8 tmp;
+	enum fe_delivery_system standard;
 	mutex_lock(&state->base->status_lock);
-
-	if (state->ReceiveMode == Mode_DVBS2) {
-		u32 mc;
-		enum fe_modulation modcod2mod[0x20] = {
-			QPSK, QPSK, QPSK, QPSK,
-			QPSK, QPSK, QPSK, QPSK,
-			QPSK, QPSK, QPSK, QPSK,
-			PSK_8, PSK_8, PSK_8, PSK_8,
-			PSK_8, PSK_8, APSK_16, APSK_16,
-			APSK_16, APSK_16, APSK_16, APSK_16,
-			APSK_32, APSK_32, APSK_32, APSK_32,
-			APSK_32,
-		};
-		enum fe_code_rate modcod2fec[0x20] = {
-			FEC_NONE, FEC_1_4, FEC_1_3, FEC_2_5,
-			FEC_1_2, FEC_3_5, FEC_2_3, FEC_3_4,
-			FEC_4_5, FEC_5_6, FEC_8_9, FEC_9_10,
-			FEC_3_5, FEC_2_3, FEC_3_4, FEC_5_6,
-			FEC_8_9, FEC_9_10, FEC_2_3, FEC_3_4,
-			FEC_4_5, FEC_5_6, FEC_8_9, FEC_9_10,
-			FEC_3_4, FEC_4_5, FEC_5_6, FEC_8_9,
-			FEC_9_10
-		};
-		//dprintk("receive mode = DVBS2\n");
-		tmp = read_reg(state, RSTV0910_P2_DMDMODCOD + state->regoff);
-		mc = ((tmp & 0x7c) >> 2);
-		p->pilot = (tmp & 0x01) ? PILOT_ON : PILOT_OFF;
-		p->modulation = modcod2mod[mc];
-		p->fec_inner = modcod2fec[mc];
-	} else if (state->ReceiveMode == Mode_DVBS) {
-		//dprintk("receive mode = DVBS\n");
-		tmp = read_reg(state, RSTV0910_P2_VITCURPUN + state->regoff);
-		switch( tmp & 0x1F ) {
- case 0x0d:
-			p->fec_inner = FEC_1_2;
-			break;
- case 0x12:
-			p->fec_inner = FEC_2_3;
-			break;
- case 0x15:
-			p->fec_inner = FEC_3_4;
-			break;
- case 0x18:
-			p->fec_inner = FEC_5_6;
-			break;
- case 0x1a:
-			p->fec_inner = FEC_7_8;
-			break;
-		default:
-			p->fec_inner = FEC_NONE;
-			break;
-		}
-		p->rolloff = ROLLOFF_35;
-	} else {
-		//dprintk("receive mode = %d\n",state->ReceiveMode);
+	stv091x_get_standard(fe);
+	standard = state->signal_info.standard;
+	if (standard == SYS_DVBS || standard == SYS_DVBS2) {
+		p->delivery_system = standard;
+		stv091x_update_detected_properties_locked(state, p);
 	}
 	mutex_unlock(&state->base->status_lock);
 	return 0;
@@ -1833,8 +1975,7 @@ static s32 stv091x_iq_power(struct stv *state)
 	//measure I and Q power
 	for (i = 0; i < 5; i += 1) {
 		read_regs(state, RSTV0910_P2_POWERI + state->regoff, Reg, 2);
-		iq_power += (u32) Reg[0] * (u32) Reg[0] + (u32) Reg[1] * (u32) Reg[1];
-		msleep(3);
+		iq_power += ((u32)Reg[0] + (u32)Reg[1]) / 2;
 	}
 	iq_power /= 5;
 	return iq_power;
@@ -2088,291 +2229,512 @@ typedef enum
 		*/
 	} stv091x_SIGNALTYPE_t;
 
-#define STV0910_BLIND_SEARCH_AGC2BANDWIDTH 40
+#define STV0910_BLIND_SEARCH_AGC2BANDWIDTH	STV091X_BLINDSCAN_VENDOR_AGC2_RATIO
+#define STV0910_VENDOR_EDGE_WINDOW		\
+	STV091X_BLINDSCAN_VENDOR_EDGE_WINDOW
+#define STV0910_VENDOR_MAX_EDGE_STEPS		128
+#define STV0910_VENDOR_MAX_LOCKS			8192
+#define STV0910_VENDOR_DMDCFGMD_ENABLE_STANDARDS	0xc0
+#define STV0910_VENDOR_DMDCFGMD_DISABLE_SCAN	0x18
 
-//check if we are on a leading or falling edge of a potential signal
-//returns 0 if nothing found, 1 on rising edge and 2 on falling edge
-static int stv091x_carrier_check(struct stv* state, s32 *FinalFreq, s32* frequency_jump)
+struct stv091x_edge_saved_state {
+	u8 carcfg;
+	u8 bclc;
+	u8 carfreq;
+	u8 agc2o;
+	u8 agc2ref;
+	u8 dmdcfgmd;
+	u8 dmdistate;
+	u8 sfrinit1;
+	u8 sfrinit0;
+	u8 cfrinit1;
+	u8 cfrinit0;
+	u32 started;
+};
+
+static int stv091x_save_edge_state(
+	struct stv *state, struct stv091x_edge_saved_state *saved)
 {
-	u32 minagc2level=0xffff,maxagc2level=0x0000,midagc2level,
-		agc2level,
-		agc2ratio;
-	s32	init_freq,freq_step;
-	u32	tmp1,tmp2,tmp3,tmp4;
-	u32 asperity=0;
-	u32 waitforfall=0;
-	u32 acculevel=0;
-	u32 div=2;
-	u32 agc2leveltab[20];
+	int ret = 0;
 
-	s32 i,j,k,l,nbSteps;
+	ret |= try_read_reg(state, RSTV0910_P2_CARCFG + state->regoff,
+			    &saved->carcfg);
+	ret |= try_read_reg(state, RSTV0910_P2_BCLC + state->regoff,
+			    &saved->bclc);
+	ret |= try_read_reg(state, RSTV0910_P2_CARFREQ + state->regoff,
+			    &saved->carfreq);
+	ret |= try_read_reg(state, RSTV0910_P2_AGC2O + state->regoff,
+			    &saved->agc2o);
+	ret |= try_read_reg(state, RSTV0910_P2_AGC2REF + state->regoff,
+			    &saved->agc2ref);
+	ret |= try_read_reg(state, RSTV0910_P2_DMDCFGMD + state->regoff,
+			    &saved->dmdcfgmd);
+	ret |= try_read_reg(state, RSTV0910_P2_DMDISTATE + state->regoff,
+			    &saved->dmdistate);
+	ret |= try_read_reg(state, RSTV0910_P2_SFRINIT1 + state->regoff,
+			    &saved->sfrinit1);
+	ret |= try_read_reg(state, RSTV0910_P2_SFRINIT0 + state->regoff,
+			    &saved->sfrinit0);
+	ret |= try_read_reg(state, RSTV0910_P2_CFRINIT1 + state->regoff,
+			    &saved->cfrinit1);
+	ret |= try_read_reg(state, RSTV0910_P2_CFRINIT0 + state->regoff,
+			    &saved->cfrinit0);
+	saved->started = state->Started;
+	return ret;
+}
 
+static int stv091x_restore_edge_state(
+	struct stv *state, const struct stv091x_edge_saved_state *saved)
+{
+	int ret = 0;
 
-	write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff,0x1C);
-	tmp2= read_reg(state, RSTV0910_P2_CARCFG + state->regoff);
-	write_reg(state, RSTV0910_P2_CARCFG + state->regoff, 0x06);
+	ret |= write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff,
+			 0x1c);
+	ret |= write_reg(state, RSTV0910_P2_DMDCFGMD + state->regoff,
+			 saved->dmdcfgmd);
+	ret |= write_reg(state, RSTV0910_P2_CARCFG + state->regoff,
+			 saved->carcfg);
+	ret |= write_reg(state, RSTV0910_P2_BCLC + state->regoff,
+			 saved->bclc);
+	ret |= write_reg(state, RSTV0910_P2_CARFREQ + state->regoff,
+			 saved->carfreq);
+	ret |= write_reg(state, RSTV0910_P2_AGC2REF + state->regoff,
+			 saved->agc2ref);
+	ret |= write_reg(state, RSTV0910_P2_SFRINIT1 + state->regoff,
+			 saved->sfrinit1);
+	ret |= write_reg(state, RSTV0910_P2_SFRINIT0 + state->regoff,
+			 saved->sfrinit0);
+	ret |= write_reg(state, RSTV0910_P2_CFRINIT1 + state->regoff,
+			 saved->cfrinit1);
+	ret |= write_reg(state, RSTV0910_P2_CFRINIT0 + state->regoff,
+			 saved->cfrinit0);
+	ret |= write_reg(state, RSTV0910_P2_AGC2O + state->regoff,
+			 saved->agc2o);
+	ret |= write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff,
+			 saved->dmdistate);
+	state->Started = saved->started;
+	return ret;
+}
 
-	tmp3= read_reg(state, RSTV0910_P2_BCLC + state->regoff);
-	write_reg(state, RSTV0910_P2_BCLC + state->regoff, 0x00);
-	tmp4= read_reg(state, RSTV0910_P2_CARFREQ + state->regoff);
-	write_reg(state, RSTV0910_P2_CARFREQ + state->regoff, 0x00); //stop coarse carrrier corr
+/*
+ * Vendor CFR edge walk (tbs6903.sys 0x1E928). Tuner stays fixed; CFRINIT
+ * walks upward from 0 in 500 kHz steps. AGC2 ratio threshold is 40.
+ */
+static int stv091x_carrier_check(struct stv *state, s32 *frequency_jump,
+				 u8 saved_dmdcfgmd)
+{
+	struct neumo_dvb_frontend *fe = &state->fe;
+	u32 levels[STV0910_VENDOR_EDGE_WINDOW];
+	u32 min_level = 0xffff;
+	u32 max_level = 0;
+	u32 mean_level = 1;
+	u32 global_min = 0xffff;
+	u32 global_max = 0;
+	u32 ratio = 0;
+	u32 sum;
+	u32 level;
+	s32 cfr_step;
+	s32 cfr_init = 0;
+	s32 max_steps;
+	s32 num_steps;
+	s32 edge_samples = 0;
+	s32 i;
+	u32 sfr_init;
+	int asperity = 0;
+	int waiting_for_fall = 0;
+	int ret = 0;
+	u8 dmdcfgmd;
+	u8 agc2i1;
+	u8 agc2i0;
 
-	write_reg(state, RSTV0910_P2_AGC2REF + state->regoff, 0x38);
+	if (!state->base->mclk) {
+		return -EINVAL;
+	}
 
-	tmp1= read_reg(state, RSTV0910_P2_DMDCFGMD + state->regoff);
-	write_reg_fields(state, RSTV0910_P2_DMDCFGMD  + state->regoff,
-									 {FSTV0910_P2_DVBS1_ENABLE, 1},
-									 {FSTV0910_P2_DVBS2_ENABLE, 1},
-									 {FSTV0910_P2_SCAN_ENABLE, 0}, 		/*Enable the SR SCAN*/
-									 {FSTV0910_P2_CFR_AUTOSCAN, 0} /*activate the carrier frequency search loop*/
-									 );
-	stv091x_set_symbol_rate(state, 1000000/div); /*AGC2 bandwidth is 1/div MHz */
+	cfr_step = (s32)MulDiv32(STV091X_BLINDSCAN_VENDOR_CFR_STEP_HZ,
+				 65536, state->base->mclk);
+	if (cfr_step <= 0)
+		return -EINVAL;
+	num_steps = stv091x_blindscan_vendor_edge_steps(state->tuner_bw);
+	if (num_steps > STV0910_VENDOR_MAX_EDGE_STEPS)
+		num_steps = STV0910_VENDOR_MAX_EDGE_STEPS;
+	max_steps = 32767 / cfr_step;
+	if (num_steps > max_steps)
+		num_steps = max_steps;
+	if (num_steps < STV0910_VENDOR_EDGE_WINDOW)
+		return -ERANGE;
 
-	nbSteps=(state->tuner_bw/3000000)*div;
-	if(nbSteps<=0)
-		nbSteps=1;
+	ret |= write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff,
+			 0x1c);
+	ret |= write_reg(state, RSTV0910_P2_CARCFG + state->regoff, 0x06);
+	ret |= write_reg(state, RSTV0910_P2_BCLC + state->regoff, 0x00);
+	ret |= write_reg(state, RSTV0910_P2_CARFREQ + state->regoff, 0x00);
+	ret |= write_reg(state, RSTV0910_P2_AGC2O + state->regoff, 0x03);
+	ret |= write_reg(state, RSTV0910_P2_AGC2REF + state->regoff, 0x38);
+	dmdcfgmd = saved_dmdcfgmd |
+		STV0910_VENDOR_DMDCFGMD_ENABLE_STANDARDS;
+	dmdcfgmd &= ~STV0910_VENDOR_DMDCFGMD_DISABLE_SCAN;
+	ret |= write_reg(state, RSTV0910_P2_DMDCFGMD + state->regoff,
+			 dmdcfgmd);
+	sfr_init = MulDiv32(STV091X_BLINDSCAN_VENDOR_CFR_STEP_HZ,
+			    65536, state->base->mclk);
+	ret |= write_reg(state, RSTV0910_P2_SFRINIT1 + state->regoff,
+			 (sfr_init >> 8) & 0x7f);
+	ret |= write_reg(state, RSTV0910_P2_SFRINIT0 + state->regoff,
+			 sfr_init & 0xff);
+	if (ret)
+		return ret;
 
-	freq_step=((1000000<<8)/(state->base->mclk>>8))/div; /* AGC2 step is 1/div MHz */
+	for (i = 0; i < num_steps; i++, cfr_init += cfr_step) {
+		int j;
 
-	init_freq=0;
-	j=0;	/* index after a rising edge is found */
+		if (kthread_should_stop() ||
+		    neumo_dvb_frontend_task_should_stop(fe)) {
+			return -ECANCELED;
+		}
+		ret |= write_reg(state,
+				 RSTV0910_P2_DMDISTATE + state->regoff, 0x1c);
+		ret |= write_reg(state,
+				 RSTV0910_P2_CFRINIT1 + state->regoff,
+				 (cfr_init >> 8) & 0xff);
+		ret |= write_reg(state,
+				 RSTV0910_P2_CFRINIT0 + state->regoff,
+				 cfr_init & 0xff);
+		ret |= write_reg(state,
+				 RSTV0910_P2_DMDISTATE + state->regoff, 0x18);
+		if (ret)
+			return ret;
+		msleep(STV091X_BLINDSCAN_VENDOR_SETTLE_MS);
 
-	for(i=0;i<nbSteps;i++)
-	{
-		/* Scan on the positive part of the tuner Bw */
-		//dprintk("freq=%d\n", init_freq);
-		write_reg(state, RSTV0910_P2_DMDISTATE  + state->regoff, 0x1C);
-		write_reg(state, RSTV0910_P2_CFRINIT1 + state->regoff, (init_freq >>8) & 0xff);
-		write_reg(state, RSTV0910_P2_CFRINIT0 + state->regoff, init_freq & 0xff);
-		write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x18); //zero offset start
-		msleep(5);
-
-		agc2level=0;
-		agc2level = (read_reg_field(state, FSTV0910_P2_AGC2_INTEGRATOR1  + state->regoff) <<8) |
-			read_reg_field(state, FSTV0910_P2_AGC2_INTEGRATOR0  + state->regoff);
+		ret = try_read_reg(
+			state, RSTV0910_P2_AGC2I1 + state->regoff, &agc2i1);
+		ret |= try_read_reg(
+			state, RSTV0910_P2_AGC2I0 + state->regoff, &agc2i0);
+		if (ret)
+			return ret;
+		level = ((u32)agc2i1 << 8) | agc2i0;
+		if (level < global_min)
+			global_min = level;
+		if (level > global_max)
+			global_max = level;
 
 		if (i == 0) {
-			minagc2level= agc2level;
-			maxagc2level= agc2level;
-			midagc2level= agc2level;
+			for (j = 0; j < STV0910_VENDOR_EDGE_WINDOW; j++)
+				levels[j] = level;
+			continue;
+		}
 
-			for (k=0;k<5*div;k++) {
-				agc2leveltab[k]= agc2level;
-			}
-		} else {
+		levels[i % STV0910_VENDOR_EDGE_WINDOW] = level;
+		min_level = 0xffff;
+		max_level = 0;
+		sum = 0;
+		for (j = 0; j < STV0910_VENDOR_EDGE_WINDOW; j++) {
+			if (levels[j] < min_level)
+				min_level = levels[j];
+			if (levels[j] > max_level)
+				max_level = levels[j];
+			sum += levels[j];
+		}
+		mean_level = sum / STV0910_VENDOR_EDGE_WINDOW;
+		if (!mean_level)
+			mean_level = 1;
+		if (!waiting_for_fall)
+			ratio = (u32)(((u64)(max_level - min_level) * 128) /
+				      mean_level);
+		else
+			ratio = (u32)(((u64)(level - min_level) * 128) /
+				      mean_level);
+		if (ratio > 0xffff)
+			ratio = 0xffff;
 
-			k= i%(5*div);
-			agc2leveltab[k]= agc2level;
+		if ((i % 8) == 0)
+			dprintk("vendor edge step=%d/%d cfr=%d agc2=%u min=%u max=%u avg=%u ratio=%u\n",
+				i, num_steps, cfr_init, level, min_level,
+				max_level, mean_level, ratio);
 
-			minagc2level=0xffff;
-			maxagc2level=0x0000;
-			acculevel=0;
+		{
+			int refill_window = 0;
 
-			for (l=0;l<5*div;l++) {
-				/* Min and max detection */
-
-				if( agc2leveltab[l]<minagc2level ) {
-					minagc2level=agc2leveltab[l];
-				} else if(agc2leveltab[l] >maxagc2level) {
-					maxagc2level=agc2leveltab[l];
-				}
-
-				acculevel=acculevel+agc2leveltab[l];
-			}
-
-			midagc2level= acculevel/(5*div);
-
-			if (waitforfall==0) {
-				agc2ratio = (maxagc2level - minagc2level)*128/midagc2level;
-			} else {
-				agc2ratio = (agc2level - minagc2level)*128/midagc2level;
-			}
-
-			if (agc2ratio > 0xffff)
-				agc2ratio = 0xffff;
-
-
-			if ((agc2ratio > STV0910_BLIND_SEARCH_AGC2BANDWIDTH) && (agc2level==minagc2level)) {	 /* rising edge */
-				asperity=1;		 /* The first edge is rising */
-				waitforfall=1;
-				for (l=0;l<5*div;l++) {
-					agc2leveltab[l]= agc2level;
-				}
-			} else if ((agc2ratio > STV0910_BLIND_SEARCH_AGC2BANDWIDTH)) {
-				/* Falling edge */
-				if (waitforfall==0) {
-					asperity=2; /* the first edge is falling */
-				} else {
-					asperity=1;
-				}
-
-				if (j==1) {
-					for (l=0;l<5*div;l++) {
-						agc2leveltab[l]= agc2level;
-					}
-
-					j=0;				 /* All reset */
-					waitforfall=0;
-					asperity=0;
-				} else {
-					break;
-				}
-			}
-
-			if ((waitforfall==1) && j==(5*div)) {
+			if (stv091x_blindscan_vendor_edge_on_ratio(
+				    ratio, level == min_level, &asperity,
+				    &waiting_for_fall, &edge_samples,
+				    &refill_window))
 				break;
+			if (refill_window) {
+				for (j = 0; j < STV0910_VENDOR_EDGE_WINDOW;
+				     j++)
+					levels[j] = level;
+				/* asperity cleared ⇒ Windows 0x2EC6A reset */
+				if (!asperity)
+					dprintk("vendor edge false-alarm reset step=%d ratio=%u\n",
+						i, ratio);
 			}
-			if (waitforfall==1) {
-				j+=1;
-			}
-		} /* end of i!=0 */
-
-		init_freq = init_freq + freq_step;
-
-	} /* End of for (i=0;i<nbSteps) */
-
-	//restore registers
-	write_reg(state, RSTV0910_P2_DMDCFGMD + state->regoff, tmp1);
-	write_reg(state, RSTV0910_P2_CARCFG + state->regoff, tmp2);
-	write_reg(state, RSTV0910_P2_BCLC + state->regoff, tmp3);
-	write_reg(state, RSTV0910_P2_CARFREQ + state->regoff, tmp4);
-	write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x1C);
-	write_reg(state, RSTV0910_P2_CFRINIT1 + state->regoff, 0);
-	write_reg(state, RSTV0910_P2_CFRINIT0 + state->regoff, 0);
-
-	if (asperity ==1) { /* rising edge followed by a constant level or a falling edge */
-		*frequency_jump = (1000/div)*(i-(j+2)/2);
-	} else {
-		*frequency_jump = (1000/div)*i; /* falling edge */
+		}
 	}
+
+	if (asperity)
+		*frequency_jump = stv091x_blindscan_vendor_edge_jump_khz(
+			i, asperity, edge_samples);
+	else
+		*frequency_jump = stv091x_blindscan_vendor_miss_jump_khz(
+			state->tuner_bw);
+
+	dprintk("vendor edge result=%d jump=%dkHz global=%u..%u rolling=%u..%u avg=%u ratio=%u steps=%d\n",
+		asperity, *frequency_jump, global_min, global_max,
+		min_level, max_level, mean_level, ratio, num_steps);
 
 	return asperity;
 }
 
-//returns true if a rising edge in spectrum was found, 2 for falling edge, 0 for nothing found
+static int stv091x_vendor_rf_gate(struct stv *state, s32 *agc_power_gain,
+				  s32 *iq_power)
+{
+	u8 power[2];
+	u32 sum = 0;
+	int ret;
+	int i;
+
+	ret = read_regs(state, RSTV0910_P2_AGCIQIN1 + state->regoff,
+			power, 2);
+	if (ret)
+		return ret;
+	*agc_power_gain = ((u32)power[0] << 8) | power[1];
+	*iq_power = 0;
+	if (*agc_power_gain)
+		return 0;
+
+	for (i = 0; i < 5; i++) {
+		ret = read_regs(state, RSTV0910_P2_POWERI + state->regoff,
+				power, 2);
+		if (ret)
+			return ret;
+		sum += ((u32)power[0] + power[1]) / 2;
+	}
+	*iq_power = sum / 5;
+	return 0;
+}
+
 static int stv091x_carrier_search(struct stv *state,  s32* frequency_jump)
 {
-	//	bool signal_found = false;
+	struct stv091x_edge_saved_state saved;
 	s32 agc_power_gain;
-	s32 iq_power;
-	s32 FinalFreq;
-	u32 asperity=0;
-	//stv091x_SIGNALTYPE_t signalType=FE_SAT_NOCARRIER;
+	s32 iq_power = 0;
+	int ret = 0;
+	int restore_ret;
 
-	msleep(10);
-	agc_power_gain = stv091x_agc1_power_gain(state);
-	if(agc_power_gain==0) {
-			/*if AGC1 integrator value is 0 then read POWERI, POWERQ registers*/
-			/*Read the IQ power value*/
-		iq_power = stv091x_iq_power(state);
+	ret = stv091x_save_edge_state(state, &saved);
+	if (ret)
+		return ret;
+	ret |= write_reg(state, RSTV0910_P2_AGC2O + state->regoff, 0x03);
+	ret |= write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x1c);
+	ret |= write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x18);
+	if (ret)
+		goto restore;
+	msleep(STV091X_BLINDSCAN_VENDOR_SETTLE_MS);
+	ret = stv091x_vendor_rf_gate(state, &agc_power_gain, &iq_power);
+	if (ret)
+		goto restore;
+
+	if (agc_power_gain || iq_power >= STV091X_BLINDSCAN_IQ_THRESHOLD) {
+		ret = stv091x_carrier_check(
+			state, frequency_jump, saved.dmdcfgmd);
+		dprintk("vendor RF gate agc1=%d iq=%d edge=%d jump=%dkHz\n",
+			agc_power_gain, iq_power, ret,
+			ret < 0 ? 0 : *frequency_jump);
+		goto restore;
 	}
 
-	FinalFreq = 0;
+	*frequency_jump = stv091x_blindscan_vendor_miss_jump_khz(
+		state->tuner_bw);
+	dprintk("vendor RF gate empty agc1=%d iq=%d jump=%dkHz\n",
+		agc_power_gain, iq_power, *frequency_jump);
 
-	if ( (agc_power_gain == 0) && (iq_power < 30)){
-		/*no signal */
-		/* Jump of distance of the bandwith tuner */
-		//signalType = FE_SAT_TUNER_NOSIGNAL;
-		asperity = 0;
-	} else {
-
-		/* Perform edge detection */
-		asperity = stv091x_carrier_check(state, &FinalFreq, frequency_jump);
-
-		if (asperity == 0) {
-			/* No edge detected, jump tuner bandwidth */
-			//signalType = FE_SAT_TUNER_NOSIGNAL;
-
-			//TODO: falling edge detected or direct blind to be done:
-			//dprintk("unimplemented?\n");
-			dprintk("Rien dans la bande, saut de BW/2;  asperity=%d jump=%d\n", asperity, *frequency_jump);
-		} else { // asperity==1; rising edge detected, perform blind search at next step */
-			//signalType = FE_SAT_TUNER_JUMP;
-			dprintk("Saut 4 or more steps; asperity=%d jump=%d\n", asperity, *frequency_jump);
-
-		}
-	}
-	state->scan_next_frequency += *frequency_jump;
-	state->search_range_hz = 24000000 + *frequency_jump *1000;
-	if (state->search_range_hz >40000000)
-		state->search_range_hz = 40000000;
-
-	write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x5C); /* Demod Stop*/
-
-	return asperity;
+restore:
+	restore_ret = stv091x_restore_edge_state(state, &saved);
+	if (restore_ret)
+		ret = restore_ret;
+	return ret;
 }
 
 static int stv091x_tune_once(struct neumo_dvb_frontend *fe, bool* need_retune);
 
-/*returns true 1 if a rising edge in spectrum was found, 2 for falling edge, 0 for nothing found
- *locked_ret indicates if a asignal could be locked
- */
-static int scan_within_tuner_bw(struct neumo_dvb_frontend *fe, bool* locked_ret)
+static int stv091x_vendor_rf_empty(struct stv *state)
 {
-	//bool rising_edge_found = false;
-	bool locked=false;
-	int asperity = 0;
-	s32 frequency_jump=0;
+	s32 agc_power_gain;
+	s32 iq_power = 0;
+	int ret;
+
+	ret = stv091x_vendor_rf_gate(state, &agc_power_gain, &iq_power);
+	if (ret)
+		return ret;
+	if (agc_power_gain || iq_power >= STV091X_BLINDSCAN_IQ_THRESHOLD)
+		return 0;
+	return 1;
+}
+
+static int stv091x_vendor_blind_acquire(struct neumo_dvb_frontend *fe,
+					s32 frequency_jump_khz)
+{
 	struct stv *state = fe->demodulator_priv;
 	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
-	BUG_ON(!state->satellite_scan);
-	state->signal_info.has_timedout=false;
-	//u32 IF;
-	state->signal_info.fec_locked = 0;
-	state->signal_info.demod_locked = 0;
+	bool need_retune = false;
+	int old_algo;
+	int ret;
+
+	/*
+	 * tbs6903.sys 0x1F194: search_range = min((jump+24000)*1kHz, 40MHz).
+	 * Blind acquire always keeps the tuner LO on the scan center
+	 * (CFRUP/LOW = ±range/2). Experimental LO-forward shift when
+	 * jump > half-range regressed low-SR H/V TPs and did not recover
+	 * the mid-H 25Msps cluster.
+	 */
+	state->search_range_hz =
+		stv091x_blindscan_vendor_acquisition_range_hz(
+			frequency_jump_khz);
+	p->frequency = state->blindscan_traversal.vendor_frequency_khz;
+	state->symbol_rate = STV091X_BLINDSCAN_INIT_SR;
+	if (kthread_should_stop() ||
+	    neumo_dvb_frontend_task_should_stop(fe)) {
+		Stop(state);
+		return -ECANCELED;
+	}
+	old_algo = p->algorithm;
+	p->algorithm = ALGORITHM_BLIND;
+	state->signal_info.has_timedout = true;
+	state->signal_info.has_lock = false;
+	ret = stv091x_tune_once(fe, &need_retune);
+	p->algorithm = old_algo;
+	if (ret) {
+		Stop(state);
+		return ret;
+	}
+	/*
+	 * tbs6903.sys 0x2714C: after lock, retune STV6120 to 2/3 of the
+	 * blind BW (72→48 MHz) before reading signal parameters.
+	 */
+	if (!state->signal_info.has_timedout &&
+	    state->fe.ops.tuner_ops.set_frequency_and_bandwidth) {
+		state->tuner_bw =
+			STV091X_BLINDSCAN_VENDOR_POST_LOCK_TUNER_BW_HZ;
+		ret = state->fe.ops.tuner_ops.set_frequency_and_bandwidth(
+			&state->fe, state->tuner_frequency,
+			state->tuner_bw / 1000);
+		if (ret) {
+			Stop(state);
+			return ret;
+		}
+	}
+	if (kthread_should_stop() ||
+	    neumo_dvb_frontend_task_should_stop(fe)) {
+		Stop(state);
+		return -ECANCELED;
+	}
+	return 0;
+}
+
+static int stv091x_vendor_probe(struct neumo_dvb_frontend *fe,
+				bool *locked_ret)
+{
+	struct stv *state = fe->demodulator_priv;
+	struct stv091x_blindscan_traversal *trav = &state->blindscan_traversal;
+	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
+	s32 center = trav->vendor_frequency_khz;
+	s32 frequency_jump = trav->stored_jump_khz;
+	int edge = 2;
+	int ret;
+	int rf_empty;
+
+	*locked_ret = false;
+	p->frequency = center;
+	state->symbol_rate = STV091X_BLINDSCAN_INIT_SR;
+
+	if (trav->probe_mode == STV091X_BLINDSCAN_VENDOR_PROBE_ACQUIRE) {
+		/*
+		 * tbs6903.sys mode 2: skip edge detection, keep sticky /
+		 * halved jump, RF-gate then blind-acquire. This breaks the
+		 * edge=2 jump=500 crawl by not rediscovering the same false
+		 * edge every 250 kHz.
+		 */
+		if (frequency_jump <= 0)
+			frequency_jump =
+				STV091X_BLINDSCAN_VENDOR_STICKY_JUMP_KHZ;
+		state->search_range_hz =
+			stv091x_blindscan_vendor_acquisition_range_hz(
+				frequency_jump);
+		Stop(state);
+		ret = stv091x_set_frequency_symbol_rate_bandwidth(state);
+		if (ret)
+			return ret;
+		msleep(STV091X_BLINDSCAN_VENDOR_SETTLE_MS);
+		rf_empty = stv091x_vendor_rf_empty(state);
+		if (rf_empty < 0)
+			return rf_empty;
+		if (rf_empty) {
+			stv091x_blindscan_vendor_apply_result(
+				trav, 0, frequency_jump, state->tuner_bw,
+				0, center, 0);
+			dprintk("vendor mode2 RF-empty jump=%dkHz next=%dkHz\n",
+				frequency_jump, trav->vendor_frequency_khz);
+			return 0;
+		}
+		ret = stv091x_vendor_blind_acquire(fe, frequency_jump);
+		if (ret)
+			return ret;
+		*locked_ret = !state->signal_info.has_timedout;
+		stv091x_blindscan_vendor_apply_result(
+			trav, 2, frequency_jump, state->tuner_bw,
+			*locked_ret, p->frequency, state->symbol_rate);
+		dprintk("vendor mode2 acquire freq=%dkHz jump=%dkHz locked=%d sr=%d phase=%u next=%dkHz\n",
+			p->frequency, frequency_jump, *locked_ret,
+			state->symbol_rate, trav->fail_phase,
+			trav->vendor_frequency_khz);
+		return 2;
+	}
+
+	/*
+	 * Mode 1: 500 kHz edge-discovery tune, then CFR/AGC2 walk.
+	 */
+	state->search_range_hz =
+		STV091X_BLINDSCAN_VENDOR_EDGE_SEARCH_RANGE_HZ;
 	Stop(state);
+	ret = stv091x_set_frequency_symbol_rate_bandwidth(state);
+	if (ret)
+		return ret;
+	/* tbs6903.sys 0x1F445: 10 ms settle after tuner BW before edge walk */
+	msleep(STV091X_BLINDSCAN_VENDOR_SETTLE_MS);
 
-
-	if (state->symbol_rate < 100000 || state->symbol_rate > 70000000)
-		return -EINVAL;
-	stv091x_compute_timeouts(&state->DemodTimeout, &state->FecTimeout, state->symbol_rate, p->algorithm);
-	stv091x_set_frequency_symbol_rate_bandwidth(state); //bw set to max. symbol_rate set to 1MHz
-
-
-	state->ReceiveMode = Mode_None;
-	state->DemodLockTime = 0;
-
-#if 0
-	switch(p->algorithm) {
-	case ALGORITHM_SEARCH_NEXT:
-		break;
-	default:
-		dprintk("This function should not be called with algorithm=%d\n", p->algorithm);
-		break;
+	edge = stv091x_carrier_search(state, &frequency_jump);
+	if (edge < 0)
+		return edge;
+	/*
+	 * tbs6903.sys 0x1F52C: asperity 0 → status 4 (miss), asperity 1 →
+	 * status 5 (skip acquire, sticky mode-2). Only asperity 2 acquires.
+	 * Trying acquire on asperity-1 (4d3f8a6) caused a large regression
+	 * (64→44 TPs): timeout storms on filter edges, false locks (SR=0),
+	 * and wiped most of the upper V band — do not repeat.
+	 */
+	if (edge != 2) {
+		stv091x_blindscan_vendor_apply_result(
+			trav, edge, frequency_jump, state->tuner_bw,
+			0, center, 0);
+		dprintk("vendor skip-acquire edge=%d jump=%dkHz mode=%u next=%dkHz\n",
+			edge, frequency_jump, trav->probe_mode,
+			trav->vendor_frequency_khz);
+		return 0;
 	}
-#endif
 
-	asperity = stv091x_carrier_search(state, &frequency_jump);
-	dprintk("asperity=%d frequency=%dkHz jump=%dkHz\n", asperity, p->frequency, frequency_jump);
-	if(asperity==1 ||asperity==2) { //rising or falling edge found
-		p->frequency += frequency_jump;
+	ret = stv091x_vendor_blind_acquire(fe, frequency_jump);
+	if (ret)
+		return ret;
 
-		dprintk("BEFORE state->srate=%d p->srate=%d p->search_range=%d state->search_range=%d\n",
-						state->symbol_rate/1000, p->symbol_rate/1000, p->max_symbol_rate/1000, state->search_range_hz/1000);
-		state->Started = 1;
-		{ bool need_retune;
-			int ret;
-			int old = p->algorithm;
-			p->algorithm = ALGORITHM_BLIND;
-			ret = stv091x_tune_once(fe, &need_retune);
-			dprintk("tune_once returned stat=%d\n", ret);
-			p->algorithm = old;
-			locked= !state->signal_info.has_timedout;
-		}
-		dprintk("AFTER state->srate=%d p->srate=%d p->search_range=%d state->search_range=%d\n",
-						state->symbol_rate/1000, p->symbol_rate/1000, p->max_symbol_rate/1000, state->search_range_hz/1000);
-
-		if(locked) {
-			//stv091x_get_signal_info(fe); already done in tune_once
-		} else {
-			state->Started = 0;
-		}
-	} else {
-		p->frequency += ((state->tuner_bw / 3000) - 1000);
-		dprintk("frequency=%d\n", p->frequency);
-	}
-	*locked_ret = locked;
-	return asperity;
+	*locked_ret = !state->signal_info.has_timedout;
+	stv091x_blindscan_vendor_apply_result(
+		trav, edge, frequency_jump, state->tuner_bw,
+		*locked_ret, p->frequency, state->symbol_rate);
+	dprintk("vendor acquisition edge=%d freq=%dkHz locked=%d sr=%d phase=%u next=%dkHz\n",
+		edge, p->frequency, *locked_ret, state->symbol_rate,
+		trav->fail_phase, trav->vendor_frequency_khz);
+	return edge;
 }
 
 
@@ -2382,21 +2744,39 @@ static int stv091x_tune_once(struct neumo_dvb_frontend *fe, bool* need_retune)
 	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
 	struct stv_signal_info* signal_info = &state->signal_info;
 	bool locked;
+	int ret;
 	memset(signal_info, 0, sizeof(*signal_info));
 	dprintk("[%d] delivery_system=%u modulation=%u frequency=%u symbol_rate=%u inversion=%u stream_id=%d\n",
 					state->adapterno,
 					p->delivery_system, p->modulation, p->frequency,
 					p->symbol_rate, p->inversion, p->stream_id);
 
-	state->signal_info.has_timedout=false;
+	/* A setup failure must never look like a completed acquisition. */
+	state->signal_info.has_timedout = true;
 	*need_retune = 0;
 
 	Stop(state);
+	/*
+	 * tbs6903.sys 0x1F194 always writes DMDISTATE=0x5C before programming
+	 * SR/CFR, even when the prior probe left Started=0 (edge walk). Stop()
+	 * alone is a no-op then and can leave the demod mid-edge.
+	 */
+	if (state->satellite_scan)
+		write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x5c);
 
-	stv091x_compute_timeouts(&state->DemodTimeout, &state->FecTimeout, state->symbol_rate, p->algorithm);
+	/*
+	 * tbs6903.sys 0x2507C: for blind (algo 0) at INIT 1Msps this yields
+	 * DemodTimeout=2000, FecTimeout=500. Do not force 500/50 — that was
+	 * only the 0x1F341 seed before 0x2507C overwrites it, and it drops
+	 * low-SR locks (591k/4.7M V cluster).
+	 */
+	stv091x_compute_timeouts(&state->DemodTimeout, &state->FecTimeout,
+				 state->symbol_rate, p->algorithm);
 
 	dprintk("now symbol_rate=%d\n", state->symbol_rate);
-	stv091x_set_frequency_symbol_rate_bandwidth(state);
+	ret = stv091x_set_frequency_symbol_rate_bandwidth(state);
+	if (ret)
+		return ret;
 	state->ReceiveMode = Mode_None;
 	state->DemodLockTime = 0;
 
@@ -2424,18 +2804,28 @@ static int stv091x_tune_once(struct neumo_dvb_frontend *fe, bool* need_retune)
 #endif
 	state->Started = 1;
 
-	locked = wait_for_dmdlock(fe, 1 /*require_data*/);
+	/*
+	 * tbs6903.sys 0x1D4C8: vendor lock = HEADER_MODE 2/3 + LOCK_DEFINITIF.
+	 * Requiring VIT/PDEL (require_data) misses mid-SR S2 carriers that
+	 * reach demod lock but not packet delin within DemodTimeout (SW19
+	 * 11101H / 11580–11597 twins: full ~3.5s burns, locked=0).
+	 */
+	locked = wait_for_dmdlock(fe, !state->satellite_scan /*require_data*/);
 
 	dprintk("lock=%d timedout=%d\n", locked, state->signal_info.has_timedout);
-	if(!locked && p->algorithm != ALGORITHM_WARM && p->algorithm != ALGORITHM_COLD) {
-		if(!locked)
-			locked = pls_search_list(fe);
-		if(!locked)
+	/* tbs6903.sys vendor blind path does not run PLS search. */
+	if (!locked && !state->satellite_scan &&
+	    p->algorithm != ALGORITHM_WARM &&
+	    p->algorithm != ALGORITHM_COLD) {
+		locked = pls_search_list(fe);
+		if (!locked)
 			locked = pls_search_range(fe);
-	} else {
+	}
+	if (locked) {
+		int pls_mode = 0;
+		int pls_code = 0;
+
 		state->signal_info.has_lock=true;
-		int pls_mode;
-		int pls_code;
 		if(p->pls_mode >=0) {
 			pls_mode = p->pls_mode;
 			pls_code = p->pls_code;
@@ -2446,7 +2836,8 @@ static int stv091x_tune_once(struct neumo_dvb_frontend *fe, bool* need_retune)
 		set_stream_index(state, p->stream_id, pls_mode, pls_code);
 	}
 
-	state->signal_info.has_timedout = !state->signal_info.has_viterbi;
+	/* wait_for_dmdlock() returns the authoritative data-lock result. */
+	state->signal_info.has_timedout = !locked;
 	if(locked) {
 		/*
 			retrieve information about modulation, frequency, symbol_rate
@@ -2548,83 +2939,290 @@ static int stv091x_tune(struct neumo_dvb_frontend *fe, bool re_tune,
 	return 0;
 }
 
+static void stv091x_blindscan_free(struct stv *state)
+{
+	kfree(state->blindscan_locks);
+	state->blindscan_locks = NULL;
+	state->blindscan_num_locks = 0;
+	state->blindscan_lock_capacity = 0;
+	memset(&state->blindscan_traversal, 0,
+	       sizeof(state->blindscan_traversal));
+	state->blindscan_traversal.phase = STV091X_BLINDSCAN_FALLBACK;
+}
+
+static void stv091x_blindscan_stop_and_free(struct stv *state)
+{
+	Stop(state);
+	state->satellite_scan = false;
+	stv091x_blindscan_free(state);
+}
+
 /*
-	init = 1: start the scan at the search range specified by the user
-	init = 0: start the scan just beyond the last found frequency
+	init = 1: start a direct tuner-span probe scan
+	init = 0: continue after the previous lock
  */
 static int stv091x_sat_scan(struct neumo_dvb_frontend *fe, bool init,
 														unsigned int *delay,  enum fe_status *status)
 {
 	struct stv *state = fe->demodulator_priv;
 	struct neumo_dtv_frontend_properties *p = &fe->dtv_property_cache;
-	int asperity;
 	bool locked = false;
-	if(init) {
+	bool need_retune = false;
+	int old_algo;
+	int ret;
+	s32 probe_frequency;
+	u32 agc1;
+	u16 iq_power;
+	bool half_step = true;
+
+	if (init)
 		stv091x_stop_task(fe);
-		//clean up any left over spectrum
-	}
 
 	mutex_lock(&state->base->status_lock);
+	if (!init)
+		Stop(state);
 	state->Started = 0;
 	state->satellite_scan = true;
-	//todo: 	MinSymbolRate
-	state->search_range_hz =  500000;
-	state->symbol_rate =  1000000;							/*	minimum symbol rate for scan = 1Msps	*/
-	dprintk("set symbol_rate=%d\n", state->symbol_rate);
+	state->symbol_rate = STV091X_BLINDSCAN_INIT_SR;
 
-	if(init) {
+	if (init) {
+		u32 lock_capacity;
+		u32 span_khz;
+
 		state->scan_next_frequency = p->scan_start_frequency;
 		state->scan_end_frequency = p->scan_end_frequency;
+		state->blindscan_fallback_symbol_rate = p->symbol_rate;
+		stv091x_blindscan_traversal_init(
+			&state->blindscan_traversal,
+			p->scan_start_frequency);
+		if (p->scan_end_frequency > p->scan_start_frequency) {
+			span_khz = p->scan_end_frequency -
+				p->scan_start_frequency;
+			lock_capacity = DIV_ROUND_UP(
+				span_khz,
+				STV091X_BLINDSCAN_VENDOR_CFR_STEP_HZ / 1000) +
+				1;
+			if (lock_capacity > STV0910_VENDOR_MAX_LOCKS) {
+				dprintk("vendor range too large for lock storage, using fallback\n");
+				stv091x_blindscan_transition_to_fallback(
+					&state->blindscan_traversal);
+				lock_capacity = 0;
+			}
+			state->blindscan_lock_capacity = lock_capacity;
+			if (lock_capacity)
+				state->blindscan_locks = kcalloc(
+					lock_capacity,
+					sizeof(state->blindscan_locks[0]),
+					GFP_KERNEL);
+			if (lock_capacity && !state->blindscan_locks) {
+				dprintk("vendor lock storage unavailable, using fallback\n");
+				stv091x_blindscan_transition_to_fallback(
+					&state->blindscan_traversal);
+			}
+		} else {
+			stv091x_blindscan_transition_to_fallback(
+				&state->blindscan_traversal);
+		}
+		if (state->blindscan_traversal.phase ==
+		    STV091X_BLINDSCAN_FALLBACK)
+			p->symbol_rate = state->blindscan_fallback_symbol_rate;
 	}
 
-	while(state->scan_next_frequency < state->scan_end_frequency) {
+	while (state->blindscan_traversal.phase ==
+	       STV091X_BLINDSCAN_VENDOR &&
+	       state->blindscan_traversal.vendor_frequency_khz <
+		       state->scan_end_frequency) {
+		s32 probe_center_khz;
+
 		*status = 0;
-		if (kthread_should_stop() || neumo_dvb_frontend_task_should_stop(fe)) {
-			dprintk("exiting on should stop\n");
-			*status =0;
+		if (kthread_should_stop() ||
+		    neumo_dvb_frontend_task_should_stop(fe)) {
+			stv091x_blindscan_stop_and_free(state);
 			mutex_unlock(&state->base->status_lock);
 			return 0;
 		}
-		p->frequency = state->scan_next_frequency;
-		dprintk("start=%d end=%d init=%d\n",
-						state->scan_next_frequency, state->scan_end_frequency,  init);
-
-		if(p->frequency >= state->scan_end_frequency) {
-			dprintk("Invalid range");
-			mutex_unlock(&state->base->status_lock);
-			return -1;
+		/*
+		 * Save scan center before probe. apply_result() overwrites
+		 * vendor_frequency on lock; duplicate advance must start
+		 * from this center (tbs6903.sys 0x1C025 adds SR/1000 to
+		 * r8 scan freq), not from the locked frequency — otherwise
+		 * we reset to lock+1000 forever and spin on one TP.
+		 */
+		probe_center_khz =
+			state->blindscan_traversal.vendor_frequency_khz;
+		ret = stv091x_vendor_probe(fe, &locked);
+		if (ret < 0) {
+			dprintk("vendor traversal failed (%d), using fallback\n",
+				ret);
+			break;
 		}
-#if 0
-		p->algorithm = ALGORITHM_SEARCH_NEXT;
-#endif
-		asperity = scan_within_tuner_bw(fe, &locked);
-		dprintk("asperity=%d locked=%d freq=%dkHz start_freq=%dkHz end_freq=%dkHz\n", asperity, locked,
-						p->frequency/1000, state->scan_next_frequency/1000, state->scan_end_frequency);
-		if(locked) {
-			//state->scan_end_frequency = p->frequency;
-			uint32_t step = 135*((state->symbol_rate/1000) / (2*100));
-			uint32_t next = p->frequency + step;
-			dprintk("symbol_rate=%d step=%d next-%d\n", state->symbol_rate, step, next);
-			if(next < state->scan_next_frequency) {
-				next += state->search_range_hz/1000;
-				dprintk ("Adjusting next to prevent going backwards: new next=%d\n", next);
+		if (locked) {
+			ret = stv091x_blindscan_add_unique_lock(
+				state->blindscan_locks,
+				&state->blindscan_num_locks,
+				state->blindscan_lock_capacity,
+				p->frequency, state->symbol_rate);
+			if (ret == 0) {
+				state->blindscan_traversal.vendor_frequency_khz =
+					stv091x_blindscan_vendor_duplicate_frequency(
+						probe_center_khz,
+						state->symbol_rate);
+				dprintk("suppressing duplicate vendor lock freq=%dkHz sr=%d next=%dkHz\n",
+					p->frequency, state->symbol_rate,
+					state->blindscan_traversal.vendor_frequency_khz);
+				continue;
+			}
+			if (ret < 0) {
+				dprintk("vendor lock storage exhausted, using fallback\n");
+				break;
 			}
 			state->tune_time = jiffies;
+			*status = FE_HAS_SIGNAL | FE_HAS_CARRIER |
+				FE_HAS_VITERBI | FE_HAS_SYNC | FE_HAS_LOCK;
+			*delay = HZ;
+			dprintk("vendor lock freq=%dkHz sr=%d next=%dkHz\n",
+				p->frequency, state->symbol_rate,
+				state->blindscan_traversal.vendor_frequency_khz);
+			mutex_unlock(&state->base->status_lock);
+			return 0;
+		}
+	}
 
-			state->scan_next_frequency = next;
+	if (state->blindscan_traversal.phase == STV091X_BLINDSCAN_VENDOR) {
+		state->scan_next_frequency =
+			stv091x_blindscan_transition_to_fallback(
+				&state->blindscan_traversal);
+		state->search_range_hz = STV091X_BLINDSCAN_SEARCH_RANGE_HZ;
+		state->symbol_rate = STV091X_BLINDSCAN_INIT_SR;
+		p->symbol_rate = state->blindscan_fallback_symbol_rate;
+		dprintk("vendor traversal exhausted, starting 60MHz fallback at %dkHz\n",
+			state->scan_next_frequency);
+	} else {
+		state->search_range_hz = STV091X_BLINDSCAN_SEARCH_RANGE_HZ;
+		state->symbol_rate = STV091X_BLINDSCAN_INIT_SR;
+	}
 
-			*status = FE_HAS_SIGNAL|FE_HAS_CARRIER|FE_HAS_VITERBI|FE_HAS_SYNC|FE_HAS_LOCK;
+	while (state->scan_next_frequency < state->scan_end_frequency) {
+		*status = 0;
+		if (kthread_should_stop() || neumo_dvb_frontend_task_should_stop(fe)) {
+			*status = 0;
+			stv091x_blindscan_stop_and_free(state);
+			mutex_unlock(&state->base->status_lock);
+			return 0;
+		}
+
+		probe_frequency = state->scan_next_frequency;
+		p->frequency = probe_frequency;
+
+		/*
+		 * Match BLScan2's cheap no-signal test before asking the
+		 * demodulator to perform a blind acquisition.
+		 */
+		Stop(state);
+		ret = stv091x_set_frequency_symbol_rate_bandwidth(state);
+		if (ret) {
+			Stop(state);
+			state->scan_next_frequency =
+				stv091x_blindscan_failed_frequency(
+					probe_frequency,
+					state->search_range_hz,
+					half_step);
+			half_step = false;
+			dprintk("fallback tuner setup failed (%d), advancing to %dkHz\n",
+				ret, state->scan_next_frequency);
+			continue;
+		}
+		write_reg(state, RSTV0910_P2_AGC2O + state->regoff, 0x03);
+		write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x1c);
+		write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x18);
+		msleep(10);
+
+		agc1 = stv091x_agc1_power_gain(state);
+		iq_power = agc1 ? STV091X_BLINDSCAN_IQ_THRESHOLD :
+			stv091x_iq_power(state);
+		write_reg(state, RSTV0910_P2_DMDISTATE + state->regoff, 0x5c);
+		write_reg(state, RSTV0910_P2_AGC2O + state->regoff, 0x5b);
+		if (kthread_should_stop() ||
+		    neumo_dvb_frontend_task_should_stop(fe)) {
+			*status = 0;
+			stv091x_blindscan_stop_and_free(state);
+			mutex_unlock(&state->base->status_lock);
+			return 0;
+		}
+		if (iq_power < STV091X_BLINDSCAN_IQ_THRESHOLD) {
+			state->scan_next_frequency =
+				stv091x_blindscan_failed_frequency(
+					probe_frequency,
+					state->search_range_hz,
+					half_step);
+			half_step = false;
+			continue;
+		}
+
+		old_algo = p->algorithm;
+		p->algorithm = ALGORITHM_BLIND;
+		state->symbol_rate = STV091X_BLINDSCAN_INIT_SR;
+		state->Started = 0;
+		Stop(state);
+		locked = false;
+		state->signal_info.has_timedout = true;
+		state->signal_info.has_lock = false;
+		ret = stv091x_tune_once(fe, &need_retune);
+		p->algorithm = old_algo;
+		if (ret) {
+			Stop(state);
+			state->scan_next_frequency =
+				stv091x_blindscan_failed_frequency(
+					probe_frequency,
+					state->search_range_hz,
+					half_step);
+			half_step = false;
+			dprintk("fallback acquisition failed (%d), advancing to %dkHz\n",
+				ret, state->scan_next_frequency);
+			continue;
+		}
+		if (kthread_should_stop() ||
+		    neumo_dvb_frontend_task_should_stop(fe)) {
+			*status = 0;
+			stv091x_blindscan_stop_and_free(state);
+			mutex_unlock(&state->base->status_lock);
+			return 0;
+		}
+		locked = !state->signal_info.has_timedout;
+
+		if (locked) {
+			state->scan_next_frequency =
+				stv091x_blindscan_after_lock_frequency(
+					p->frequency, state->symbol_rate,
+					state->search_range_hz);
+			if (stv091x_blindscan_lock_is_duplicate(
+				    state->blindscan_locks,
+				    state->blindscan_num_locks,
+				    p->frequency, state->symbol_rate)) {
+				dprintk("suppressing fallback duplicate freq=%dkHz sr=%d\n",
+					p->frequency, state->symbol_rate);
+				continue;
+			}
+			state->tune_time = jiffies;
+			*status = FE_HAS_SIGNAL | FE_HAS_CARRIER | FE_HAS_VITERBI |
+				FE_HAS_SYNC | FE_HAS_LOCK;
 			*delay = HZ;
 			mutex_unlock(&state->base->status_lock);
 			return 0;
-		} else {
-			*status = 0;
 		}
+
+		state->scan_next_frequency =
+			stv091x_blindscan_failed_frequency(
+				probe_frequency, state->search_range_hz,
+				half_step);
+		half_step = false;
 	}
-	if(state->scan_next_frequency >= state->scan_end_frequency) {
-		dprintk("Signaling DONE\n");
-		*status =  FE_TIMEDOUT|FE_HAS_SIGNAL|FE_HAS_CARRIER|FE_HAS_VITERBI|FE_HAS_SYNC|FE_HAS_LOCK;
-	}
+
+	dprintk("Signaling DONE (band exhausted)\n");
+	stv091x_blindscan_stop_and_free(state);
+	state->signal_info.standard = SYS_UNDEFINED;
+	*status = FE_TIMEDOUT | FE_HAS_SIGNAL | FE_HAS_CARRIER | FE_HAS_VITERBI |
+		FE_HAS_SYNC | FE_HAS_LOCK;
 	mutex_unlock(&state->base->status_lock);
 	return 0;
 }
@@ -2993,6 +3591,7 @@ static int stv091x_stop_task(struct neumo_dvb_frontend *fe)
 	struct stv* state = fe->demodulator_priv;
 	struct stv_spectrum_scan_state* ss = &state->scan_state;
 	struct stv_constellation_scan_state* cs = &state->constellation_scan_state;
+	stv091x_blindscan_free(state);
 #if 0
 	/*this code should only been called when frontend task is not running
 		locking is then not needed and can be quite slow if many frontends
