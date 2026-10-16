@@ -16,15 +16,23 @@ typedef uint64_t u64;
 #define STV091X_BLINDSCAN_INIT_SR		1000000
 #define STV091X_BLINDSCAN_SEARCH_RANGE_HZ	60000000
 /*
- * tbs6903.sys 0x2F341 seeds 500/50 then 0x3507C overwrites from the blind SR
+ * tbs6903.sys 0x1F341 seeds 500/50 then 0x2507C overwrites from the blind SR
  * table (algo==0). With INIT_SR=1Msps that is Demod=2000, Fec=500 — same as
- * STAPI ALGORITHM_BLIND for SR<=1.5Msps. Low-SR TPs need the full 2s budget.
+ * STAPI ALGORITHM_BLIND for SR<=1.5Msps. Low-SR TPs need the full 2s budget
+ * once HEADER_MODE appears.
  */
 #define STV091X_BLINDSCAN_VENDOR_DEMOD_TIMEOUT_MS	2000
 #define STV091X_BLINDSCAN_VENDOR_FEC_TIMEOUT_MS		500
 #define STV091X_BLINDSCAN_LOCK_TIMEOUT_MS		\
 	(STV091X_BLINDSCAN_VENDOR_DEMOD_TIMEOUT_MS + \
 	 STV091X_BLINDSCAN_VENDOR_FEC_TIMEOUT_MS)
+/*
+ * tbs6903.sys 0x1D4C8 adaptive wait floors at 0x226 (550 ms). Empty/false
+ * edges never raise DMDSTATE HEADER_MODE; abort then instead of burning the
+ * full DemodTimeout. Once HEADER_MODE is seen, keep the full 2000/500 budget
+ * (needed for low-SR locks).
+ */
+#define STV091X_BLINDSCAN_VENDOR_NO_HEADER_ABORT_MS	600
 #define STV091X_BLINDSCAN_IQ_THRESHOLD		30
 #define STV091X_BLINDSCAN_VENDOR_CFR_STEP_HZ	500000
 #define STV091X_BLINDSCAN_VENDOR_EDGE_SEARCH_RANGE_HZ	500000

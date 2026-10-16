@@ -798,7 +798,7 @@ static int wait_for_dmdlock(struct neumo_dvb_frontend *fe, bool require_data)
 		timeout = 200;
 #else
 	/*
-	 * tbs6903.sys 0x3507C / 0x2D4C8: vendor blind waits DemodTimeout
+	 * tbs6903.sys 0x2507C / 0x1D4C8: vendor blind waits DemodTimeout
 	 * (2000 ms at INIT 1Msps) and only spends FecTimeout after
 	 * LOCK_DEFINITIF. Abort at DemodTimeout when demod never locks.
 	 */
@@ -826,11 +826,15 @@ static int wait_for_dmdlock(struct neumo_dvb_frontend *fe, bool require_data)
 	dprintk("timeout=%d demod=%d fec=%d\n", timeout,
 		state->DemodTimeout, state->FecTimeout);
 
+	{
+	bool saw_header_mode = false;
+
 	while (timer < timeout && !lock) {
 		enum ReceiveMode receive_mode = Mode_None;
 		dmdstate = read_reg(state, RSTV0910_P2_DMDSTATE + state->regoff);
 		dstatus = read_reg(state, RSTV0910_P2_DSTATUS + state->regoff);
-		if (dmdstate & 0x40) { //DVBS1 or DVBS2 found
+		if (dmdstate & 0x40) { //DVBS1 or DVBS2 found (HEADER_MODE)
+			saw_header_mode = true;
 			if (dstatus & 0x08)
 				receive_mode = (dmdstate & 0x20) ?
 					Mode_DVBS : Mode_DVBS2;
@@ -906,9 +910,23 @@ static int wait_for_dmdlock(struct neumo_dvb_frontend *fe, bool require_data)
 		    state->DemodTimeout > 0 &&
 		    timer + 10 >= state->DemodTimeout)
 			break;
+		/*
+		 * Empty / false-edge acquires never raise HEADER_MODE.
+		 * tbs6903.sys 0x1D4C8 floors its adaptive wait at 550 ms;
+		 * bail on a similar horizon so jump=500 crawl storms do not
+		 * burn 2 s each. Real carriers that assert HEADER_MODE keep
+		 * the full Demod+Fec budget (low-SR safe).
+		 */
+		if (state->satellite_scan &&
+		    !saw_header_mode &&
+		    !state->signal_info.demod_locked &&
+		    timer + 10 >=
+			    STV091X_BLINDSCAN_VENDOR_NO_HEADER_ABORT_MS)
+			break;
 		if (!lock)
 			msleep(10);
 		timer += 10;
+	}
 	}
 
 	dprintk("initial lock: %s dstatus=0x%x dmdstate=0x%x vit=0x%x tsstatus=0x%x require_data=%d timing: %d/%d\n",
@@ -2715,9 +2733,9 @@ static int stv091x_tune_once(struct neumo_dvb_frontend *fe, bool* need_retune)
 	Stop(state);
 
 	/*
-	 * tbs6903.sys 0x3507C: for blind (algo 0) at INIT 1Msps this yields
+	 * tbs6903.sys 0x2507C: for blind (algo 0) at INIT 1Msps this yields
 	 * DemodTimeout=2000, FecTimeout=500. Do not force 500/50 — that was
-	 * only the 0x2F341 seed before 0x3507C overwrites it, and it drops
+	 * only the 0x1F341 seed before 0x2507C overwrites it, and it drops
 	 * low-SR locks (591k/4.7M V cluster).
 	 */
 	stv091x_compute_timeouts(&state->DemodTimeout, &state->FecTimeout,
