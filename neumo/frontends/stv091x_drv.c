@@ -2540,13 +2540,23 @@ static int stv091x_vendor_blind_acquire(struct neumo_dvb_frontend *fe,
 	int ret;
 
 	/*
-	 * tbs6903.sys: acquire at the tuner center with
-	 * min((jump+24000)*1kHz, 40MHz).
+	 * tbs6903.sys: search_range = min((jump+24000)*1kHz, 40MHz).
+	 * Edge walk is +CFR only; if jump exceeds ±range/2, park the LO so
+	 * the detected edge still falls inside CFRUP (else late asperity-2
+	 * never locks — e.g. H 11228/11261/11325 cluster).
 	 */
-	p->frequency = state->blindscan_traversal.vendor_frequency_khz;
 	state->search_range_hz =
 		stv091x_blindscan_vendor_acquisition_range_hz(
 			frequency_jump_khz);
+	p->frequency = stv091x_blindscan_vendor_acquire_frequency_khz(
+		state->blindscan_traversal.vendor_frequency_khz,
+		frequency_jump_khz);
+	if (p->frequency !=
+	    state->blindscan_traversal.vendor_frequency_khz)
+		dprintk("vendor acquire LO shift center=%dkHz jump=%dkHz tune=%dkHz range=%dkHz\n",
+			state->blindscan_traversal.vendor_frequency_khz,
+			frequency_jump_khz, p->frequency,
+			state->search_range_hz / 1000);
 	state->symbol_rate = STV091X_BLINDSCAN_INIT_SR;
 	if (kthread_should_stop() ||
 	    neumo_dvb_frontend_task_should_stop(fe)) {

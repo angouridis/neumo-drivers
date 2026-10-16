@@ -211,6 +211,19 @@ static void vendor_acquisition_range_matches_windows_pad(void)
 	       40000000);
 }
 
+static void vendor_acquire_lo_shifts_when_jump_exceeds_half_range(void)
+{
+	/* jump 16M < half of 40M → stay at center */
+	assert(stv091x_blindscan_vendor_acquire_frequency_khz(
+		       1119000, 16000) == 1119000);
+	/* jump 24M, range capped 40M, half=20M → shift +4M */
+	assert(stv091x_blindscan_vendor_acquire_frequency_khz(
+		       1119000, 24000) == 1123000);
+	/* jump 22M → shift +2M so edge sits on CFRUP */
+	assert(stv091x_blindscan_vendor_acquire_frequency_khz(
+		       1119000, 22000) == 1121000);
+}
+
 static void vendor_lock_advances_by_half_occupied_bandwidth(void)
 {
 	/* 135 * floor(4798000/200000) = 135*23 = 3105 */
@@ -352,6 +365,7 @@ int main(void)
 	vendor_asperity1_arms_sticky_mode2_acquire();
 	vendor_phase2_fail_does_not_skip_midband_cluster();
 	vendor_acquisition_range_matches_windows_pad();
+	vendor_acquire_lo_shifts_when_jump_exceeds_half_range();
 	vendor_lock_advances_by_half_occupied_bandwidth();
 	duplicate_suppression_preserves_nearby_one_msps_carriers();
 	duplicate_suppression_checks_all_candidate_locks();
