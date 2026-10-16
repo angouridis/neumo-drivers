@@ -41,18 +41,6 @@ typedef uint64_t u64;
 /* tbs6903.sys 0x1BEF4: sticky jump after asperity-1 */
 #define STV091X_BLINDSCAN_VENDOR_STICKY_JUMP_KHZ	16000
 /*
- * Robustness only: after a micro-jump fail pair or sticky asperity-1 fail,
- * hop a few CFR steps forward. Must stay well below inter-TP spacing so
- * we do not skip 11118/11134-style clusters (miss-sized 23MHz hops did).
- */
-#define STV091X_BLINDSCAN_VENDOR_SMALL_JUMP_KHZ	500
-#define STV091X_BLINDSCAN_VENDOR_CRAWL_ESCAPE_KHZ	2000
-/*
- * After this many consecutive asperity-1 sticky acquire fails, take a
- * miss-sized hop so filter-edge storms cannot burn minutes at ~2s/fail.
- */
-#define STV091X_BLINDSCAN_VENDOR_STICKY_FAIL_MAX	3
-/*
  * tbs6903.sys 0x1C00D: prior locks with |Δf| < 1000 kHz are the same TP.
  * Absolute 1 MHz only — not SR/2000 (that skipped neighbours of wide carriers).
  */
@@ -78,8 +66,6 @@ struct stv091x_blindscan_traversal {
 	u8 fail_phase;
 	/* tbs6903.sys edx: 1 = edge probe, 2 = skip-edge acquire */
 	u8 probe_mode;
-	/* consecutive asperity-1 mode-2 acquire failures */
-	u8 sticky_fail_streak;
 };
 
 struct stv091x_blindscan_lock {

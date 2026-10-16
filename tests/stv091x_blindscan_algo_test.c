@@ -125,15 +125,11 @@ static void vendor_fail_zigzag_skips_edge_and_preserves_jump(void)
 	assert(trav.fail_phase == 1);
 	assert(trav.probe_mode == STV091X_BLINDSCAN_VENDOR_PROBE_ACQUIRE);
 
-	/*
-	 * Mode-2 fail with micro stored jump: small escape instead of
-	 * +250 kHz crawl (not a miss-sized hop that skips TP clusters).
-	 */
+	/* tbs6903.sys phase-1 fail: advance by exact stored jump */
 	stv091x_blindscan_vendor_apply_result(
 		&trav, 2, trav.stored_jump_khz, 72000000, 0,
 		trav.vendor_frequency_khz, 0);
-	assert(trav.vendor_frequency_khz ==
-	       950250 + STV091X_BLINDSCAN_VENDOR_CRAWL_ESCAPE_KHZ);
+	assert(trav.vendor_frequency_khz == 950500);
 	assert(trav.fail_phase == 0);
 	assert(trav.probe_mode == STV091X_BLINDSCAN_VENDOR_PROBE_EDGE);
 }
@@ -168,43 +164,40 @@ static void vendor_asperity1_arms_sticky_mode2_acquire(void)
 	assert(trav.fail_phase == 2);
 	assert(trav.probe_mode == STV091X_BLINDSCAN_VENDOR_PROBE_ACQUIRE);
 
-	/* Mode-2 fail after asperity-1: small escape, return to edge */
+	/* tbs6903.sys phase-2 fail after asperity-1: no advance, back to edge */
 	stv091x_blindscan_vendor_apply_result(
 		&trav, 2, trav.stored_jump_khz, 72000000, 0,
 		trav.vendor_frequency_khz, 0);
-	assert(trav.vendor_frequency_khz ==
-	       971500 + STV091X_BLINDSCAN_VENDOR_CRAWL_ESCAPE_KHZ);
-	assert(trav.sticky_fail_streak == 1);
+	assert(trav.vendor_frequency_khz == 971500);
 	assert(trav.fail_phase == 0);
 	assert(trav.probe_mode == STV091X_BLINDSCAN_VENDOR_PROBE_EDGE);
 }
 
-static void vendor_sticky_fail_storm_miss_hops(void)
+static void vendor_phase2_fail_does_not_skip_midband_cluster(void)
 {
 	struct stv091x_blindscan_traversal trav;
 	s32 freq;
 	int i;
 
-	stv091x_blindscan_traversal_init(&trav, 950000);
-	freq = 950000;
-	for (i = 0; i < STV091X_BLINDSCAN_VENDOR_STICKY_FAIL_MAX - 1; i++) {
+	/*
+	 * Reproducing the 11228–11475 H hole: asperity-1 → mode2 fail must
+	 * not accumulate +2/+23 MHz hops that leap past real carriers.
+	 */
+	stv091x_blindscan_traversal_init(&trav, 1119000);
+	freq = 1119000;
+	for (i = 0; i < 5; i++) {
 		stv091x_blindscan_vendor_apply_result(
-			&trav, 1, 2000, 72000000, 0, freq, 0);
+			&trav, 1, 5000, 72000000, 0, freq, 0);
 		freq = trav.vendor_frequency_khz;
 		stv091x_blindscan_vendor_apply_result(
 			&trav, 2, trav.stored_jump_khz, 72000000, 0, freq, 0);
+		assert(trav.vendor_frequency_khz == freq);
+		assert(trav.probe_mode ==
+		       STV091X_BLINDSCAN_VENDOR_PROBE_EDGE);
 		freq = trav.vendor_frequency_khz;
 	}
-	assert(trav.sticky_fail_streak ==
-	       STV091X_BLINDSCAN_VENDOR_STICKY_FAIL_MAX - 1);
-
-	stv091x_blindscan_vendor_apply_result(
-		&trav, 1, 2000, 72000000, 0, freq, 0);
-	freq = trav.vendor_frequency_khz;
-	stv091x_blindscan_vendor_apply_result(
-		&trav, 2, trav.stored_jump_khz, 72000000, 0, freq, 0);
-	assert(trav.sticky_fail_streak == 0);
-	assert(trav.vendor_frequency_khz == freq + 23000);
+	/* Only asperity-1 advances (5 * 5000), never miss-sized skips */
+	assert(trav.vendor_frequency_khz == 1119000 + 5 * 5000);
 }
 
 static void vendor_acquisition_range_matches_windows_pad(void)
@@ -357,7 +350,7 @@ int main(void)
 	vendor_fail_zigzag_skips_edge_and_preserves_jump();
 	vendor_medium_jump_fail_keeps_windows_half_advance();
 	vendor_asperity1_arms_sticky_mode2_acquire();
-	vendor_sticky_fail_storm_miss_hops();
+	vendor_phase2_fail_does_not_skip_midband_cluster();
 	vendor_acquisition_range_matches_windows_pad();
 	vendor_lock_advances_by_half_occupied_bandwidth();
 	duplicate_suppression_preserves_nearby_one_msps_carriers();
