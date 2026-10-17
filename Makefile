@@ -95,6 +95,12 @@ EXTRA_CFLAGS += -I$(NEUMO_DIR)/include \
                 -I$(NEUMO_DIR)/tuners
 
 EXTRA_CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
+
+# c4e620e added bool flush to dvb_vb2_fill_buffer. Ubuntu 6.8.0-147+ (and
+# other stables) backported it; LINUX_VERSION_CODE alone cannot detect that.
+ifeq ($(shell test -f "$(KDIR)/include/media/dvb_vb2.h" && grep -qs 'bool flush' "$(KDIR)/include/media/dvb_vb2.h" && echo y),y)
+EXTRA_CFLAGS += -DNEUMO_DVB_VB2_HAS_FLUSH
+endif
 # --- Targets ---
 .PHONY: all install clean dep
 

@@ -254,7 +254,11 @@ int dvb_vb2_is_streaming(struct dvb_vb2_ctx *ctx)
 
 int dvb_vb2_fill_buffer(struct dvb_vb2_ctx *ctx,
 			const unsigned char *src, int len,
-			enum dmx_buffer_flags *buffer_flags)
+			enum dmx_buffer_flags *buffer_flags
+#ifdef NEUMO_DVB_VB2_HAS_FLUSH
+			, bool flush
+#endif
+			)
 {
 	unsigned long flags = 0;
 	void *vbuf = NULL;
@@ -311,7 +315,11 @@ int dvb_vb2_fill_buffer(struct dvb_vb2_ctx *ctx,
 		}
 	}
 
+#ifdef NEUMO_DVB_VB2_HAS_FLUSH
+	if (flush && ctx->buf) {
+#else
 	if (ctx->nonblocking && ctx->buf) {
+#endif
 		vb2_set_plane_payload(&ctx->buf->vb, 0, ll);
 		vb2_buffer_done(&ctx->buf->vb, VB2_BUF_STATE_DONE);
 		list_del(&ctx->buf->list);

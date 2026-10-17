@@ -130,7 +130,11 @@ static inline int dvb_vb2_release(struct dvb_vb2_ctx *ctx)
 	return 0;
 };
 #define dvb_vb2_is_streaming(ctx) (0)
+#ifdef NEUMO_DVB_VB2_HAS_FLUSH
+#define dvb_vb2_fill_buffer(ctx, file, wait, flags, flush) (0)
+#else
 #define dvb_vb2_fill_buffer(ctx, file, wait, flags) (0)
+#endif
 
 static inline __poll_t dvb_vb2_poll(struct dvb_vb2_ctx *ctx,
 				    struct file *file,
@@ -172,10 +176,15 @@ int dvb_vb2_is_streaming(struct dvb_vb2_ctx *ctx);
  * @buffer_flags:
  *		pointer to buffer flags as defined by &enum dmx_buffer_flags.
  *		can be NULL.
+ * @flush:	(when NEUMO_DVB_VB2_HAS_FLUSH) complete a partial buffer
  */
 int dvb_vb2_fill_buffer(struct dvb_vb2_ctx *ctx,
 			const unsigned char *src, int len,
-			enum dmx_buffer_flags *buffer_flags);
+			enum dmx_buffer_flags *buffer_flags
+#ifdef NEUMO_DVB_VB2_HAS_FLUSH
+			, bool flush
+#endif
+			);
 
 /**
  * dvb_vb2_poll - Wrapper to vb2_core_streamon() for Digital TV

@@ -440,6 +440,15 @@ static int dvb_dmxdev_section_callback(const u8 *buffer1, size_t buffer1_len,
 	}
 	timer_delete_sync(&dmxdevfilter->timer);
 	if (dvb_vb2_is_streaming(&dmxdevfilter->vb2_ctx)) {
+#ifdef NEUMO_DVB_VB2_HAS_FLUSH
+		ret = dvb_vb2_fill_buffer(&dmxdevfilter->vb2_ctx,
+					  buffer1, buffer1_len,
+					  buffer_flags, true);
+		if (ret == buffer1_len)
+			ret = dvb_vb2_fill_buffer(&dmxdevfilter->vb2_ctx,
+						  buffer2, buffer2_len,
+						  buffer_flags, true);
+#else
 		ret = dvb_vb2_fill_buffer(&dmxdevfilter->vb2_ctx,
 					  buffer1, buffer1_len,
 					  buffer_flags);
@@ -447,6 +456,7 @@ static int dvb_dmxdev_section_callback(const u8 *buffer1, size_t buffer1_len,
 			ret = dvb_vb2_fill_buffer(&dmxdevfilter->vb2_ctx,
 						  buffer2, buffer2_len,
 						  buffer_flags);
+#endif
 	} else {
 		ret = dvb_dmxdev_buffer_write(&dmxdevfilter->buffer,
 					      buffer1, buffer1_len);
@@ -496,11 +506,19 @@ static int dvb_dmxdev_pid_callback(const u8 *buffer1, size_t buffer1_len,
 	}
 
 	if (dvb_vb2_is_streaming(ctx)) {
+#ifdef NEUMO_DVB_VB2_HAS_FLUSH
+		ret = dvb_vb2_fill_buffer(ctx, buffer1, buffer1_len,
+					  buffer_flags, false);
+		if (ret == buffer1_len)
+			ret = dvb_vb2_fill_buffer(ctx, buffer2, buffer2_len,
+						  buffer_flags, false);
+#else
 		ret = dvb_vb2_fill_buffer(ctx, buffer1, buffer1_len,
 					  buffer_flags);
 		if (ret == buffer1_len)
 			ret = dvb_vb2_fill_buffer(ctx, buffer2, buffer2_len,
 						  buffer_flags);
+#endif
 	} else {
 		if (buffer->error) {
 			spin_unlock(&dmxdevfilter->dev->lock);
